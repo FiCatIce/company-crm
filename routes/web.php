@@ -1,7 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ProductController;
+use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
 
@@ -10,7 +11,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+    Route::resource('customers', CustomerController::class)->except(['show']);
+    Route::resource('products', ProductController::class)->except(['show']);
 });
 
 require __DIR__.'/settings.php';

@@ -2,24 +2,32 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
-    //
+    /** @use HasFactory<TransactionFactory> */
+    use HasFactory;
+
     protected $fillable = ['customer_id', 'product_id', 'reseller_id', 'purchased_at'];
+
     protected $casts = ['purchased_at' => 'date'];
 
-    public function customer() {
+    public function customer()
+    {
         return $this->belongsTo(Customer::class);
     }
 
-    public function product() {
+    public function product()
+    {
         return $this->belongsTo(Product::class);
     }
 
-    public function reseller() {
+    public function reseller()
+    {
         return $this->belongsTo(Reseller::class);
     }
 

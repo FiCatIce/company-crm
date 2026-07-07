@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { watchDebounced } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
-import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
+import { computed, ref } from 'vue';
+import ProductController from '@/actions/App/Http/Controllers/ProductController';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,13 +18,10 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
-type CustomerRow = {
+type ProductRow = {
     id: number;
     name: string;
-    phone: string | null;
-    email: string | null;
-    address: string | null;
-    reseller: string | null;
+    warranty_months: number;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
@@ -38,9 +35,8 @@ type Paginated<T> = {
 };
 
 const props = defineProps<{
-    customers: Paginated<CustomerRow>;
-    resellers: { id: number; name: string }[];
-    filters: { search: string; reseller: number | null };
+    products: Paginated<ProductRow>;
+    filters: { search: string };
     can: { create: boolean; update: boolean; delete: boolean };
 }>();
 
@@ -48,36 +44,27 @@ const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success);
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Customer', href: CustomerController.index() },
+    { title: 'Produk', href: ProductController.index() },
 ];
 
 const search = ref(props.filters.search ?? '');
-const reseller = ref(
-    props.filters.reseller ? String(props.filters.reseller) : '',
-);
 
 function applyFilters() {
     router.get(
-        CustomerController.index.url(),
-        {
-            search: search.value || undefined,
-            reseller: reseller.value || undefined,
-        },
+        ProductController.index.url(),
+        { search: search.value || undefined },
         { preserveState: true, preserveScroll: true, replace: true },
     );
 }
 
 watchDebounced(search, applyFilters, { debounce: 300 });
-watch(reseller, applyFilters);
 
-const initial = (name: string) => name.trim().charAt(0).toUpperCase();
-
-const controlClasses =
-    'border-input h-9 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+const warrantyLabel = (months: number) =>
+    months === 0 ? 'Tanpa garansi' : `${months} bulan`;
 </script>
 
 <template>
-    <Head title="Data Customer" />
+    <Head title="Data Produk" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-4 sm:p-6">
@@ -86,16 +73,16 @@ const controlClasses =
                     <h1
                         class="text-xl font-semibold tracking-tight text-foreground"
                     >
-                        Data Customer
+                        Data Produk
                     </h1>
                     <p class="mt-1 text-sm text-muted-foreground">
-                        {{ customers.total }} customer terdaftar
+                        {{ products.total }} produk terdaftar
                     </p>
                 </div>
 
                 <Button v-if="can.create" as-child>
-                    <Link :href="CustomerController.create()"
-                        >Tambah Customer</Link
+                    <Link :href="ProductController.create()"
+                        >Tambah Produk</Link
                     >
                 </Button>
             </div>
@@ -111,19 +98,9 @@ const controlClasses =
                 <Input
                     v-model="search"
                     type="search"
-                    placeholder="Cari nama, email, atau telepon…"
+                    placeholder="Cari nama produk…"
                     class="max-w-xs"
                 />
-                <select v-model="reseller" :class="controlClasses">
-                    <option value="">Semua reseller</option>
-                    <option
-                        v-for="r in resellers"
-                        :key="r.id"
-                        :value="String(r.id)"
-                    >
-                        {{ r.name }}
-                    </option>
-                </select>
             </div>
 
             <div
@@ -136,10 +113,7 @@ const controlClasses =
                         >
                             <tr>
                                 <th class="px-5 py-3 font-medium">Nama</th>
-                                <th class="px-5 py-3 font-medium">Telepon</th>
-                                <th class="px-5 py-3 font-medium">Email</th>
-                                <th class="px-5 py-3 font-medium">Alamat</th>
-                                <th class="px-5 py-3 font-medium">Reseller</th>
+                                <th class="px-5 py-3 font-medium">Garansi</th>
                                 <th class="px-5 py-3 text-right font-medium">
                                     Aksi
                                 </th>
@@ -148,42 +122,25 @@ const controlClasses =
 
                         <tbody class="divide-y divide-border">
                             <tr
-                                v-for="c in customers.data"
-                                :key="c.id"
+                                v-for="p in products.data"
+                                :key="p.id"
                                 class="transition-colors hover:bg-muted/40"
                             >
                                 <td class="px-5 py-3">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-                                        >
-                                            {{ initial(c.name) }}
-                                        </div>
-                                        <span
-                                            class="font-medium text-foreground"
-                                            >{{ c.name }}</span
-                                        >
-                                    </div>
-                                </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ c.phone ?? '-' }}
-                                </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ c.email ?? '-' }}
-                                </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ c.address ?? '-' }}
+                                    <span class="font-medium text-foreground">{{
+                                        p.name
+                                    }}</span>
                                 </td>
                                 <td class="px-5 py-3">
                                     <span
-                                        v-if="c.reseller"
+                                        v-if="p.warranty_months > 0"
                                         class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
                                     >
-                                        {{ c.reseller }}
+                                        {{ warrantyLabel(p.warranty_months) }}
                                     </span>
-                                    <span v-else class="text-muted-foreground"
-                                        >—</span
-                                    >
+                                    <span v-else class="text-muted-foreground">
+                                        {{ warrantyLabel(p.warranty_months) }}
+                                    </span>
                                 </td>
                                 <td class="px-5 py-3">
                                     <div
@@ -197,9 +154,7 @@ const controlClasses =
                                         >
                                             <Link
                                                 :href="
-                                                    CustomerController.edit(
-                                                        c.id,
-                                                    )
+                                                    ProductController.edit(p.id)
                                                 "
                                                 >Edit</Link
                                             >
@@ -218,8 +173,8 @@ const controlClasses =
                                             <DialogContent>
                                                 <Form
                                                     v-bind="
-                                                        CustomerController.destroy.form(
-                                                            c.id,
+                                                        ProductController.destroy.form(
+                                                            p.id,
                                                         )
                                                     "
                                                     :options="{
@@ -233,12 +188,12 @@ const controlClasses =
                                                     >
                                                         <DialogTitle
                                                             >Hapus
-                                                            customer?</DialogTitle
+                                                            produk?</DialogTitle
                                                         >
                                                         <DialogDescription>
                                                             Data
                                                             <strong>{{
-                                                                c.name
+                                                                p.name
                                                             }}</strong>
                                                             akan dihapus
                                                             permanen. Tindakan
@@ -273,12 +228,12 @@ const controlClasses =
                                 </td>
                             </tr>
 
-                            <tr v-if="customers.data.length === 0">
+                            <tr v-if="products.data.length === 0">
                                 <td
-                                    colspan="6"
+                                    colspan="3"
                                     class="px-5 py-12 text-center text-muted-foreground"
                                 >
-                                    Belum ada data customer.
+                                    Belum ada data produk.
                                 </td>
                             </tr>
                         </tbody>
@@ -287,18 +242,17 @@ const controlClasses =
             </div>
 
             <div
-                v-if="customers.links.length > 3"
+                v-if="products.links.length > 3"
                 class="flex items-center justify-between gap-4"
             >
                 <p class="text-sm text-muted-foreground">
-                    Menampilkan {{ customers.from ?? 0 }}–{{
-                        customers.to ?? 0
+                    Menampilkan {{ products.from ?? 0 }}–{{
+                        products.to ?? 0
                     }}
-                    dari
-                    {{ customers.total }}
+                    dari {{ products.total }}
                 </p>
                 <div class="flex flex-wrap items-center gap-1">
-                    <template v-for="(link, i) in customers.links" :key="i">
+                    <template v-for="(link, i) in products.links" :key="i">
                         <span
                             v-if="!link.url"
                             class="px-3 py-1.5 text-sm text-muted-foreground"

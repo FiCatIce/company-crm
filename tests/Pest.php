@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +48,12 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Create a user assigned the given spatie role (roles must already be seeded).
+ */
+function userWithRole(string $role): User
+{
+    return User::factory()->create()->assignRole($role);
 }
