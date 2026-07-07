@@ -18,7 +18,10 @@ createInertiaApp({
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
             default:
-                return AppLayout;
+                // Content pages provide their own <AppLayout> wrapper (with
+                // breadcrumbs), so no global persistent layout is applied here —
+                // returning AppLayout too would double-wrap the sidebar.
+                return null;
         }
     },
     progress: {

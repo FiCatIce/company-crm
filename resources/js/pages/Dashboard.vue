@@ -1,47 +1,62 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import { Network, Receipt, ShieldCheck, Users } from '@lucide/vue';
+import StatCard from '@/components/StatCard.vue';
+import TransactionTrendChart from '@/components/TransactionTrendChart.vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
+import type { BreadcrumbItem } from '@/types';
 
-defineOptions({
-    layout: {
-        breadcrumbs: [
-            {
-                title: 'Dashboard',
-                href: dashboard(),
-            },
-        ],
-    },
-});
+type TrendPoint = { month: string; label: string; count: number };
+
+defineProps<{
+    stats: {
+        customers: number;
+        transactions: number;
+        productsUnderWarranty: number;
+        activeResellers: number;
+    };
+    trend: TrendPoint[];
+}>();
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Dashboard', href: dashboard() },
+];
 </script>
 
 <template>
     <Head title="Dashboard" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div class="flex flex-col gap-6 p-4 sm:p-6">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                    label="Total Customer"
+                    :value="stats.customers"
+                    :icon="Users"
+                    description="Customer terdaftar"
+                />
+                <StatCard
+                    label="Total Transaksi"
+                    :value="stats.transactions"
+                    :icon="Receipt"
+                    description="Transaksi tercatat"
+                />
+                <StatCard
+                    label="Produk Bergaransi Aktif"
+                    :value="stats.productsUnderWarranty"
+                    :icon="ShieldCheck"
+                    description="Masih dalam masa garansi"
+                />
+                <StatCard
+                    label="Reseller Aktif"
+                    :value="stats.activeResellers"
+                    :icon="Network"
+                    description="Punya customer atau transaksi"
+                />
             </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
+
+            <TransactionTrendChart :data="trend" />
         </div>
-        <div
-            class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border"
-        >
-            <PlaceholderPattern />
-        </div>
-    </div>
+    </AppLayout>
 </template>
