@@ -6,6 +6,7 @@ import {
     LayoutGrid,
     Network,
     Package,
+    Receipt,
     Users,
 } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -44,6 +45,11 @@ const mainNavItems: NavItem[] = [
         title: 'Resellers',
         href: '/resellers',
         icon: Network,
+    },
+    {
+        title: 'Transactions',
+        href: '/transactions',
+        icon: Receipt,
     },
 ];
 

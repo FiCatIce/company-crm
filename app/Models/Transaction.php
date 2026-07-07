@@ -14,7 +14,12 @@ class Transaction extends Model
 
     protected $fillable = ['customer_id', 'product_id', 'reseller_id', 'purchased_at'];
 
-    protected $casts = ['purchased_at' => 'date'];
+    protected $casts = [
+        'purchased_at' => 'date',
+        'customer_id' => 'integer',
+        'product_id' => 'integer',
+        'reseller_id' => 'integer',
+    ];
 
     public function customer()
     {
