@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,12 +17,20 @@ class DashboardTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_users_can_visit_the_dashboard()
+    public function test_users_with_a_role_can_visit_the_dashboard()
     {
-        $user = User::factory()->create();
-        $this->actingAs($user);
+        $this->seed(RoleSeeder::class);
+        $this->actingAs(userWithRole('admin'));
 
         $response = $this->get(route('dashboard'));
         $response->assertOk();
+    }
+
+    public function test_users_without_a_role_are_forbidden_from_the_dashboard()
+    {
+        $this->actingAs(User::factory()->create());
+
+        $response = $this->get(route('dashboard'));
+        $response->assertForbidden();
     }
 }

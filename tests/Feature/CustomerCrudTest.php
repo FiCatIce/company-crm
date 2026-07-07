@@ -2,6 +2,7 @@
 
 use App\Models\Customer;
 use App\Models\Reseller;
+use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -184,6 +185,19 @@ it('forbids cs from deleting a customer', function () {
     $this->actingAs(userWithRole('cs'))
         ->delete(route('customers.destroy', $customer))
         ->assertForbidden();
+
+    $this->assertDatabaseHas('customers', ['id' => $customer->id]);
+});
+
+it('blocks deleting a customer that still has transactions', function () {
+    $customer = Customer::factory()->create();
+    Transaction::factory()->forCustomer($customer)->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('customers.index'))
+        ->delete(route('customers.destroy', $customer))
+        ->assertRedirect(route('customers.index'))
+        ->assertSessionHas('error');
 
     $this->assertDatabaseHas('customers', ['id' => $customer->id]);
 });

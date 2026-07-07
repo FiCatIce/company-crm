@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Product;
+use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -173,6 +174,19 @@ it('forbids cs from deleting a product', function () {
     $this->actingAs(userWithRole('cs'))
         ->delete(route('products.destroy', $product))
         ->assertForbidden();
+
+    $this->assertDatabaseHas('products', ['id' => $product->id]);
+});
+
+it('blocks deleting a product that still has transactions', function () {
+    $product = Product::factory()->create();
+    Transaction::factory()->create(['product_id' => $product->id]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('products.index'))
+        ->delete(route('products.destroy', $product))
+        ->assertRedirect(route('products.index'))
+        ->assertSessionHas('error');
 
     $this->assertDatabaseHas('products', ['id' => $product->id]);
 });

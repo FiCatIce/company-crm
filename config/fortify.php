@@ -161,9 +161,12 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Public self-registration is disabled: this is an internal CRM and users
+        // are provisioned by an administrator (see database/seeders). Re-enable
+        // Features::registration() only if self-service onboarding is intended.
         Features::resetPasswords(),
-        Features::emailVerification(),
+        // Email verification is intentionally not enabled: the User model does not
+        // implement MustVerifyEmail, so it was a no-op. Users are admin-provisioned.
         Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => true,

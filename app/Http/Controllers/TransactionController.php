@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Customer;
@@ -9,14 +10,16 @@ use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class TransactionController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, ProvidesModelAbilities;
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Transaction::class);
 
@@ -25,8 +28,11 @@ class TransactionController extends Controller
         $transactions = Transaction::query()
             ->with(['customer:id,name', 'product:id,name,warranty_months', 'reseller:id,name'])
             ->when($search !== '', function ($query) use ($search) {
-                $query->whereHas('customer', fn ($q) => $q->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('product', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+                // Case-insensitive across drivers (ILIKE on Postgres, lower() on SQLite);
+                // escape LIKE wildcards so a user's % or _ can't broaden the match.
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->whereHas('customer', fn ($q) => $q->whereLike('name', $term, caseSensitive: false))
+                    ->orWhereHas('product', fn ($q) => $q->whereLike('name', $term, caseSensitive: false));
             })
             ->latest('purchased_at')
             ->latest('id')
@@ -37,27 +43,27 @@ class TransactionController extends Controller
                 'customer' => $transaction->customer?->name,
                 'product' => $transaction->product?->name,
                 'reseller' => $transaction->reseller?->name,
-                'purchased_at' => $transaction->purchased_at?->toDateString(),
+                'purchased_at' => $transaction->purchased_at->toDateString(),
                 'warranty_months' => $transaction->product?->warranty_months,
-                'warranty_expires_at' => $transaction->warranty_expires_at?->toDateString(),
+                'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
                 'is_under_warranty' => $transaction->is_under_warranty,
             ]);
 
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions,
             'filters' => ['search' => $search],
-            'can' => $this->abilities($request),
+            'can' => $this->abilities($request, new Transaction),
         ]);
     }
 
-    public function create(Request $request)
+    public function create(Request $request): Response
     {
         $this->authorize('create', Transaction::class);
 
         return Inertia::render('Transactions/Create', $this->formOptions());
     }
 
-    public function store(StoreTransactionRequest $request)
+    public function store(StoreTransactionRequest $request): RedirectResponse
     {
         Transaction::create($request->validated());
 
@@ -65,7 +71,7 @@ class TransactionController extends Controller
             ->with('success', 'Transaksi berhasil ditambahkan.');
     }
 
-    public function edit(Request $request, Transaction $transaction)
+    public function edit(Request $request, Transaction $transaction): Response
     {
         $this->authorize('update', $transaction);
 
@@ -75,13 +81,13 @@ class TransactionController extends Controller
                 'customer_id' => $transaction->customer_id,
                 'product_id' => $transaction->product_id,
                 'reseller_id' => $transaction->reseller_id,
-                'purchased_at' => $transaction->purchased_at?->toDateString(),
+                'purchased_at' => $transaction->purchased_at->toDateString(),
             ],
             ...$this->formOptions(),
         ]);
     }
 
-    public function update(UpdateTransactionRequest $request, Transaction $transaction)
+    public function update(UpdateTransactionRequest $request, Transaction $transaction): RedirectResponse
     {
         $transaction->update($request->validated());
 
@@ -89,7 +95,7 @@ class TransactionController extends Controller
             ->with('success', 'Transaksi berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, Transaction $transaction)
+    public function destroy(Request $request, Transaction $transaction): RedirectResponse
     {
         $this->authorize('delete', $transaction);
 
@@ -110,23 +116,6 @@ class TransactionController extends Controller
             'customers' => Customer::orderBy('name')->get(['id', 'name']),
             'products' => Product::orderBy('name')->get(['id', 'name']),
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
-        ];
-    }
-
-    /**
-     * Role-based abilities surfaced to the UI (independent of a specific row).
-     *
-     * @return array<string, bool>
-     */
-    private function abilities(Request $request): array
-    {
-        $user = $request->user();
-        $transaction = new Transaction;
-
-        return [
-            'create' => $user->can('create', Transaction::class),
-            'update' => $user->can('update', $transaction),
-            'delete' => $user->can('delete', $transaction),
         ];
     }
 }

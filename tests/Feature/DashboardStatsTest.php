@@ -4,10 +4,13 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\Transaction;
-use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
 
-beforeEach(fn () => $this->withoutVite());
+beforeEach(function () {
+    $this->seed(RoleSeeder::class);
+    $this->withoutVite();
+});
 
 it('shows summary stats derived from the domain data', function () {
     $activeReseller = Reseller::factory()->create();
@@ -31,7 +34,7 @@ it('shows summary stats derived from the domain data', function () {
         'purchased_at' => now()->subYear(),
     ]);
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(userWithRole('admin'))
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -45,7 +48,7 @@ it('shows summary stats derived from the domain data', function () {
 it('builds a 12-month transaction trend and counts the current month', function () {
     Transaction::factory()->create(['purchased_at' => now()]);
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(userWithRole('admin'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('trend', 12)

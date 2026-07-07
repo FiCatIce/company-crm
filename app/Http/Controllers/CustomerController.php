@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Reseller;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class CustomerController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, ProvidesModelAbilities;
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Customer::class);
 
@@ -24,10 +27,13 @@ class CustomerController extends Controller
         $customers = Customer::query()
             ->with('reseller:id,name')
             ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
+                // Case-insensitive across drivers (ILIKE on Postgres, lower() on SQLite);
+                // escape LIKE wildcards so a user's % or _ can't broaden the match.
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(function ($query) use ($term) {
+                    $query->whereLike('name', $term, caseSensitive: false)
+                        ->orWhereLike('email', $term, caseSensitive: false)
+                        ->orWhereLike('phone', $term, caseSensitive: false);
                 });
             })
             ->when($resellerId, fn ($query, $id) => $query->where('reseller_id', $id))
@@ -50,11 +56,11 @@ class CustomerController extends Controller
                 'search' => $search,
                 'reseller' => $resellerId,
             ],
-            'can' => $this->abilities($request),
+            'can' => $this->abilities($request, new Customer),
         ]);
     }
 
-    public function create(Request $request)
+    public function create(Request $request): Response
     {
         $this->authorize('create', Customer::class);
 
@@ -63,7 +69,7 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function store(StoreCustomerRequest $request)
+    public function store(StoreCustomerRequest $request): RedirectResponse
     {
         Customer::create($request->validated());
 
@@ -71,7 +77,7 @@ class CustomerController extends Controller
             ->with('success', 'Customer berhasil ditambahkan.');
     }
 
-    public function edit(Request $request, Customer $customer)
+    public function edit(Request $request, Customer $customer): Response
     {
         $this->authorize('update', $customer);
 
@@ -88,7 +94,7 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function update(UpdateCustomerRequest $request, Customer $customer)
+    public function update(UpdateCustomerRequest $request, Customer $customer): RedirectResponse
     {
         $customer->update($request->validated());
 
@@ -96,30 +102,17 @@ class CustomerController extends Controller
             ->with('success', 'Customer berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, Customer $customer)
+    public function destroy(Request $request, Customer $customer): RedirectResponse
     {
         $this->authorize('delete', $customer);
+
+        if ($customer->transactions()->exists()) {
+            return back()->with('error', 'Customer tidak dapat dihapus karena masih memiliki transaksi. Hapus atau pindahkan transaksinya terlebih dahulu.');
+        }
 
         $customer->delete();
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer berhasil dihapus.');
-    }
-
-    /**
-     * Role-based abilities surfaced to the UI (independent of a specific row).
-     *
-     * @return array<string, bool>
-     */
-    private function abilities(Request $request): array
-    {
-        $user = $request->user();
-        $customer = new Customer;
-
-        return [
-            'create' => $user->can('create', Customer::class),
-            'update' => $user->can('update', $customer),
-            'delete' => $user->can('delete', $customer),
-        ];
     }
 }

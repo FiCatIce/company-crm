@@ -2,6 +2,7 @@
 
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -143,6 +144,23 @@ it('rejects non-existent linked records', function () {
             'purchased_at' => now()->toDateString(),
         ])
         ->assertSessionHasErrors(['customer_id', 'product_id', 'reseller_id']);
+});
+
+it('rejects a reseller that does not own the selected customer', function () {
+    $customer = Customer::factory()->create();
+    $unrelatedReseller = Reseller::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('transactions.create'))
+        ->post(route('transactions.store'), [
+            'customer_id' => $customer->id,
+            'product_id' => Product::factory()->create()->id,
+            'reseller_id' => $unrelatedReseller->id,
+            'purchased_at' => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors('reseller_id');
+
+    $this->assertDatabaseMissing('transactions', ['customer_id' => $customer->id]);
 });
 
 it('rejects a future purchase date', function () {

@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreResellerRequest;
 use App\Http\Requests\UpdateResellerRequest;
 use App\Models\Reseller;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ResellerController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, ProvidesModelAbilities;
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Reseller::class);
 
@@ -25,11 +28,11 @@ class ResellerController extends Controller
 
         return Inertia::render('Resellers/Index', [
             'tree' => $this->buildTree($resellers, null),
-            'can' => $this->abilities($request),
+            'can' => $this->abilities($request, new Reseller),
         ]);
     }
 
-    public function create(Request $request)
+    public function create(Request $request): Response
     {
         $this->authorize('create', Reseller::class);
 
@@ -38,7 +41,7 @@ class ResellerController extends Controller
         ]);
     }
 
-    public function store(StoreResellerRequest $request)
+    public function store(StoreResellerRequest $request): RedirectResponse
     {
         Reseller::create($request->validated());
 
@@ -46,7 +49,7 @@ class ResellerController extends Controller
             ->with('success', 'Reseller berhasil ditambahkan.');
     }
 
-    public function edit(Request $request, Reseller $reseller)
+    public function edit(Request $request, Reseller $reseller): Response
     {
         $this->authorize('update', $reseller);
 
@@ -65,7 +68,7 @@ class ResellerController extends Controller
         ]);
     }
 
-    public function update(UpdateResellerRequest $request, Reseller $reseller)
+    public function update(UpdateResellerRequest $request, Reseller $reseller): RedirectResponse
     {
         $reseller->update($request->validated());
 
@@ -73,7 +76,7 @@ class ResellerController extends Controller
             ->with('success', 'Reseller berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, Reseller $reseller)
+    public function destroy(Request $request, Reseller $reseller): RedirectResponse
     {
         $this->authorize('delete', $reseller);
 
@@ -107,22 +110,5 @@ class ResellerController extends Controller
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * Role-based abilities surfaced to the UI (independent of a specific row).
-     *
-     * @return array<string, bool>
-     */
-    private function abilities(Request $request): array
-    {
-        $user = $request->user();
-        $reseller = new Reseller;
-
-        return [
-            'create' => $user->can('create', Reseller::class),
-            'update' => $user->can('update', $reseller),
-            'delete' => $user->can('delete', $reseller),
-        ];
     }
 }

@@ -23,7 +23,7 @@ class TransactionFactory extends Factory
             'customer_id' => Customer::factory(),
             'product_id' => Product::factory(),
             // Keep the transaction's reseller consistent with the customer's reseller.
-            'reseller_id' => fn (array $attributes) => Customer::find($attributes['customer_id'])->reseller_id,
+            'reseller_id' => fn (array $attributes) => Customer::whereKey($attributes['customer_id'])->value('reseller_id'),
             'purchased_at' => fake()->dateTimeBetween('-2 years', 'now')->format('Y-m-d'),
         ];
     }

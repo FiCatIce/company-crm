@@ -6,7 +6,13 @@ use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property-read Carbon $warranty_expires_at
+ * @property-read bool $is_under_warranty
+ */
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
@@ -21,21 +27,33 @@ class Transaction extends Model
         'reseller_id' => 'integer',
     ];
 
-    public function customer()
+    /**
+     * @return BelongsTo<Customer, $this>
+     */
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 
-    public function product()
+    /**
+     * @return BelongsTo<Product, $this>
+     */
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    public function reseller()
+    /**
+     * @return BelongsTo<Reseller, $this>
+     */
+    public function reseller(): BelongsTo
     {
         return $this->belongsTo(Reseller::class);
     }
 
+    /**
+     * @return Attribute<Carbon, never>
+     */
     protected function warrantyExpiresAt(): Attribute
     {
         return Attribute::make(
@@ -43,6 +61,9 @@ class Transaction extends Model
         );
     }
 
+    /**
+     * @return Attribute<bool, never>
+     */
     protected function isUnderWarranty(): Attribute
     {
         return Attribute::make(

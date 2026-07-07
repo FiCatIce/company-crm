@@ -7,11 +7,21 @@ use App\Models\Reseller;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request)
+    /**
+     * Roles allowed to view the dashboard (same set that may manage the CRM).
+     *
+     * @var list<string>
+     */
+    private const VIEW_ROLES = ['admin', 'supervisor', 'cs'];
+
+    public function __invoke(Request $request): Response
     {
+        abort_unless($request->user()->hasAnyRole(self::VIEW_ROLES), 403);
+
         return Inertia::render('Dashboard', [
             'stats' => [
                 'customers' => Customer::count(),

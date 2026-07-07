@@ -2,25 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ProductController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, ProvidesModelAbilities;
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Product::class);
 
         $search = trim((string) $request->input('search', ''));
 
         $products = Product::query()
-            ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
+            ->when($search !== '', fn ($query) => $query->whereLike('name', '%'.addcslashes($search, '%_\\').'%', caseSensitive: false))
             ->latest()
             ->paginate(10)
             ->withQueryString()
@@ -33,18 +36,18 @@ class ProductController extends Controller
         return Inertia::render('Products/Index', [
             'products' => $products,
             'filters' => ['search' => $search],
-            'can' => $this->abilities($request),
+            'can' => $this->abilities($request, new Product),
         ]);
     }
 
-    public function create(Request $request)
+    public function create(Request $request): Response
     {
         $this->authorize('create', Product::class);
 
         return Inertia::render('Products/Create');
     }
 
-    public function store(StoreProductRequest $request)
+    public function store(StoreProductRequest $request): RedirectResponse
     {
         Product::create($request->validated());
 
@@ -52,7 +55,7 @@ class ProductController extends Controller
             ->with('success', 'Produk berhasil ditambahkan.');
     }
 
-    public function edit(Request $request, Product $product)
+    public function edit(Request $request, Product $product): Response
     {
         $this->authorize('update', $product);
 
@@ -65,7 +68,7 @@ class ProductController extends Controller
         ]);
     }
 
-    public function update(UpdateProductRequest $request, Product $product)
+    public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
         $product->update($request->validated());
 
@@ -73,30 +76,17 @@ class ProductController extends Controller
             ->with('success', 'Produk berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, Product $product)
+    public function destroy(Request $request, Product $product): RedirectResponse
     {
         $this->authorize('delete', $product);
+
+        if ($product->transactions()->exists()) {
+            return back()->with('error', 'Produk tidak dapat dihapus karena masih memiliki transaksi. Hapus transaksinya terlebih dahulu.');
+        }
 
         $product->delete();
 
         return redirect()->route('products.index')
             ->with('success', 'Produk berhasil dihapus.');
-    }
-
-    /**
-     * Role-based abilities surfaced to the UI (independent of a specific row).
-     *
-     * @return array<string, bool>
-     */
-    private function abilities(Request $request): array
-    {
-        $user = $request->user();
-        $product = new Product;
-
-        return [
-            'create' => $user->can('create', Product::class),
-            'update' => $user->can('update', $product),
-            'delete' => $user->can('delete', $product),
-        ];
     }
 }
