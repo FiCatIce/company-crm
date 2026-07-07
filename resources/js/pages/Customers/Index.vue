@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Check, Plus, Search, Users } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
@@ -72,75 +73,109 @@ watch(reseller, applyFilters);
 
 const initial = (name: string) => name.trim().charAt(0).toUpperCase();
 
-const controlClasses =
-    'border-input h-9 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+const selectClasses =
+    'h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 </script>
 
 <template>
     <Head title="Data Customer" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-6 p-4 sm:p-6">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
+        <div class="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
+            <!-- Page header -->
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div class="space-y-1">
                     <h1
-                        class="text-xl font-semibold tracking-tight text-foreground"
+                        class="text-2xl font-semibold tracking-tight text-foreground"
                     >
                         Data Customer
                     </h1>
-                    <p class="mt-1 text-sm text-muted-foreground">
+                    <p class="text-sm text-muted-foreground">
                         {{ customers.total }} customer terdaftar
                     </p>
                 </div>
 
                 <Button v-if="can.create" as-child>
-                    <Link :href="CustomerController.create()"
-                        >Tambah Customer</Link
-                    >
+                    <Link :href="CustomerController.create()">
+                        <Plus />
+                        Tambah Customer
+                    </Link>
                 </Button>
             </div>
 
+            <!-- Flash -->
             <div
                 v-if="flashSuccess"
-                class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800/40 dark:bg-green-900/20 dark:text-green-300"
+                class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
             >
-                {{ flashSuccess }}
+                <Check class="size-4 shrink-0" />
+                <span>{{ flashSuccess }}</span>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3">
-                <Input
-                    v-model="search"
-                    type="search"
-                    placeholder="Cari nama, email, atau telepon…"
-                    class="max-w-xs"
-                />
-                <select v-model="reseller" :class="controlClasses">
-                    <option value="">Semua reseller</option>
-                    <option
-                        v-for="r in resellers"
-                        :key="r.id"
-                        :value="String(r.id)"
-                    >
-                        {{ r.name }}
-                    </option>
-                </select>
-            </div>
-
+            <!-- Content card -->
             <div
                 class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
             >
+                <!-- Toolbar -->
+                <div
+                    class="flex flex-wrap items-center gap-3 border-b border-border p-4"
+                >
+                    <div class="relative w-full max-w-xs">
+                        <Search
+                            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                        />
+                        <Input
+                            v-model="search"
+                            type="search"
+                            placeholder="Cari nama, email, atau telepon…"
+                            class="pl-9"
+                        />
+                    </div>
+                    <select v-model="reseller" :class="selectClasses">
+                        <option value="">Semua reseller</option>
+                        <option
+                            v-for="r in resellers"
+                            :key="r.id"
+                            :value="String(r.id)"
+                        >
+                            {{ r.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Table -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
-                        <thead
-                            class="border-b border-border bg-muted/50 text-muted-foreground"
-                        >
-                            <tr>
-                                <th class="px-5 py-3 font-medium">Nama</th>
-                                <th class="px-5 py-3 font-medium">Telepon</th>
-                                <th class="px-5 py-3 font-medium">Email</th>
-                                <th class="px-5 py-3 font-medium">Alamat</th>
-                                <th class="px-5 py-3 font-medium">Reseller</th>
-                                <th class="px-5 py-3 text-right font-medium">
+                        <thead>
+                            <tr class="border-b border-border">
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Nama
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Telepon
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Email
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Alamat
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Reseller
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
                                     Aksi
                                 </th>
                             </tr>
@@ -150,12 +185,12 @@ const controlClasses =
                             <tr
                                 v-for="c in customers.data"
                                 :key="c.id"
-                                class="transition-colors hover:bg-muted/40"
+                                class="transition-colors hover:bg-accent/50"
                             >
-                                <td class="px-5 py-3">
+                                <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         <div
-                                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
+                                            class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
                                         >
                                             {{ initial(c.name) }}
                                         </div>
@@ -165,19 +200,22 @@ const controlClasses =
                                         >
                                     </div>
                                 </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ c.phone ?? '-' }}
+                                <td class="px-6 py-4 text-muted-foreground">
+                                    {{ c.phone ?? '—' }}
                                 </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ c.email ?? '-' }}
+                                <td class="px-6 py-4 text-muted-foreground">
+                                    {{ c.email ?? '—' }}
                                 </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ c.address ?? '-' }}
+                                <td
+                                    class="max-w-[16rem] truncate px-6 py-4 text-muted-foreground"
+                                    :title="c.address ?? ''"
+                                >
+                                    {{ c.address ?? '—' }}
                                 </td>
-                                <td class="px-5 py-3">
+                                <td class="px-6 py-4">
                                     <span
                                         v-if="c.reseller"
-                                        class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
+                                        class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
                                     >
                                         {{ c.reseller }}
                                     </span>
@@ -185,7 +223,7 @@ const controlClasses =
                                         >—</span
                                     >
                                 </td>
-                                <td class="px-5 py-3">
+                                <td class="px-6 py-4">
                                     <div
                                         class="flex items-center justify-end gap-1"
                                     >
@@ -210,7 +248,7 @@ const controlClasses =
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    class="text-red-600 hover:text-red-700 dark:text-red-400"
+                                                    class="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                                 >
                                                     Hapus
                                                 </Button>
@@ -274,51 +312,70 @@ const controlClasses =
                             </tr>
 
                             <tr v-if="customers.data.length === 0">
-                                <td
-                                    colspan="6"
-                                    class="px-5 py-12 text-center text-muted-foreground"
-                                >
-                                    Belum ada data customer.
+                                <td colspan="6" class="px-6 py-16 text-center">
+                                    <div
+                                        class="mx-auto flex max-w-sm flex-col items-center gap-2"
+                                    >
+                                        <div
+                                            class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                                        >
+                                            <Users class="size-5" />
+                                        </div>
+                                        <p
+                                            class="text-sm font-medium text-foreground"
+                                        >
+                                            Belum ada data customer
+                                        </p>
+                                        <p
+                                            class="text-sm text-muted-foreground"
+                                        >
+                                            Tambahkan customer pertama untuk
+                                            mulai.
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            <div
-                v-if="customers.links.length > 3"
-                class="flex items-center justify-between gap-4"
-            >
-                <p class="text-sm text-muted-foreground">
-                    Menampilkan {{ customers.from ?? 0 }}–{{
-                        customers.to ?? 0
-                    }}
-                    dari
-                    {{ customers.total }}
-                </p>
-                <div class="flex flex-wrap items-center gap-1">
-                    <template v-for="(link, i) in customers.links" :key="i">
-                        <span
-                            v-if="!link.url"
-                            class="px-3 py-1.5 text-sm text-muted-foreground"
-                            v-html="link.label"
-                        />
-                        <Link
-                            v-else
-                            :href="link.url"
-                            preserve-scroll
-                            preserve-state
-                            class="rounded-md px-3 py-1.5 text-sm transition-colors"
-                            :class="
-                                link.active
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'text-foreground hover:bg-muted'
-                            "
-                        >
-                            <span v-html="link.label" />
-                        </Link>
-                    </template>
+                <!-- Footer / pagination -->
+                <div
+                    v-if="customers.total > 0"
+                    class="flex flex-wrap items-center justify-between gap-4 border-t border-border p-4"
+                >
+                    <p class="text-sm text-muted-foreground">
+                        Menampilkan {{ customers.from ?? 0 }}–{{
+                            customers.to ?? 0
+                        }}
+                        dari {{ customers.total }}
+                    </p>
+                    <div
+                        v-if="customers.links.length > 3"
+                        class="flex flex-wrap items-center gap-1"
+                    >
+                        <template v-for="(link, i) in customers.links" :key="i">
+                            <span
+                                v-if="!link.url"
+                                class="px-3 py-1.5 text-sm text-muted-foreground"
+                                v-html="link.label"
+                            />
+                            <Link
+                                v-else
+                                :href="link.url"
+                                preserve-scroll
+                                preserve-state
+                                class="rounded-md px-3 py-1.5 text-sm transition-colors"
+                                :class="
+                                    link.active
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'text-foreground hover:bg-accent'
+                                "
+                            >
+                                <span v-html="link.label" />
+                            </Link>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>

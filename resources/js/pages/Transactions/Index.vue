@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Check, Plus, Receipt, Search } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
@@ -64,65 +65,98 @@ function applyFilters() {
 }
 
 watchDebounced(search, applyFilters, { debounce: 300 });
+
+const initial = (name: string | null) =>
+    (name ?? '?').trim().charAt(0).toUpperCase();
 </script>
 
 <template>
     <Head title="Data Transaksi" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-6 p-4 sm:p-6">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
+        <div class="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
+            <!-- Page header -->
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div class="space-y-1">
                     <h1
-                        class="text-xl font-semibold tracking-tight text-foreground"
+                        class="text-2xl font-semibold tracking-tight text-foreground"
                     >
                         Data Transaksi
                     </h1>
-                    <p class="mt-1 text-sm text-muted-foreground">
+                    <p class="text-sm text-muted-foreground">
                         {{ transactions.total }} transaksi tercatat
                     </p>
                 </div>
 
                 <Button v-if="can.create" as-child>
-                    <Link :href="TransactionController.create()"
-                        >Tambah Transaksi</Link
-                    >
+                    <Link :href="TransactionController.create()">
+                        <Plus />
+                        Tambah Transaksi
+                    </Link>
                 </Button>
             </div>
 
+            <!-- Flash -->
             <div
                 v-if="flashSuccess"
-                class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800/40 dark:bg-green-900/20 dark:text-green-300"
+                class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
             >
-                {{ flashSuccess }}
+                <Check class="size-4 shrink-0" />
+                <span>{{ flashSuccess }}</span>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3">
-                <Input
-                    v-model="search"
-                    type="search"
-                    placeholder="Cari customer atau produk…"
-                    class="max-w-xs"
-                />
-            </div>
-
+            <!-- Content card -->
             <div
                 class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
             >
+                <!-- Toolbar -->
+                <div class="border-b border-border p-4">
+                    <div class="relative w-full max-w-xs">
+                        <Search
+                            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                        />
+                        <Input
+                            v-model="search"
+                            type="search"
+                            placeholder="Cari customer atau produk…"
+                            class="pl-9"
+                        />
+                    </div>
+                </div>
+
+                <!-- Table -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
-                        <thead
-                            class="border-b border-border bg-muted/50 text-muted-foreground"
-                        >
-                            <tr>
-                                <th class="px-5 py-3 font-medium">Customer</th>
-                                <th class="px-5 py-3 font-medium">Produk</th>
-                                <th class="px-5 py-3 font-medium">Reseller</th>
-                                <th class="px-5 py-3 font-medium">
+                        <thead>
+                            <tr class="border-b border-border">
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Customer
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Produk
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Reseller
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
                                     Tanggal Beli
                                 </th>
-                                <th class="px-5 py-3 font-medium">Garansi</th>
-                                <th class="px-5 py-3 text-right font-medium">
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Garansi
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
                                     Aksi
                                 </th>
                             </tr>
@@ -132,30 +166,46 @@ watchDebounced(search, applyFilters, { debounce: 300 });
                             <tr
                                 v-for="t in transactions.data"
                                 :key="t.id"
-                                class="transition-colors hover:bg-muted/40"
+                                class="transition-colors hover:bg-accent/50"
                             >
-                                <td class="px-5 py-3">
-                                    <span class="font-medium text-foreground">{{
-                                        t.customer ?? '-'
-                                    }}</span>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+                                        >
+                                            {{ initial(t.customer) }}
+                                        </div>
+                                        <span
+                                            class="font-medium text-foreground"
+                                            >{{ t.customer ?? '—' }}</span
+                                        >
+                                    </div>
                                 </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ t.product ?? '-' }}
+                                <td class="px-6 py-4 text-muted-foreground">
+                                    {{ t.product ?? '—' }}
                                 </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ t.reseller ?? '-' }}
+                                <td class="px-6 py-4">
+                                    <span
+                                        v-if="t.reseller"
+                                        class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
+                                    >
+                                        {{ t.reseller }}
+                                    </span>
+                                    <span v-else class="text-muted-foreground"
+                                        >—</span
+                                    >
                                 </td>
-                                <td class="px-5 py-3 text-muted-foreground">
-                                    {{ t.purchased_at ?? '-' }}
+                                <td class="px-6 py-4 text-muted-foreground">
+                                    {{ t.purchased_at ?? '—' }}
                                 </td>
-                                <td class="px-5 py-3">
+                                <td class="px-6 py-4">
                                     <WarrantyBadge
                                         :is-under-warranty="t.is_under_warranty"
                                         :expires-at="t.warranty_expires_at"
                                         :warranty-months="t.warranty_months"
                                     />
                                 </td>
-                                <td class="px-5 py-3">
+                                <td class="px-6 py-4">
                                     <div
                                         class="flex items-center justify-end gap-1"
                                     >
@@ -180,7 +230,7 @@ watchDebounced(search, applyFilters, { debounce: 300 });
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    class="text-red-600 hover:text-red-700 dark:text-red-400"
+                                                    class="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                                 >
                                                     Hapus
                                                 </Button>
@@ -248,50 +298,72 @@ watchDebounced(search, applyFilters, { debounce: 300 });
                             </tr>
 
                             <tr v-if="transactions.data.length === 0">
-                                <td
-                                    colspan="6"
-                                    class="px-5 py-12 text-center text-muted-foreground"
-                                >
-                                    Belum ada data transaksi.
+                                <td colspan="6" class="px-6 py-16 text-center">
+                                    <div
+                                        class="mx-auto flex max-w-sm flex-col items-center gap-2"
+                                    >
+                                        <div
+                                            class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                                        >
+                                            <Receipt class="size-5" />
+                                        </div>
+                                        <p
+                                            class="text-sm font-medium text-foreground"
+                                        >
+                                            Belum ada data transaksi
+                                        </p>
+                                        <p
+                                            class="text-sm text-muted-foreground"
+                                        >
+                                            Catat transaksi pertama untuk mulai.
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            <div
-                v-if="transactions.links.length > 3"
-                class="flex items-center justify-between gap-4"
-            >
-                <p class="text-sm text-muted-foreground">
-                    Menampilkan {{ transactions.from ?? 0 }}–{{
-                        transactions.to ?? 0
-                    }}
-                    dari {{ transactions.total }}
-                </p>
-                <div class="flex flex-wrap items-center gap-1">
-                    <template v-for="(link, i) in transactions.links" :key="i">
-                        <span
-                            v-if="!link.url"
-                            class="px-3 py-1.5 text-sm text-muted-foreground"
-                            v-html="link.label"
-                        />
-                        <Link
-                            v-else
-                            :href="link.url"
-                            preserve-scroll
-                            preserve-state
-                            class="rounded-md px-3 py-1.5 text-sm transition-colors"
-                            :class="
-                                link.active
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'text-foreground hover:bg-muted'
-                            "
+                <!-- Footer / pagination -->
+                <div
+                    v-if="transactions.total > 0"
+                    class="flex flex-wrap items-center justify-between gap-4 border-t border-border p-4"
+                >
+                    <p class="text-sm text-muted-foreground">
+                        Menampilkan {{ transactions.from ?? 0 }}–{{
+                            transactions.to ?? 0
+                        }}
+                        dari {{ transactions.total }}
+                    </p>
+                    <div
+                        v-if="transactions.links.length > 3"
+                        class="flex flex-wrap items-center gap-1"
+                    >
+                        <template
+                            v-for="(link, i) in transactions.links"
+                            :key="i"
                         >
-                            <span v-html="link.label" />
-                        </Link>
-                    </template>
+                            <span
+                                v-if="!link.url"
+                                class="px-3 py-1.5 text-sm text-muted-foreground"
+                                v-html="link.label"
+                            />
+                            <Link
+                                v-else
+                                :href="link.url"
+                                preserve-scroll
+                                preserve-state
+                                class="rounded-md px-3 py-1.5 text-sm transition-colors"
+                                :class="
+                                    link.active
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'text-foreground hover:bg-accent'
+                                "
+                            >
+                                <span v-html="link.label" />
+                            </Link>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>

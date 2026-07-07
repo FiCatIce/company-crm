@@ -31,8 +31,8 @@ defineProps<{
 <template>
     <li>
         <div
-            class="flex items-center justify-between gap-3 rounded-md py-1.5 pr-2 hover:bg-muted/50"
-            :style="{ paddingLeft: `${(depth ?? 0) * 20 + 8}px` }"
+            class="flex items-center justify-between gap-3 rounded-md py-2.5 pr-2 transition-colors hover:bg-accent/50"
+            :style="{ paddingLeft: `${(depth ?? 0) * 20 + 12}px` }"
         >
             <div class="flex min-w-0 items-center gap-2">
                 <span
@@ -46,7 +46,7 @@ defineProps<{
                     node.name
                 }}</span>
                 <span
-                    class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                    class="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                 >
                     {{ node.customers_count }} customer
                 </span>
@@ -62,7 +62,7 @@ defineProps<{
                         <Button
                             variant="ghost"
                             size="sm"
-                            class="text-red-600 hover:text-red-700 dark:text-red-400"
+                            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
                             Hapus
                         </Button>
