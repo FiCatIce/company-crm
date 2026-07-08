@@ -22,27 +22,128 @@ class DashboardController extends Controller
     {
         abort_unless($request->user()->hasAnyRole(self::VIEW_ROLES), 403);
 
+        $warranty = $this->warrantyBreakdown();
+
         return Inertia::render('Dashboard', [
             'stats' => [
                 'customers' => Customer::count(),
+                'customersThisMonth' => Customer::where('created_at', '>=', now()->startOfMonth())->count(),
                 'transactions' => Transaction::count(),
-                'productsUnderWarranty' => $this->transactionsUnderWarranty(),
+                'transactionsThisMonth' => Transaction::where('purchased_at', '>=', now()->startOfMonth()->toDateString())->count(),
+                'productsUnderWarranty' => $warranty['active'],
                 'activeResellers' => Reseller::has('customers')->orHas('transactions')->count(),
             ],
             'trend' => $this->transactionTrend(),
+            'warrantyBreakdown' => $warranty,
+            'recentTransactions' => $this->recentTransactions(),
+            'expiringSoon' => $this->expiringSoon(),
+            'topResellers' => $this->topResellers(),
         ]);
     }
 
     /**
-     * Count transactions whose product warranty is still active (uses the model accessor).
+     * Split every transaction into mutually exclusive warranty buckets. Warranty
+     * state comes from the model accessor, so it is resolved in PHP. A product
+     * sold without warranty is "none" — never "expired".
+     *
+     * @return array{active: int, expired: int, none: int}
      */
-    private function transactionsUnderWarranty(): int
+    private function warrantyBreakdown(): array
+    {
+        $transactions = Transaction::query()
+            ->with('product:id,warranty_months')
+            ->get(['id', 'product_id', 'purchased_at']);
+
+        $active = 0;
+        $expired = 0;
+        $none = 0;
+
+        foreach ($transactions as $transaction) {
+            if ($transaction->product->warranty_months > 0) {
+                $transaction->is_under_warranty ? $active++ : $expired++;
+            } else {
+                $none++;
+            }
+        }
+
+        return ['active' => $active, 'expired' => $expired, 'none' => $none];
+    }
+
+    /**
+     * The six most recent transactions for the activity feed.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function recentTransactions(): array
     {
         return Transaction::query()
-            ->with('product:id,warranty_months')
-            ->get(['id', 'product_id', 'purchased_at'])
-            ->filter(fn (Transaction $transaction) => $transaction->is_under_warranty)
-            ->count();
+            ->with(['customer:id,name', 'product:id,name,warranty_months', 'reseller:id,name'])
+            ->latest('purchased_at')
+            ->latest('id')
+            ->take(6)
+            ->get()
+            ->map(fn (Transaction $transaction) => [
+                'id' => $transaction->id,
+                'customer' => $transaction->customer?->name,
+                'product' => $transaction->product?->name,
+                'reseller' => $transaction->reseller?->name,
+                'purchased_at' => $transaction->purchased_at->toDateString(),
+                'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
+                'is_under_warranty' => $transaction->is_under_warranty,
+                'warranty_months' => $transaction->product?->warranty_months,
+            ])
+            ->all();
+    }
+
+    /**
+     * Active warranties expiring within the next 30 days, soonest first (max five).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function expiringSoon(): array
+    {
+        $today = now()->startOfDay();
+        $threshold = $today->copy()->addDays(30);
+
+        return Transaction::query()
+            ->with(['customer:id,name', 'product:id,name,warranty_months'])
+            ->get(['id', 'customer_id', 'product_id', 'purchased_at'])
+            ->filter(fn (Transaction $transaction) => $transaction->product->warranty_months > 0
+                && $transaction->is_under_warranty
+                && $transaction->warranty_expires_at->lte($threshold))
+            ->sortBy(fn (Transaction $transaction) => $transaction->warranty_expires_at->getTimestamp())
+            ->take(5)
+            ->map(fn (Transaction $transaction) => [
+                'id' => $transaction->id,
+                'customer' => $transaction->customer?->name,
+                'product' => $transaction->product?->name,
+                'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
+                'days_left' => (int) $today->diffInDays($transaction->warranty_expires_at->startOfDay()),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The five resellers with the most customers (only those with at least one).
+     *
+     * @return array<int, array{id: int, name: string, customers_count: int}>
+     */
+    private function topResellers(): array
+    {
+        return Reseller::query()
+            ->has('customers')
+            ->withCount('customers')
+            ->orderByDesc('customers_count')
+            ->orderBy('name')
+            ->take(5)
+            ->get(['id', 'name'])
+            ->map(fn (Reseller $reseller) => [
+                'id' => $reseller->id,
+                'name' => $reseller->name,
+                'customers_count' => (int) $reseller->customers_count,
+            ])
+            ->all();
     }
 
     /**
