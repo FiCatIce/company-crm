@@ -25,6 +25,8 @@ class TransactionFactory extends Factory
             // Keep the transaction's reseller consistent with the customer's reseller.
             'reseller_id' => fn (array $attributes) => Customer::whereKey($attributes['customer_id'])->value('reseller_id'),
             'purchased_at' => fake()->dateTimeBetween('-2 years', 'now')->format('Y-m-d'),
+            // Nullable (some legacy rows have no recorded value); whole rupiah.
+            'amount' => fake()->optional(weight: 0.85)->numberBetween(150_000, 60_000_000),
         ];
     }
 

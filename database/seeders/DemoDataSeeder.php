@@ -2,36 +2,77 @@
 
 namespace Database\Seeders;
 
+use App\Enums\CustomerStatus;
 use App\Models\Customer;
+use App\Models\Interaction;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
 class DemoDataSeeder extends Seeder
 {
     /**
-     * Seed realistic demo data: a reseller tree, a product catalog,
-     * customers per leaf reseller, and their purchase transactions.
+     * Seed realistic demo data: staff agents, a reseller tree, a product catalog,
+     * customers per leaf reseller, their purchases, and interaction history.
      */
     public function run(): void
     {
+        // Roles are a prerequisite for agents; RoleSeeder is idempotent so this is
+        // safe both standalone and after DatabaseSeeder already ran it.
+        $this->call(RoleSeeder::class);
+
         $products = $this->seedProducts();
+        $agents = $this->seedAgents();
         $leafResellers = $this->seedResellerTree();
 
-        $leafResellers->each(function (Reseller $reseller) use ($products) {
+        $leafResellers->each(function (Reseller $reseller) use ($products, $agents) {
             Customer::factory()
                 ->count(fake()->numberBetween(3, 6))
-                ->create(['reseller_id' => $reseller->id])
-                ->each(function (Customer $customer) use ($products) {
+                ->create([
+                    'reseller_id' => $reseller->id,
+                    'assigned_to' => fake()->boolean(65) ? $agents->random()->id : null,
+                    'status' => fake()->randomElement([
+                        CustomerStatus::Active, CustomerStatus::Active, CustomerStatus::Active,
+                        CustomerStatus::Lead, CustomerStatus::Inactive, CustomerStatus::Churned,
+                    ]),
+                ])
+                ->each(function (Customer $customer) use ($products, $agents) {
                     foreach (range(1, fake()->numberBetween(1, 3)) as $ignored) {
                         Transaction::factory()
                             ->forCustomer($customer)
                             ->create(['product_id' => $products->random()->id]);
                     }
+
+                    $interactionCount = fake()->numberBetween(0, 8);
+
+                    for ($i = 0; $i < $interactionCount; $i++) {
+                        Interaction::factory()
+                            ->forCustomer($customer)
+                            ->create(['user_id' => $agents->random()->id]);
+                    }
                 });
         });
+    }
+
+    /**
+     * Seed a small pool of staff agents (one supervisor + a few CS).
+     *
+     * @return Collection<int, User>
+     */
+    protected function seedAgents(): Collection
+    {
+        $agents = collect([
+            User::factory()->create(['name' => 'Sinta Wijaya'])->assignRole('supervisor'),
+        ]);
+
+        foreach (['Dewi Lestari', 'Rangga Pratama', 'Putri Anggraini'] as $name) {
+            $agents->push(User::factory()->create(['name' => $name])->assignRole('cs'));
+        }
+
+        return $agents;
     }
 
     /**

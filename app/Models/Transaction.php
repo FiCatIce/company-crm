@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
+ * @property string|null $amount
  * @property-read Carbon $warranty_expires_at
  * @property-read bool $is_under_warranty
  */
@@ -18,13 +19,14 @@ class Transaction extends Model
     /** @use HasFactory<TransactionFactory> */
     use HasFactory;
 
-    protected $fillable = ['customer_id', 'product_id', 'reseller_id', 'purchased_at'];
+    protected $fillable = ['customer_id', 'product_id', 'reseller_id', 'purchased_at', 'amount'];
 
     protected $casts = [
         'purchased_at' => 'date',
         'customer_id' => 'integer',
         'product_id' => 'integer',
         'reseller_id' => 'integer',
+        'amount' => 'decimal:2',
     ];
 
     /**

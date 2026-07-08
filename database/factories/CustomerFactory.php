@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\CustomerSource;
+use App\Enums\CustomerStatus;
 use App\Models\Customer;
 use App\Models\Reseller;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -20,11 +22,14 @@ class CustomerFactory extends Factory
     {
         return [
             'reseller_id' => Reseller::factory(),
+            'assigned_to' => null,
             'name' => fake()->name(),
-            // Optional fields exercise the nullable columns realistically.
-            'phone' => fake()->optional(weight: 0.9)->phoneNumber(),
+            // Realistic Indonesian mobile so the phone_normalized mutator resolves.
+            'phone' => fake()->optional(weight: 0.9)->numerify('08##########'),
             'email' => fake()->optional(weight: 0.85)->safeEmail(),
             'address' => fake()->optional(weight: 0.7)->address(),
+            'status' => CustomerStatus::Active,
+            'source' => fake()->optional(weight: 0.6)->randomElement(CustomerSource::cases()),
         ];
     }
 }
