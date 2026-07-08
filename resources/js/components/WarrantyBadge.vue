@@ -15,7 +15,7 @@ defineProps<{
     </span>
     <span
         v-else-if="isUnderWarranty"
-        class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-300"
+        class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700"
     >
         <span
             class="h-1.5 w-1.5 rounded-full bg-green-500"
@@ -25,7 +25,7 @@ defineProps<{
     </span>
     <span
         v-else
-        class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-300"
+        class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700"
     >
         <span class="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
         Berakhir {{ expiresAt }}

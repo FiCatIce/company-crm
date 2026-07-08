@@ -2,10 +2,7 @@
 
 @import 'tw-animate-css';
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
-
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --font-sans:
@@ -171,57 +168,6 @@
     --sidebar-accent-foreground: #1d4ed8; /* blue-700 */
     --sidebar-border: #e2e8f0;
     --sidebar-ring: #2563eb;
-}
-
-.dark {
-    /* Canvas + primary text */
-    --background: #0f172a; /* slate-900 */
-    --foreground: #f1f5f9; /* slate-100 */
-
-    /* Elevated surfaces */
-    --card: #1e293b; /* slate-800 */
-    --card-foreground: #f1f5f9;
-    --popover: #1e293b;
-    --popover-foreground: #f1f5f9;
-
-    /* Corporate blue accent (brighter on dark) */
-    --primary: #3b82f6; /* blue-500 */
-    --primary-foreground: #ffffff;
-    --primary-hover: #2563eb; /* blue-600 */
-
-    --secondary: #1e293b; /* slate-800 */
-    --secondary-foreground: #f1f5f9;
-
-    --muted: #1e293b; /* slate-800 */
-    --muted-foreground: #94a3b8; /* slate-400 */
-
-    /* Subtle blue tint for hover / active / selected states */
-    --accent: #172554; /* blue-950 */
-    --accent-foreground: #bfdbfe; /* blue-200 */
-
-    --destructive: #ef4444; /* red-500 */
-    --destructive-foreground: #ffffff;
-
-    --border: #334155; /* slate-700 */
-    --input: #334155;
-    --ring: #3b82f6;
-
-    --chart-1: #3b82f6;
-    --chart-2: #60a5fa;
-    --chart-3: #93c5fd;
-    --chart-4: #1d4ed8;
-    --chart-5: #2563eb;
-
-    /* Sidebar — darker than the canvas, blue active state */
-    --sidebar-background: #020617; /* slate-950 */
-    --sidebar: #020617;
-    --sidebar-foreground: #cbd5e1; /* slate-300 */
-    --sidebar-primary: #3b82f6;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #172554; /* blue-950 — active/hover nav */
-    --sidebar-accent-foreground: #bfdbfe; /* blue-200 */
-    --sidebar-border: #1e293b; /* slate-800 */
-    --sidebar-ring: #3b82f6;
 }
 
 @layer base {

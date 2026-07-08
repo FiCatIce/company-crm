@@ -46,12 +46,15 @@ test('active states use a blue tint in the sidebar', function () {
         ->toContain('--sidebar-accent-foreground: #1d4ed8'); // blue-700
 });
 
-test('the dark theme keeps the corporate blue accent', function () {
+test('the theme is light-only with no dark variant', function () {
     $css = appCss();
 
-    expect($css)->toContain('.dark {');
-    // The dark block brightens the accent to blue-500 for legibility.
-    expect($css)->toContain('--primary: #3b82f6');
+    // The app is forced light: the dark token block and the dark custom
+    // variant were removed, so no OS/browser theme can flip the palette.
+    expect($css)
+        ->not->toContain('.dark')
+        ->not->toContain('@custom-variant dark')
+        ->not->toContain('--primary: #3b82f6'); // the old brighter dark accent
 });
 
 test('the grayscale starter-kit palette is gone', function () {
