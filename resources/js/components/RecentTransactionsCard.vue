@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { Receipt } from '@lucide/vue';
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
 import WarrantyBadge from '@/components/WarrantyBadge.vue';
+import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 
 type RecentRow = {
     id: number;
@@ -40,12 +42,11 @@ const initial = (name: string | null) =>
             </Link>
         </div>
 
-        <div
+        <WidgetEmptyState
             v-if="rows.length === 0"
-            class="px-6 py-12 text-center text-sm text-muted-foreground"
-        >
-            Belum ada transaksi.
-        </div>
+            :icon="Receipt"
+            message="Belum ada transaksi."
+        />
 
         <div v-else class="overflow-x-auto">
             <table class="w-full text-left text-sm">

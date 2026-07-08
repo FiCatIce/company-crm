@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { Network } from '@lucide/vue';
 import { computed } from 'vue';
+import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 
 type TopReseller = {
     id: number;
@@ -33,12 +35,11 @@ const barWidth = (count: number) =>
             <p class="text-xs text-muted-foreground">per customer</p>
         </div>
 
-        <div
+        <WidgetEmptyState
             v-if="items.length === 0"
-            class="px-6 py-10 text-center text-sm text-muted-foreground"
-        >
-            Belum ada reseller dengan customer.
-        </div>
+            :icon="Network"
+            message="Belum ada reseller dengan customer."
+        />
 
         <ul v-else class="divide-y divide-border">
             <li

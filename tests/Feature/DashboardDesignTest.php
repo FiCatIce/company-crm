@@ -69,3 +69,45 @@ test('the dashboard page is wired to the full data contract', function () {
                 'recentTransactions', 'expiringSoon', 'topResellers',
             ]));
 });
+
+test('every widget falls back to the shared muted-icon empty state', function () {
+    expect(dashSource('components/WidgetEmptyState.vue'))
+        ->toContain('rounded-full') // soft icon circle
+        ->toContain('bg-muted')
+        ->toContain('text-muted-foreground');
+
+    $widgets = [
+        'components/WarrantyDonut.vue',
+        'components/RecentTransactionsCard.vue',
+        'components/ExpiringWarrantyCard.vue',
+        'components/TopResellersCard.vue',
+        'components/TransactionTrendChart.vue',
+    ];
+
+    foreach ($widgets as $widget) {
+        expect(dashSource($widget))->toContain('WidgetEmptyState');
+    }
+});
+
+test('the dashboard renders calmly with zero data', function () {
+    $this->seed(RoleSeeder::class);
+    $this->withoutVite();
+
+    // A fresh install: KPIs read 0, the warranty split is all zeros, and every
+    // list is empty — the page must still render (calm, not broken).
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->where('stats.customers', 0)
+            ->where('stats.transactions', 0)
+            ->where('stats.customersThisMonth', 0)
+            ->where('stats.activeWarranties', 0)
+            ->where('warrantyBreakdown.active', 0)
+            ->where('warrantyBreakdown.expired', 0)
+            ->where('warrantyBreakdown.none', 0)
+            ->has('recentTransactions', 0)
+            ->has('expiringSoon', 0)
+            ->has('topResellers', 0));
+});

@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ShieldCheck } from '@lucide/vue';
 import { computed } from 'vue';
+import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 
 // Dependency-free warranty split as a CSS conic-gradient ring (no charting lib,
 // matching the house style). The hole is punched with an inner bg-card circle
@@ -65,12 +67,11 @@ const segments = computed(() => [
             <p class="text-xs text-muted-foreground">semua transaksi</p>
         </div>
 
-        <div
+        <WidgetEmptyState
             v-if="total === 0"
-            class="py-12 text-center text-sm text-muted-foreground"
-        >
-            Belum ada transaksi untuk ditampilkan.
-        </div>
+            :icon="ShieldCheck"
+            message="Belum ada transaksi untuk ditampilkan."
+        />
 
         <div v-else class="flex flex-col items-center gap-6">
             <div class="relative h-36 w-36">

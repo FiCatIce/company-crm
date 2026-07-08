@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { CircleCheck } from '@lucide/vue';
+import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
+
 type ExpiringRow = {
     id: number;
     customer: string | null;
@@ -28,12 +31,11 @@ const daysText = (days: number) =>
             <p class="text-xs text-muted-foreground">≤ 30 hari</p>
         </div>
 
-        <div
+        <WidgetEmptyState
             v-if="items.length === 0"
-            class="px-6 py-10 text-center text-sm text-muted-foreground"
-        >
-            Tidak ada garansi yang akan berakhir.
-        </div>
+            :icon="CircleCheck"
+            message="Tidak ada garansi yang akan berakhir."
+        />
 
         <ul v-else class="divide-y divide-border">
             <li

@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { Receipt } from '@lucide/vue';
 import { computed } from 'vue';
+import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 
 type TrendPoint = { month: string; label: string; count: number };
 
@@ -40,12 +42,11 @@ function shortLabel(label: string): string {
             </p>
         </div>
 
-        <div
+        <WidgetEmptyState
             v-if="totalCount === 0"
-            class="py-12 text-center text-sm text-muted-foreground"
-        >
-            Belum ada transaksi untuk ditampilkan.
-        </div>
+            :icon="Receipt"
+            message="Belum ada transaksi untuk ditampilkan."
+        />
 
         <div v-else>
             <div class="flex h-48 items-end gap-1.5 sm:gap-2">
