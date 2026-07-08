@@ -77,7 +77,7 @@ it('splits transactions into active, expired, and no-warranty buckets', function
             ->where('warrantyBreakdown.active', 1)
             ->where('warrantyBreakdown.expired', 1)
             ->where('warrantyBreakdown.none', 1)
-            ->where('stats.productsUnderWarranty', 1)); // reuses the active bucket
+            ->where('stats.activeWarranties', 1)); // reuses the active bucket
 });
 
 it('lists the six most recent transactions, newest first', function () {
@@ -161,4 +161,62 @@ it('ranks the top resellers by customer count, excluding empty ones', function (
             ->where('topResellers.0.customers_count', 5)
             ->where('topResellers.1.customers_count', 3)
             ->where('topResellers.2.customers_count', 1));
+});
+
+it('keeps a warranty active through the end of its expiry day (endOfDay boundary)', function () {
+    $reseller = Reseller::factory()->create();
+    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $product = Product::factory()->create(['warranty_months' => 12]);
+
+    // Purchased exactly 12 months ago → the 12-month warranty expires TODAY.
+    $expiresToday = Transaction::factory()->create([
+        'customer_id' => $customer->id,
+        'reseller_id' => $reseller->id,
+        'product_id' => $product->id,
+        'purchased_at' => now()->subMonths(12),
+    ]);
+
+    // Purchased a year and a day ago → expired yesterday.
+    $expiredYesterday = Transaction::factory()->create([
+        'customer_id' => $customer->id,
+        'reseller_id' => $reseller->id,
+        'product_id' => $product->id,
+        'purchased_at' => now()->subMonths(12)->subDay(),
+    ]);
+
+    expect($expiresToday->warranty_expires_at->toDateString())->toBe(now()->toDateString())
+        ->and($expiresToday->is_under_warranty)->toBeTrue()   // active for all of the expiry day
+        ->and($expiredYesterday->is_under_warranty)->toBeFalse();
+});
+
+it('counts a warranty expiring today as active and surfaces it in expiringSoon with zero days left', function () {
+    $reseller = Reseller::factory()->create();
+    $customer = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Kadaluarsa Hari Ini']);
+    $product = Product::factory()->create(['warranty_months' => 12]);
+
+    // Expires exactly today (endOfDay boundary) → must bucket as active, not expired.
+    Transaction::factory()->create([
+        'customer_id' => $customer->id,
+        'reseller_id' => $reseller->id,
+        'product_id' => $product->id,
+        'purchased_at' => now()->subMonths(12),
+    ]);
+
+    // Expired yesterday → must bucket as expired and stay out of the watchlist.
+    Transaction::factory()->create([
+        'customer_id' => $customer->id,
+        'reseller_id' => $reseller->id,
+        'product_id' => $product->id,
+        'purchased_at' => now()->subMonths(12)->subDay(),
+    ]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('warrantyBreakdown.active', 1)
+            ->where('warrantyBreakdown.expired', 1)
+            ->where('stats.activeWarranties', 1)
+            ->has('expiringSoon', 1)
+            ->where('expiringSoon.0.customer', 'Kadaluarsa Hari Ini')
+            ->where('expiringSoon.0.days_left', 0)); // the "0 hari lagi" case now surfaces
 });

@@ -41,7 +41,7 @@ it('shows summary stats derived from the domain data', function () {
             ->component('Dashboard')
             ->where('stats.customers', 3)
             ->where('stats.transactions', 2)
-            ->where('stats.productsUnderWarranty', 1)
+            ->where('stats.activeWarranties', 1)
             ->where('stats.activeResellers', 1));
 });
 

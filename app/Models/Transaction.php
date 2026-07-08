@@ -66,8 +66,10 @@ class Transaction extends Model
      */
     protected function isUnderWarranty(): Attribute
     {
+        // Coverage runs through the END of the expiry date, not its midnight
+        // boundary — a warranty expiring today is still active for all of today.
         return Attribute::make(
-            get: fn () => now()->lte($this->warranty_expires_at),
+            get: fn () => now()->lte($this->warranty_expires_at->endOfDay()),
         );
     }
 }

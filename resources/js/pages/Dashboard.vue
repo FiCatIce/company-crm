@@ -40,7 +40,7 @@ defineProps<{
         customersThisMonth: number;
         transactions: number;
         transactionsThisMonth: number;
-        productsUnderWarranty: number;
+        activeWarranties: number;
         activeResellers: number;
     };
     trend: TrendPoint[];
@@ -89,7 +89,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                 />
                 <StatCard
                     label="Garansi Aktif"
-                    :value="stats.productsUnderWarranty"
+                    :value="stats.activeWarranties"
                     :icon="ShieldCheck"
                     description="unit masih bergaransi"
                 />

@@ -30,7 +30,7 @@ class DashboardController extends Controller
                 'customersThisMonth' => Customer::where('created_at', '>=', now()->startOfMonth())->count(),
                 'transactions' => Transaction::count(),
                 'transactionsThisMonth' => Transaction::where('purchased_at', '>=', now()->startOfMonth()->toDateString())->count(),
-                'productsUnderWarranty' => $warranty['active'],
+                'activeWarranties' => $warranty['active'],
                 'activeResellers' => Reseller::has('customers')->orHas('transactions')->count(),
             ],
             'trend' => $this->transactionTrend(),
