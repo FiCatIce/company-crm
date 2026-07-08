@@ -218,9 +218,12 @@ const selectClasses =
                                         >
                                             {{ initial(c.name) }}
                                         </div>
-                                        <span
-                                            class="font-medium text-foreground"
-                                            >{{ c.name }}</span
+                                        <Link
+                                            :href="
+                                                CustomerController.show(c.id)
+                                            "
+                                            class="font-medium text-foreground hover:text-primary hover:underline"
+                                            >{{ c.name }}</Link
                                         >
                                     </div>
                                 </td>

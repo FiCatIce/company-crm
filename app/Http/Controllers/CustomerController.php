@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
+use App\Models\Interaction;
 use App\Models\Reseller;
 use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -101,6 +102,106 @@ class CustomerController extends Controller
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer berhasil ditambahkan.');
+    }
+
+    public function show(Request $request, Customer $customer): Response
+    {
+        $this->authorize('view', $customer);
+
+        $user = $request->user();
+
+        $customer->load(['reseller:id,name', 'owner:id,name']);
+
+        // Fetched once and reused for both the list and the warranty summary.
+        $transactions = $customer->transactions()
+            ->with('product:id,name,warranty_months')
+            ->latest('purchased_at')
+            ->latest('id')
+            ->get();
+
+        $warrantySummary = ['active' => 0, 'expired' => 0, 'none' => 0];
+
+        foreach ($transactions as $transaction) {
+            if ($transaction->product && $transaction->product->warranty_months > 0) {
+                $transaction->is_under_warranty ? $warrantySummary['active']++ : $warrantySummary['expired']++;
+            } else {
+                $warrantySummary['none']++;
+            }
+        }
+
+        $timeline = $customer->interactions()
+            ->with('user:id,name')
+            ->latest('occurred_at')
+            ->latest('id')
+            ->paginate(20)
+            ->through(fn (Interaction $interaction) => [
+                'id' => $interaction->id,
+                'type' => $interaction->type->value,
+                'type_label' => $interaction->type->label(),
+                'direction' => $interaction->direction?->value,
+                'subject' => $interaction->subject,
+                'body' => $interaction->body,
+                'outcome' => $interaction->outcome?->value,
+                'outcome_label' => $interaction->outcome?->label(),
+                'duration_sec' => $interaction->duration_sec,
+                'occurred_at' => $interaction->occurred_at->toIso8601String(),
+                'source' => $interaction->source->value,
+                'user' => $interaction->user
+                    ? ['id' => $interaction->user->id, 'name' => $interaction->user->name]
+                    : null,
+                // Per-row (not the row-independent ProvidesModelAbilities): CTI/import
+                // logs are immutable, so editability varies by interaction.
+                'can_edit' => $user->can('update', $interaction),
+                'can_delete' => $user->can('delete', $interaction),
+            ]);
+
+        $lastContacted = $customer->interactions()
+            ->latest('occurred_at')
+            ->latest('id')
+            ->first();
+
+        return Inertia::render('Customers/Show', [
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'phone' => $customer->phone,
+                'email' => $customer->email,
+                'address' => $customer->address,
+                'status' => $customer->status->value,
+                'status_label' => $customer->status->label(),
+                'source' => $customer->source?->value,
+                'source_label' => $customer->source?->label(),
+                'reseller' => $customer->reseller
+                    ? ['id' => $customer->reseller->id, 'name' => $customer->reseller->name]
+                    : null,
+                'owner' => $customer->owner
+                    ? ['id' => $customer->owner->id, 'name' => $customer->owner->name]
+                    : null,
+                'created_at' => $customer->created_at?->toIso8601String(),
+            ],
+            'timeline' => $timeline,
+            'transactions' => $transactions->map(fn (Transaction $transaction) => [
+                'id' => $transaction->id,
+                'product' => $transaction->product?->name,
+                'purchased_at' => $transaction->purchased_at->toDateString(),
+                'warranty_months' => $transaction->product?->warranty_months,
+                'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
+                'is_under_warranty' => $transaction->is_under_warranty,
+                'amount' => $transaction->amount,
+            ])->all(),
+            'warrantySummary' => $warrantySummary,
+            'stats' => [
+                'interactionsCount' => $timeline->total(),
+                'lastContactedAt' => $lastContacted?->occurred_at->toIso8601String(),
+                'transactionsCount' => $transactions->count(),
+                'totalSpend' => (float) $transactions->sum(fn (Transaction $transaction) => (float) $transaction->amount),
+            ],
+            'can' => [
+                'update' => $user->can('update', $customer),
+                'delete' => $user->can('delete', $customer),
+                'logInteraction' => $user->can('create', Interaction::class),
+            ],
+        ]);
     }
 
     public function edit(Request $request, Customer $customer): Response
