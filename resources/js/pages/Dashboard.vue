@@ -1,22 +1,53 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import { Network, Receipt, ShieldCheck, Users } from '@lucide/vue';
+import ExpiringWarrantyCard from '@/components/ExpiringWarrantyCard.vue';
+import RecentTransactionsCard from '@/components/RecentTransactionsCard.vue';
 import StatCard from '@/components/StatCard.vue';
+import TopResellersCard from '@/components/TopResellersCard.vue';
 import TransactionTrendChart from '@/components/TransactionTrendChart.vue';
+import WarrantyDonut from '@/components/WarrantyDonut.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 
 type TrendPoint = { month: string; label: string; count: number };
 
+type RecentRow = {
+    id: number;
+    customer: string | null;
+    product: string | null;
+    reseller: string | null;
+    purchased_at: string | null;
+    warranty_expires_at: string | null;
+    is_under_warranty: boolean;
+    warranty_months: number;
+};
+
+type ExpiringRow = {
+    id: number;
+    customer: string | null;
+    product: string | null;
+    warranty_expires_at: string | null;
+    days_left: number;
+};
+
+type TopReseller = { id: number; name: string; customers_count: number };
+
 defineProps<{
     stats: {
         customers: number;
+        customersThisMonth: number;
         transactions: number;
+        transactionsThisMonth: number;
         productsUnderWarranty: number;
         activeResellers: number;
     };
     trend: TrendPoint[];
+    warrantyBreakdown: { active: number; expired: number; none: number };
+    recentTransactions: RecentRow[];
+    expiringSoon: ExpiringRow[];
+    topResellers: TopReseller[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -29,34 +60,69 @@ const breadcrumbs: BreadcrumbItem[] = [
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-4 sm:p-6">
+            <!-- Page header -->
+            <div class="space-y-1">
+                <h1
+                    class="text-2xl font-semibold tracking-tight text-foreground"
+                >
+                    Dashboard
+                </h1>
+                <p class="text-sm text-muted-foreground">
+                    Ringkasan operasional — customer, transaksi, dan status
+                    garansi.
+                </p>
+            </div>
+
+            <!-- Band 1 — KPI row -->
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                     label="Total Customer"
                     :value="stats.customers"
                     :icon="Users"
-                    description="Customer terdaftar"
+                    :description="`${stats.customersThisMonth} baru bulan ini`"
                 />
                 <StatCard
                     label="Total Transaksi"
                     :value="stats.transactions"
                     :icon="Receipt"
-                    description="Transaksi tercatat"
+                    :description="`${stats.transactionsThisMonth} transaksi bulan ini`"
                 />
                 <StatCard
-                    label="Produk Bergaransi Aktif"
+                    label="Garansi Aktif"
                     :value="stats.productsUnderWarranty"
                     :icon="ShieldCheck"
-                    description="Masih dalam masa garansi"
+                    description="unit masih bergaransi"
                 />
                 <StatCard
                     label="Reseller Aktif"
                     :value="stats.activeResellers"
                     :icon="Network"
-                    description="Punya customer atau transaksi"
+                    description="punya customer atau transaksi"
                 />
             </div>
 
-            <TransactionTrendChart :data="trend" />
+            <!-- Band 2 — trend + warranty donut -->
+            <div class="grid gap-6 lg:grid-cols-3">
+                <div class="lg:col-span-2">
+                    <TransactionTrendChart :data="trend" />
+                </div>
+                <WarrantyDonut
+                    :active="warrantyBreakdown.active"
+                    :expired="warrantyBreakdown.expired"
+                    :none="warrantyBreakdown.none"
+                />
+            </div>
+
+            <!-- Band 3 — recent activity + watchlist -->
+            <div class="grid gap-6 lg:grid-cols-3">
+                <div class="lg:col-span-2">
+                    <RecentTransactionsCard :rows="recentTransactions" />
+                </div>
+                <div class="flex flex-col gap-6">
+                    <ExpiringWarrantyCard :items="expiringSoon" />
+                    <TopResellersCard :items="topResellers" />
+                </div>
+            </div>
         </div>
     </AppLayout>
 </template>

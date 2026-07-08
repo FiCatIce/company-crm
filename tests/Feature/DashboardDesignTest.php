@@ -1,0 +1,71 @@
+<?php
+
+use Database\Seeders\RoleSeeder;
+use Inertia\Testing\AssertableInertia as Assert;
+
+/*
+ * Phase 2 of the dashboard redesign: the four new widgets and the assembled
+ * three-band Dashboard.vue. No JS/CSS runner, so widgets are guarded by source
+ * token/markup assertions plus one Inertia render that the page is wired to the
+ * full data contract. Light-only is enforced globally by LightThemeTest.
+ */
+
+function dashSource(string $relative): string
+{
+    return file_get_contents(resource_path("js/{$relative}"));
+}
+
+test('the warranty donut is a dependency-free conic ring with a legend', function () {
+    expect(dashSource('components/WarrantyDonut.vue'))
+        ->toContain('conic-gradient') // no charting library
+        ->toContain('Status Garansi')
+        ->toContain('tabular-nums')
+        ->toContain('Belum ada transaksi'); // empty state
+});
+
+test('the recent transactions card reuses the warranty badge', function () {
+    expect(dashSource('components/RecentTransactionsCard.vue'))
+        ->toContain('WarrantyBadge') // domain badge reused, not reimplemented
+        ->toContain('Transaksi Terbaru')
+        ->toContain('hover:bg-accent/50'); // shared table row hover
+});
+
+test('the expiring warranty card uses an amber watchlist pill', function () {
+    expect(dashSource('components/ExpiringWarrantyCard.vue'))
+        ->toContain('Garansi Segera Berakhir')
+        ->toContain('bg-amber-100') // warning colour, distinct from the blue accent
+        ->toContain('hari lagi');
+});
+
+test('the top resellers card ranks with a proportional bar', function () {
+    expect(dashSource('components/TopResellersCard.vue'))
+        ->toContain('Reseller Teratas')
+        ->toContain('bg-primary') // blue proportion fill
+        ->toContain('bg-muted'); // track
+});
+
+test('the dashboard assembles every widget across three bands', function () {
+    expect(dashSource('pages/Dashboard.vue'))
+        ->toContain('StatCard')
+        ->toContain('TransactionTrendChart')
+        ->toContain('WarrantyDonut')
+        ->toContain('RecentTransactionsCard')
+        ->toContain('ExpiringWarrantyCard')
+        ->toContain('TopResellersCard')
+        ->toContain('lg:col-span-2'); // 2fr / 1fr split
+});
+
+test('the dashboard page is wired to the full data contract', function () {
+    $this->seed(RoleSeeder::class);
+    $this->withoutVite();
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->hasAll([
+                'stats', 'trend', 'warrantyBreakdown',
+                'recentTransactions', 'expiringSoon', 'topResellers',
+            ]));
+});
