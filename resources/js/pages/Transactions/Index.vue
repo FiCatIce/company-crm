@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, Plus, Receipt, Search } from '@lucide/vue';
+import {
+    Check,
+    CircleAlert,
+    Plus,
+    Receipt,
+    Search,
+    ShieldCheck,
+} from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
+import IndexStatCard from '@/components/IndexStatCard.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -43,6 +51,7 @@ type Paginated<T> = {
 
 const props = defineProps<{
     transactions: Paginated<TransactionRow>;
+    stats: { total: number; underWarranty: number; expired: number };
     filters: { search: string };
     can: { create: boolean; update: boolean; delete: boolean };
 }>();
@@ -84,7 +93,7 @@ const initial = (name: string | null) =>
                         Data Transaksi
                     </h1>
                     <p class="text-sm text-muted-foreground">
-                        {{ transactions.total }} transaksi tercatat
+                        Kelola transaksi penjualan dan status garansinya.
                     </p>
                 </div>
 
@@ -94,6 +103,28 @@ const initial = (name: string | null) =>
                         Tambah Transaksi
                     </Link>
                 </Button>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <IndexStatCard
+                    label="Total Transaksi"
+                    :value="stats.total"
+                    :icon="Receipt"
+                    detail="Transaksi tercatat"
+                />
+                <IndexStatCard
+                    label="Garansi Aktif"
+                    :value="stats.underWarranty"
+                    :icon="ShieldCheck"
+                    detail="Masih dalam masa garansi"
+                />
+                <IndexStatCard
+                    label="Garansi Berakhir"
+                    :value="stats.expired"
+                    :icon="CircleAlert"
+                    detail="Masa garansi telah lewat"
+                />
             </div>
 
             <!-- Flash -->

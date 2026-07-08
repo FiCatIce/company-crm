@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, Plus, Search, Users } from '@lucide/vue';
+import { Check, Network, Plus, Search, ShieldCheck, Users } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
+import IndexStatCard from '@/components/IndexStatCard.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -41,6 +42,7 @@ type Paginated<T> = {
 const props = defineProps<{
     customers: Paginated<CustomerRow>;
     resellers: { id: number; name: string }[];
+    stats: { total: number; underWarranty: number; resellers: number };
     filters: { search: string; reseller: number | null };
     can: { create: boolean; update: boolean; delete: boolean };
 }>();
@@ -91,7 +93,7 @@ const selectClasses =
                         Data Customer
                     </h1>
                     <p class="text-sm text-muted-foreground">
-                        {{ customers.total }} customer terdaftar
+                        Kelola customer beserta reseller dan status garansinya.
                     </p>
                 </div>
 
@@ -101,6 +103,28 @@ const selectClasses =
                         Tambah Customer
                     </Link>
                 </Button>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <IndexStatCard
+                    label="Total Customer"
+                    :value="stats.total"
+                    :icon="Users"
+                    detail="Customer terdaftar"
+                />
+                <IndexStatCard
+                    label="Garansi Aktif"
+                    :value="stats.underWarranty"
+                    :icon="ShieldCheck"
+                    detail="Customer dengan garansi berjalan"
+                />
+                <IndexStatCard
+                    label="Total Reseller"
+                    :value="stats.resellers"
+                    :icon="Network"
+                    detail="Reseller terdaftar"
+                />
             </div>
 
             <!-- Flash -->

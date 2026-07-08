@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, Package, Plus, Search } from '@lucide/vue';
+import { Check, Clock, Package, Plus, Search, ShieldCheck } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import ProductController from '@/actions/App/Http/Controllers/ProductController';
+import IndexStatCard from '@/components/IndexStatCard.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -37,6 +38,7 @@ type Paginated<T> = {
 
 const props = defineProps<{
     products: Paginated<ProductRow>;
+    stats: { total: number; withWarranty: number; avgWarrantyMonths: number };
     filters: { search: string };
     can: { create: boolean; update: boolean; delete: boolean };
 }>();
@@ -80,7 +82,7 @@ const warrantyLabel = (months: number) =>
                         Data Produk
                     </h1>
                     <p class="text-sm text-muted-foreground">
-                        {{ products.total }} produk terdaftar
+                        Kelola katalog produk dan masa garansinya.
                     </p>
                 </div>
 
@@ -90,6 +92,28 @@ const warrantyLabel = (months: number) =>
                         Tambah Produk
                     </Link>
                 </Button>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <IndexStatCard
+                    label="Total Produk"
+                    :value="stats.total"
+                    :icon="Package"
+                    detail="Produk terdaftar"
+                />
+                <IndexStatCard
+                    label="Produk Bergaransi"
+                    :value="stats.withWarranty"
+                    :icon="ShieldCheck"
+                    detail="Memiliki masa garansi"
+                />
+                <IndexStatCard
+                    label="Rata-rata Garansi"
+                    :value="stats.avgWarrantyMonths"
+                    :icon="Clock"
+                    detail="Bulan per produk"
+                />
             </div>
 
             <!-- Flash -->

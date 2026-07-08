@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { Check, CircleAlert, Network, Plus } from '@lucide/vue';
+import {
+    Check,
+    CircleAlert,
+    CircleCheck,
+    FolderTree,
+    Network,
+    Plus,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import ResellerController from '@/actions/App/Http/Controllers/ResellerController';
+import IndexStatCard from '@/components/IndexStatCard.vue';
 import ResellerTreeNode from '@/components/ResellerTreeNode.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -18,6 +26,7 @@ type ResellerNode = {
 
 const props = defineProps<{
     tree: ResellerNode[];
+    stats: { total: number; active: number; topLevel: number };
     can: { create: boolean; update: boolean; delete: boolean };
 }>();
 
@@ -50,8 +59,7 @@ const totalResellers = computed(() => countNodes(props.tree));
                         Data Reseller
                     </h1>
                     <p class="text-sm text-muted-foreground">
-                        {{ totalResellers }} reseller dalam struktur hierarki
-                        (induk &amp; anak).
+                        Kelola struktur reseller dan sebaran customer-nya.
                     </p>
                 </div>
 
@@ -61,6 +69,28 @@ const totalResellers = computed(() => countNodes(props.tree));
                         Tambah Reseller
                     </Link>
                 </Button>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <IndexStatCard
+                    label="Total Reseller"
+                    :value="stats.total"
+                    :icon="Network"
+                    detail="Reseller terdaftar"
+                />
+                <IndexStatCard
+                    label="Reseller Aktif"
+                    :value="stats.active"
+                    :icon="CircleCheck"
+                    detail="Punya customer atau transaksi"
+                />
+                <IndexStatCard
+                    label="Reseller Induk"
+                    :value="stats.topLevel"
+                    :icon="FolderTree"
+                    detail="Berada di tingkat teratas"
+                />
             </div>
 
             <!-- Flash -->

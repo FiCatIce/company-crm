@@ -28,8 +28,23 @@ class ResellerController extends Controller
 
         return Inertia::render('Resellers/Index', [
             'tree' => $this->buildTree($resellers, null),
+            'stats' => $this->stats(),
             'can' => $this->abilities($request, new Reseller),
         ]);
+    }
+
+    /**
+     * Summary metrics for the index header cards.
+     *
+     * @return array{total: int, active: int, topLevel: int}
+     */
+    private function stats(): array
+    {
+        return [
+            'total' => Reseller::count(),
+            'active' => Reseller::has('customers')->orHas('transactions')->count(),
+            'topLevel' => Reseller::whereNull('parent_id')->count(),
+        ];
     }
 
     public function create(Request $request): Response

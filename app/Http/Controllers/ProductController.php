@@ -35,9 +35,24 @@ class ProductController extends Controller
 
         return Inertia::render('Products/Index', [
             'products' => $products,
+            'stats' => $this->stats(),
             'filters' => ['search' => $search],
             'can' => $this->abilities($request, new Product),
         ]);
+    }
+
+    /**
+     * Summary metrics for the index header cards (whole dataset, ignores filters).
+     *
+     * @return array{total: int, withWarranty: int, avgWarrantyMonths: int}
+     */
+    private function stats(): array
+    {
+        return [
+            'total' => Product::count(),
+            'withWarranty' => Product::where('warranty_months', '>', 0)->count(),
+            'avgWarrantyMonths' => (int) round((float) Product::avg('warranty_months')),
+        ];
     }
 
     public function create(Request $request): Response

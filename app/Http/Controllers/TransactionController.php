@@ -51,9 +51,36 @@ class TransactionController extends Controller
 
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions,
+            'stats' => $this->stats(),
             'filters' => ['search' => $search],
             'can' => $this->abilities($request, new Transaction),
         ]);
+    }
+
+    /**
+     * Summary metrics for the index header cards (whole dataset, ignores filters).
+     *
+     * @return array{total: int, underWarranty: int, expired: int}
+     */
+    private function stats(): array
+    {
+        // Warranty state comes from the model accessor, so resolve it in PHP.
+        // "Expired" counts only transactions whose product carried a warranty
+        // that has since ended — products sold without warranty are neither.
+        $transactions = Transaction::query()
+            ->with('product:id,warranty_months')
+            ->get(['id', 'product_id', 'purchased_at']);
+
+        return [
+            'total' => $transactions->count(),
+            'underWarranty' => $transactions
+                ->filter(fn (Transaction $transaction) => $transaction->is_under_warranty)
+                ->count(),
+            'expired' => $transactions
+                ->filter(fn (Transaction $transaction) => $transaction->product->warranty_months > 0
+                    && ! $transaction->is_under_warranty)
+                ->count(),
+        ];
     }
 
     public function create(Request $request): Response

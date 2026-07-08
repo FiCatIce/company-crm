@@ -7,6 +7,7 @@ use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Reseller;
+use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,12 +53,37 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
+            'stats' => $this->stats(),
             'filters' => [
                 'search' => $search,
                 'reseller' => $resellerId,
             ],
             'can' => $this->abilities($request, new Customer),
         ]);
+    }
+
+    /**
+     * Summary metrics for the index header cards (whole dataset, ignores filters).
+     *
+     * @return array{total: int, underWarranty: int, resellers: int}
+     */
+    private function stats(): array
+    {
+        // "Under warranty" relies on the Transaction accessor (not a DB column),
+        // so resolve it in PHP over the transactions and count distinct customers.
+        $customersUnderWarranty = Transaction::query()
+            ->with('product:id,warranty_months')
+            ->get(['id', 'customer_id', 'product_id', 'purchased_at'])
+            ->filter(fn (Transaction $transaction) => $transaction->is_under_warranty)
+            ->pluck('customer_id')
+            ->unique()
+            ->count();
+
+        return [
+            'total' => Customer::count(),
+            'underWarranty' => $customersUnderWarranty,
+            'resellers' => Reseller::count(),
+        ];
     }
 
     public function create(Request $request): Response

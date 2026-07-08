@@ -60,6 +60,31 @@ test('the reseller tree node matches the pattern styling', function () {
         ->not->toContain('text-red-600'); // old delete color
 });
 
+test('the index stat card shows a muted icon in a soft rounded container', function () {
+    $card = file_get_contents(resource_path('js/components/IndexStatCard.vue'));
+
+    expect($card)
+        ->toContain('bg-muted') // soft neutral icon container (blue stays accent-only)
+        ->toContain('text-muted-foreground') // muted icon + label
+        ->toContain('rounded-lg') // soft rounded container
+        ->toContain('items-start') // icon tucked into the top-right corner
+        ->toContain('tabular-nums'); // large, aligned metric number
+});
+
+test('every index page carries the summary stat card row and a context sub-header', function () {
+    foreach ([
+        'Customers/Index.vue',
+        'Products/Index.vue',
+        'Resellers/Index.vue',
+        'Transactions/Index.vue',
+    ] as $page) {
+        expect(pageSource($page))
+            ->toContain('IndexStatCard') // reused summary card component
+            ->toContain('lg:grid-cols-3') // three-up responsive stat row
+            ->toContain('Kelola'); // thin descriptive context sub-header line
+    }
+});
+
 test('the redesigned index pages still render their data contract', function () {
     $this->seed(RoleSeeder::class);
     $this->actingAs(userWithRole('admin'));
