@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CustomerSource;
+use App\Enums\CustomerStatus;
 use App\Enums\InteractionDirection;
 use App\Enums\InteractionOutcome;
 use App\Enums\InteractionType;
@@ -15,6 +17,7 @@ use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,6 +31,7 @@ class CustomerController extends Controller
 
         $search = trim((string) $request->input('search', ''));
         $resellerId = $request->integer('reseller') ?: null;
+        $status = CustomerStatus::tryFrom((string) $request->input('status', ''));
 
         $customers = Customer::query()
             ->with('reseller:id,name')
@@ -42,6 +46,7 @@ class CustomerController extends Controller
                 });
             })
             ->when($resellerId, fn ($query, $id) => $query->where('reseller_id', $id))
+            ->when($status, fn ($query) => $query->where('status', $status->value))
             ->latest()
             ->paginate(10)
             ->withQueryString()
@@ -52,15 +57,19 @@ class CustomerController extends Controller
                 'email' => $customer->email,
                 'address' => $customer->address,
                 'reseller' => $customer->reseller?->name,
+                'status' => $customer->status->value,
+                'status_label' => $customer->status->label(),
             ]);
 
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
+            'statuses' => $this->statusOptions(),
             'stats' => $this->stats(),
             'filters' => [
                 'search' => $search,
                 'reseller' => $resellerId,
+                'status' => $status?->value,
             ],
             'can' => $this->abilities($request, new Customer),
         ]);
@@ -90,12 +99,40 @@ class CustomerController extends Controller
         ];
     }
 
+    /**
+     * Lifecycle status options for the filter/quick-change selects.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function statusOptions(): array
+    {
+        return array_map(
+            fn (CustomerStatus $status) => ['value' => $status->value, 'label' => $status->label()],
+            CustomerStatus::cases(),
+        );
+    }
+
+    /**
+     * Lead-source options for the create/edit form.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function sourceOptions(): array
+    {
+        return array_map(
+            fn (CustomerSource $source) => ['value' => $source->value, 'label' => $source->label()],
+            CustomerSource::cases(),
+        );
+    }
+
     public function create(Request $request): Response
     {
         $this->authorize('create', Customer::class);
 
         return Inertia::render('Customers/Create', [
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
+            'statuses' => $this->statusOptions(),
+            'sources' => $this->sourceOptions(),
         ]);
     }
 
@@ -199,6 +236,7 @@ class CustomerController extends Controller
                 'transactionsCount' => $transactions->count(),
                 'totalSpend' => (float) $transactions->sum(fn (Transaction $transaction) => (float) $transaction->amount),
             ],
+            'statuses' => $this->statusOptions(),
             'can' => [
                 'update' => $user->can('update', $customer),
                 'delete' => $user->can('delete', $customer),
@@ -224,8 +262,12 @@ class CustomerController extends Controller
                 'email' => $customer->email,
                 'address' => $customer->address,
                 'reseller_id' => $customer->reseller_id,
+                'status' => $customer->status->value,
+                'source' => $customer->source?->value,
             ],
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
+            'statuses' => $this->statusOptions(),
+            'sources' => $this->sourceOptions(),
         ]);
     }
 
@@ -235,6 +277,22 @@ class CustomerController extends Controller
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer berhasil diperbarui.');
+    }
+
+    /**
+     * Quick lifecycle-status change from the Customer 360 header (status only).
+     */
+    public function updateStatus(Request $request, Customer $customer): RedirectResponse
+    {
+        $this->authorize('update', $customer);
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(CustomerStatus::class)],
+        ]);
+
+        $customer->update($validated);
+
+        return back()->with('success', 'Status customer diperbarui.');
     }
 
     public function destroy(Request $request, Customer $customer): RedirectResponse

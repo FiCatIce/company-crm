@@ -5,6 +5,8 @@ export type Paginated<T> = {
     total: number;
 };
 
+export type SelectOption = { value: string; label: string };
+
 export type InteractionRow = {
     id: number;
     type: string;

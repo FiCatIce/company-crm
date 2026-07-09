@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\CustomerSource;
+use App\Enums\CustomerStatus;
 use App\Models\Customer;
 use App\Models\Reseller;
 use App\Models\Transaction;
@@ -237,4 +239,140 @@ it('paginates the index at 10 per page', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 10)
             ->where('customers.total', 15));
+});
+
+// ---------------------------------------------------------------------------
+// Lifecycle (status + source)
+// ---------------------------------------------------------------------------
+
+it('stores the lifecycle status and source', function () {
+    $reseller = Reseller::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('customers.store'), [
+            'reseller_id' => $reseller->id,
+            'name' => 'Prospek Baru',
+            'status' => CustomerStatus::Lead->value,
+            'source' => CustomerSource::Referral->value,
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    $this->assertDatabaseHas('customers', [
+        'name' => 'Prospek Baru',
+        'status' => CustomerStatus::Lead->value,
+        'source' => CustomerSource::Referral->value,
+    ]);
+});
+
+it('defaults status to active when omitted', function () {
+    $reseller = Reseller::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('customers.store'), [
+            'reseller_id' => $reseller->id,
+            'name' => 'Tanpa Status',
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    $this->assertDatabaseHas('customers', [
+        'name' => 'Tanpa Status',
+        'status' => CustomerStatus::Active->value,
+        'source' => null,
+    ]);
+});
+
+it('rejects an invalid status or source when storing', function () {
+    $reseller = Reseller::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('customers.create'))
+        ->post(route('customers.store'), [
+            'reseller_id' => $reseller->id,
+            'name' => 'Bad Enums',
+            'status' => 'vip',
+            'source' => 'carrier-pigeon',
+        ])
+        ->assertSessionHasErrors(['status', 'source']);
+});
+
+it('updates the lifecycle status and source', function () {
+    $customer = Customer::factory()->create([
+        'status' => CustomerStatus::Lead,
+        'source' => null,
+    ]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('customers.update', $customer), [
+            'reseller_id' => $customer->reseller_id,
+            'name' => $customer->name,
+            'status' => CustomerStatus::Inactive->value,
+            'source' => CustomerSource::Online->value,
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    $this->assertDatabaseHas('customers', [
+        'id' => $customer->id,
+        'status' => CustomerStatus::Inactive->value,
+        'source' => CustomerSource::Online->value,
+    ]);
+});
+
+it('filters the index by status', function () {
+    Customer::factory()->create(['name' => 'A Lead', 'status' => CustomerStatus::Lead]);
+    Customer::factory()->create(['name' => 'An Active', 'status' => CustomerStatus::Active]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('customers.index', ['status' => CustomerStatus::Lead->value]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers.data', 1)
+            ->where('customers.data.0.name', 'A Lead')
+            ->where('customers.data.0.status', 'lead')
+            ->where('filters.status', 'lead'));
+});
+
+it('ignores an unknown status filter value', function () {
+    Customer::factory()->count(3)->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('customers.index', ['status' => 'bogus']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers.data', 3)
+            ->where('filters.status', null));
+});
+
+// ---------------------------------------------------------------------------
+// Quick-change status (Customer 360 header)
+// ---------------------------------------------------------------------------
+
+it('quick-changes the status via the status endpoint', function () {
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Lead]);
+
+    $this->actingAs(userWithRole('cs'))
+        ->from(route('customers.show', $customer))
+        ->patch(route('customers.status', $customer), ['status' => CustomerStatus::Churned->value])
+        ->assertRedirect(route('customers.show', $customer))
+        ->assertSessionHas('success');
+
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Churned);
+});
+
+it('validates the status on quick-change', function () {
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('customers.show', $customer))
+        ->patch(route('customers.status', $customer), ['status' => 'nope'])
+        ->assertSessionHasErrors('status');
+
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Active);
+});
+
+it('forbids a roleless user from quick-changing status', function () {
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
+
+    $this->actingAs(User::factory()->create())
+        ->patch(route('customers.status', $customer), ['status' => CustomerStatus::Lead->value])
+        ->assertForbidden();
+
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Active);
 });

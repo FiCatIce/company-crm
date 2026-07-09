@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CustomerStatus;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Reseller;
@@ -125,6 +126,36 @@ it('stores a transaction and redirects with a success flash', function () {
         ->assertSessionHas('success');
 
     $this->assertDatabaseHas('transactions', $links);
+});
+
+it('promotes a lead customer to active on their first transaction', function () {
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Lead]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('transactions.store'), [
+            'customer_id' => $customer->id,
+            'product_id' => Product::factory()->create()->id,
+            'reseller_id' => $customer->reseller_id,
+            'purchased_at' => now()->toDateString(),
+        ])
+        ->assertRedirect(route('transactions.index'));
+
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Active);
+});
+
+it('does not change a non-lead customer status on a transaction', function () {
+    $customer = Customer::factory()->create(['status' => CustomerStatus::Churned]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('transactions.store'), [
+            'customer_id' => $customer->id,
+            'product_id' => Product::factory()->create()->id,
+            'reseller_id' => $customer->reseller_id,
+            'purchased_at' => now()->toDateString(),
+        ])
+        ->assertRedirect(route('transactions.index'));
+
+    expect($customer->fresh()->status)->toBe(CustomerStatus::Churned);
 });
 
 it('validates that all links and the purchase date are required', function () {

@@ -5,6 +5,7 @@ import CustomerFormFields from '@/components/CustomerFormFields.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+import type { SelectOption } from '@/types/crm';
 
 const props = defineProps<{
     customer: {
@@ -14,8 +15,12 @@ const props = defineProps<{
         email: string | null;
         address: string | null;
         reseller_id: number;
+        status: string;
+        source: string | null;
     };
     resellers: { id: number; name: string }[];
+    statuses: SelectOption[];
+    sources: SelectOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -47,6 +52,8 @@ const breadcrumbs: BreadcrumbItem[] = [
             >
                 <CustomerFormFields
                     :resellers="resellers"
+                    :statuses="statuses"
+                    :sources="sources"
                     :errors="errors"
                     :customer="customer"
                 />

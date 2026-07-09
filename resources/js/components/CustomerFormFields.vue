@@ -3,11 +3,14 @@ import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { SelectOption } from '@/types/crm';
 
 type Reseller = { id: number; name: string };
 
 const props = defineProps<{
     resellers: Reseller[];
+    statuses: SelectOption[];
+    sources: SelectOption[];
     errors: Partial<Record<string, string>>;
     customer?: {
         name: string;
@@ -15,6 +18,8 @@ const props = defineProps<{
         email: string | null;
         address: string | null;
         reseller_id: number;
+        status: string;
+        source: string | null;
     } | null;
 }>();
 
@@ -22,6 +27,9 @@ const props = defineProps<{
 // (e.g. when the Inertia <Form> re-renders after a validation error).
 const resellerId = ref<number | ''>(props.customer?.reseller_id ?? '');
 const address = ref<string>(props.customer?.address ?? '');
+// New customers default to "active" (matches the DB default); source is optional.
+const status = ref<string>(props.customer?.status ?? 'active');
+const source = ref<string>(props.customer?.source ?? '');
 
 const controlClasses =
     'border-input w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
@@ -94,5 +102,39 @@ const controlClasses =
             :class="controlClasses"
         />
         <InputError :message="errors.address" />
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-2">
+            <Label for="status">Status</Label>
+            <select
+                id="status"
+                v-model="status"
+                name="status"
+                required
+                :class="['h-9', controlClasses]"
+            >
+                <option v-for="s in statuses" :key="s.value" :value="s.value">
+                    {{ s.label }}
+                </option>
+            </select>
+            <InputError :message="errors.status" />
+        </div>
+
+        <div class="grid gap-2">
+            <Label for="source">Sumber</Label>
+            <select
+                id="source"
+                v-model="source"
+                name="source"
+                :class="['h-9', controlClasses]"
+            >
+                <option value="">— Tidak diketahui —</option>
+                <option v-for="s in sources" :key="s.value" :value="s.value">
+                    {{ s.label }}
+                </option>
+            </select>
+            <InputError :message="errors.source" />
+        </div>
     </div>
 </template>

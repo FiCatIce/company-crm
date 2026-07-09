@@ -1,21 +1,41 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { Mail, Network, Pencil, Phone, Plus, UserCircle } from '@lucide/vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerStatusBadge from '@/components/CustomerStatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { relativeDays } from '@/lib/format';
-import type { CustomerDetail, CustomerStats } from '@/types/crm';
+import type { CustomerDetail, CustomerStats, SelectOption } from '@/types/crm';
 
 const props = defineProps<{
     customer: CustomerDetail;
     stats: CustomerStats;
+    statuses: SelectOption[];
     can: { update: boolean; delete: boolean; logInteraction: boolean };
 }>();
 
 const emit = defineEmits<{ (e: 'log'): void }>();
 
 const initial = props.customer.name.trim().charAt(0).toUpperCase();
+
+// Quick lifecycle change: patch status only, refresh just the customer prop so
+// the badge re-syncs without a full page reload.
+function changeStatus(event: Event) {
+    const next = (event.target as HTMLSelectElement).value;
+
+    if (next === props.customer.status) {
+        return;
+    }
+
+    router.patch(
+        CustomerController.updateStatus.url(props.customer.id),
+        { status: next },
+        { preserveScroll: true, preserveState: true, only: ['customer'] },
+    );
+}
+
+const selectClasses =
+    'h-8 rounded-md border border-input bg-transparent px-2 py-0 text-xs shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 </script>
 
 <template>
@@ -38,6 +58,21 @@ const initial = props.customer.name.trim().charAt(0).toUpperCase();
                             :status="customer.status"
                             :label="customer.status_label"
                         />
+                        <select
+                            v-if="can.update"
+                            :value="customer.status"
+                            :class="selectClasses"
+                            aria-label="Ubah status customer"
+                            @change="changeStatus"
+                        >
+                            <option
+                                v-for="s in statuses"
+                                :key="s.value"
+                                :value="s.value"
+                            >
+                                {{ s.label }}
+                            </option>
+                        </select>
                     </div>
 
                     <div

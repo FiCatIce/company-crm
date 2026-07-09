@@ -2,6 +2,8 @@
 
 namespace App\Concerns;
 
+use App\Enums\CustomerSource;
+use App\Enums\CustomerStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
@@ -20,6 +22,9 @@ trait CustomerValidationRules
             'phone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
+            // Optional so callers that omit it fall back to the DB default ('active').
+            'status' => ['sometimes', Rule::enum(CustomerStatus::class)],
+            'source' => ['nullable', Rule::enum(CustomerSource::class)],
         ];
     }
 }

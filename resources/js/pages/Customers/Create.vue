@@ -5,9 +5,12 @@ import CustomerFormFields from '@/components/CustomerFormFields.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+import type { SelectOption } from '@/types/crm';
 
 defineProps<{
     resellers: { id: number; name: string }[];
+    statuses: SelectOption[];
+    sources: SelectOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -37,7 +40,12 @@ const breadcrumbs: BreadcrumbItem[] = [
                 class="space-y-6"
                 v-slot="{ errors, processing }"
             >
-                <CustomerFormFields :resellers="resellers" :errors="errors" />
+                <CustomerFormFields
+                    :resellers="resellers"
+                    :statuses="statuses"
+                    :sources="sources"
+                    :errors="errors"
+                />
 
                 <div class="flex items-center gap-3">
                     <Button type="submit" :disabled="processing">Simpan</Button>

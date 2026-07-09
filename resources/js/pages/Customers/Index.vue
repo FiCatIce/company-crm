@@ -4,6 +4,7 @@ import { Check, Network, Plus, Search, ShieldCheck, Users } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
+import CustomerStatusBadge from '@/components/CustomerStatusBadge.vue';
 import IndexStatCard from '@/components/IndexStatCard.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+import type { SelectOption } from '@/types/crm';
 
 type CustomerRow = {
     id: number;
@@ -27,6 +29,8 @@ type CustomerRow = {
     email: string | null;
     address: string | null;
     reseller: string | null;
+    status: string;
+    status_label: string;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
@@ -42,8 +46,9 @@ type Paginated<T> = {
 const props = defineProps<{
     customers: Paginated<CustomerRow>;
     resellers: { id: number; name: string }[];
+    statuses: SelectOption[];
     stats: { total: number; underWarranty: number; resellers: number };
-    filters: { search: string; reseller: number | null };
+    filters: { search: string; reseller: number | null; status: string | null };
     can: { create: boolean; update: boolean; delete: boolean };
 }>();
 
@@ -58,6 +63,7 @@ const search = ref(props.filters.search ?? '');
 const reseller = ref(
     props.filters.reseller ? String(props.filters.reseller) : '',
 );
+const status = ref(props.filters.status ?? '');
 
 function applyFilters() {
     router.get(
@@ -65,6 +71,7 @@ function applyFilters() {
         {
             search: search.value || undefined,
             reseller: reseller.value || undefined,
+            status: status.value || undefined,
         },
         { preserveState: true, preserveScroll: true, replace: true },
     );
@@ -72,6 +79,7 @@ function applyFilters() {
 
 watchDebounced(search, applyFilters, { debounce: 300 });
 watch(reseller, applyFilters);
+watch(status, applyFilters);
 
 const initial = (name: string) => name.trim().charAt(0).toUpperCase();
 
@@ -165,6 +173,16 @@ const selectClasses =
                             {{ r.name }}
                         </option>
                     </select>
+                    <select v-model="status" :class="selectClasses">
+                        <option value="">Semua status</option>
+                        <option
+                            v-for="s in statuses"
+                            :key="s.value"
+                            :value="s.value"
+                        >
+                            {{ s.label }}
+                        </option>
+                    </select>
                 </div>
 
                 <!-- Table -->
@@ -196,6 +214,11 @@ const selectClasses =
                                     class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                                 >
                                     Reseller
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Status
                                 </th>
                                 <th
                                     class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
@@ -249,6 +272,12 @@ const selectClasses =
                                     <span v-else class="text-muted-foreground"
                                         >—</span
                                     >
+                                </td>
+                                <td class="px-6 py-4">
+                                    <CustomerStatusBadge
+                                        :status="c.status"
+                                        :label="c.status_label"
+                                    />
                                 </td>
                                 <td class="px-6 py-4">
                                     <div
@@ -339,7 +368,7 @@ const selectClasses =
                             </tr>
 
                             <tr v-if="customers.data.length === 0">
-                                <td colspan="6" class="px-6 py-16 text-center">
+                                <td colspan="7" class="px-6 py-16 text-center">
                                     <div
                                         class="mx-auto flex max-w-sm flex-col items-center gap-2"
                                     >

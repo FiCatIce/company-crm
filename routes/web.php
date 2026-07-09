@@ -16,6 +16,8 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('customers', CustomerController::class);
+    // Lightweight lifecycle quick-change (status only) from the Customer 360 header.
+    Route::patch('customers/{customer}/status', [CustomerController::class, 'updateStatus'])->name('customers.status');
     Route::resource('products', ProductController::class)->except(['show']);
     Route::resource('resellers', ResellerController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class)->except(['show']);

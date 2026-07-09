@@ -18,6 +18,7 @@ import type {
     InteractionOptions,
     InteractionRow,
     Paginated,
+    SelectOption,
 } from '@/types/crm';
 
 const props = defineProps<{
@@ -26,6 +27,7 @@ const props = defineProps<{
     transactions: CustomerTransactionRow[];
     warrantySummary: { active: number; expired: number; none: number };
     stats: CustomerStats;
+    statuses: SelectOption[];
     can: { update: boolean; delete: boolean; logInteraction: boolean };
     interactionOptions: InteractionOptions;
 }>();
@@ -103,6 +105,7 @@ function onSaved() {
             <CustomerHeader
                 :customer="customer"
                 :stats="stats"
+                :statuses="statuses"
                 :can="can"
                 @log="openCreate"
             />

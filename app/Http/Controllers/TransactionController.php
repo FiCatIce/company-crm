@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CustomerStatus;
 use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
@@ -92,7 +93,13 @@ class TransactionController extends Controller
 
     public function store(StoreTransactionRequest $request): RedirectResponse
     {
-        Transaction::create($request->validated());
+        $transaction = Transaction::create($request->validated());
+
+        // Lifecycle: a lead's first purchase promotes them to an active customer.
+        $customer = $transaction->customer;
+        if ($customer && $customer->status === CustomerStatus::Lead) {
+            $customer->update(['status' => CustomerStatus::Active]);
+        }
 
         return redirect()->route('transactions.index')
             ->with('success', 'Transaksi berhasil ditambahkan.');
