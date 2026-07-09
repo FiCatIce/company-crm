@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ResellerController;
 use App\Http\Controllers\TransactionController;
@@ -18,6 +19,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('products', ProductController::class)->except(['show']);
     Route::resource('resellers', ResellerController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class)->except(['show']);
+
+    // Interactions — shallow nested: create under a customer, edit/delete standalone.
+    Route::post('customers/{customer}/interactions', [InteractionController::class, 'store'])->name('interactions.store');
+    Route::put('interactions/{interaction}', [InteractionController::class, 'update'])->name('interactions.update');
+    Route::delete('interactions/{interaction}', [InteractionController::class, 'destroy'])->name('interactions.destroy');
 });
 
 require __DIR__.'/settings.php';

@@ -79,6 +79,14 @@ export function formatClock(iso: string): string {
     });
 }
 
+// 'YYYY-MM-DDTHH:mm' in the viewer's local time, for a datetime-local input.
+export function toDatetimeLocal(iso: string | null): string {
+    const d = iso ? new Date(iso) : new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function formatDuration(seconds: number | null): string {
     if (!seconds || seconds <= 0) {
         return '';

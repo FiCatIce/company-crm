@@ -87,17 +87,21 @@ it('marks manual interactions editable but CTI logs immutable per row', function
             ->where('timeline.data.1.can_delete', false));
 });
 
-it('applies the cs role: can log and edit manual, but cannot delete', function () {
+it('lets cs manage their own manual interaction but not the customer', function () {
+    $cs = userWithRole('cs');
     $customer = Customer::factory()->create();
-    Interaction::factory()->forCustomer($customer)->create(['source' => InteractionSource::Manual]);
+    Interaction::factory()->forCustomer($customer)->create([
+        'source' => InteractionSource::Manual,
+        'user_id' => $cs->id,
+    ]);
 
-    $this->actingAs(userWithRole('cs'))
+    $this->actingAs($cs)
         ->get(route('customers.show', $customer))
         ->assertInertia(fn (Assert $page) => $page
             ->where('can.logInteraction', true)
             ->where('can.delete', false)                 // cs cannot delete the customer
-            ->where('timeline.data.0.can_edit', true)    // cs can edit a manual interaction
-            ->where('timeline.data.0.can_delete', false)); // cs excluded from deletes
+            ->where('timeline.data.0.can_edit', true)    // author edits own manual
+            ->where('timeline.data.0.can_delete', true)); // author deletes own manual
 });
 
 it('denies users without a CRM role', function () {

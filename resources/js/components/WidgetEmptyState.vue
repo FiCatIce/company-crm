@@ -18,5 +18,6 @@ defineProps<{
             <component :is="icon" class="size-5" />
         </div>
         <p class="text-sm text-muted-foreground">{{ message }}</p>
+        <slot />
     </div>
 </template>

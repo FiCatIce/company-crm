@@ -1,19 +1,41 @@
 <script setup lang="ts">
-import { ArrowDownLeft, ArrowUpRight, Clock, Zap } from '@lucide/vue';
+import { Form } from '@inertiajs/vue3';
+import {
+    ArrowDownLeft,
+    ArrowUpRight,
+    Clock,
+    Pencil,
+    Trash2,
+    Zap,
+} from '@lucide/vue';
 import { computed } from 'vue';
+import InteractionController from '@/actions/App/Http/Controllers/InteractionController';
 import InteractionOutcomeBadge from '@/components/InteractionOutcomeBadge.vue';
 import InteractionTypeIcon from '@/components/InteractionTypeIcon.vue';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { formatClock, formatDuration } from '@/lib/format';
 import type { InteractionRow } from '@/types/crm';
 
 const props = defineProps<{ item: InteractionRow }>();
+
+defineEmits<{ (e: 'edit', item: InteractionRow): void }>();
 
 const duration = computed(() => formatDuration(props.item.duration_sec));
 const isAuto = computed(() => props.item.source === 'cti');
 </script>
 
 <template>
-    <div class="flex gap-3">
+    <div class="group flex gap-3">
         <InteractionTypeIcon :type="item.type" />
 
         <div class="min-w-0 flex-1 space-y-1">
@@ -40,12 +62,78 @@ const isAuto = computed(() => props.item.source === 'cti');
                         Otomatis
                     </span>
                 </div>
-                <span
-                    class="shrink-0 text-xs text-muted-foreground tabular-nums"
-                    :title="item.occurred_at"
-                >
-                    {{ formatClock(item.occurred_at) }}
-                </span>
+
+                <div class="flex shrink-0 items-center gap-1">
+                    <span
+                        class="text-xs text-muted-foreground tabular-nums"
+                        :title="item.occurred_at"
+                    >
+                        {{ formatClock(item.occurred_at) }}
+                    </span>
+
+                    <Button
+                        v-if="item.can_edit"
+                        variant="ghost"
+                        size="icon"
+                        class="size-7 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        aria-label="Edit interaksi"
+                        @click="$emit('edit', item)"
+                    >
+                        <Pencil class="size-3.5" />
+                    </Button>
+
+                    <Dialog v-if="item.can_delete">
+                        <DialogTrigger as-child>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                class="size-7 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                                aria-label="Hapus interaksi"
+                            >
+                                <Trash2 class="size-3.5" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <Form
+                                v-bind="
+                                    InteractionController.destroy.form(item.id)
+                                "
+                                :options="{
+                                    preserveScroll: true,
+                                    preserveState: true,
+                                    only: ['timeline', 'stats'],
+                                }"
+                                class="space-y-6"
+                                v-slot="{ processing }"
+                            >
+                                <DialogHeader class="space-y-3">
+                                    <DialogTitle>Hapus interaksi?</DialogTitle>
+                                    <DialogDescription>
+                                        Catatan interaksi ini akan dihapus.
+                                        Tindakan ini tidak dapat dibatalkan.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter class="gap-2">
+                                    <DialogClose as-child>
+                                        <Button
+                                            variant="secondary"
+                                            type="button"
+                                        >
+                                            Batal
+                                        </Button>
+                                    </DialogClose>
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        :disabled="processing"
+                                    >
+                                        Hapus
+                                    </Button>
+                                </DialogFooter>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <p v-if="item.subject" class="text-sm font-medium text-foreground">

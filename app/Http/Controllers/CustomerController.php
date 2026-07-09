@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InteractionDirection;
+use App\Enums\InteractionOutcome;
+use App\Enums\InteractionType;
 use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
@@ -200,6 +203,11 @@ class CustomerController extends Controller
                 'update' => $user->can('update', $customer),
                 'delete' => $user->can('delete', $customer),
                 'logInteraction' => $user->can('create', Interaction::class),
+            ],
+            'interactionOptions' => [
+                'types' => array_map(fn (InteractionType $t) => ['value' => $t->value, 'label' => $t->label()], InteractionType::cases()),
+                'directions' => array_map(fn (InteractionDirection $d) => ['value' => $d->value, 'label' => $d->label()], InteractionDirection::cases()),
+                'outcomes' => array_map(fn (InteractionOutcome $o) => ['value' => $o->value, 'label' => $o->label()], InteractionOutcome::cases()),
             ],
         ]);
     }

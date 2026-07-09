@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { PackageCheck, Wallet } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerHeader from '@/components/CustomerHeader.vue';
 import InteractionTimeline from '@/components/InteractionTimeline.vue';
+import LogInteractionModal from '@/components/LogInteractionModal.vue';
 import WarrantyBadge from '@/components/WarrantyBadge.vue';
 import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -14,6 +15,7 @@ import type {
     CustomerDetail,
     CustomerStats,
     CustomerTransactionRow,
+    InteractionOptions,
     InteractionRow,
     Paginated,
 } from '@/types/crm';
@@ -25,6 +27,7 @@ const props = defineProps<{
     warrantySummary: { active: number; expired: number; none: number };
     stats: CustomerStats;
     can: { update: boolean; delete: boolean; logInteraction: boolean };
+    interactionOptions: InteractionOptions;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -36,11 +39,23 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const interactions = ref<InteractionRow[]>([...props.timeline.data]);
-const currentPage = ref(props.timeline.current_page);
-const lastPage = ref(props.timeline.last_page);
 const loadingMore = ref(false);
 
-const hasMore = computed(() => currentPage.value < lastPage.value);
+const hasMore = computed(
+    () => props.timeline.current_page < props.timeline.last_page,
+);
+
+// Page 1 (fresh load / post-mutation refresh) resets the list; later pages
+// ("Muat lagi") append. Server stays the single source of truth.
+watch(
+    () => props.timeline,
+    (timeline) => {
+        interactions.value =
+            timeline.current_page <= 1
+                ? [...timeline.data]
+                : [...interactions.value, ...timeline.data];
+    },
+);
 
 function loadMore() {
     if (!hasMore.value || loadingMore.value) {
@@ -49,20 +64,34 @@ function loadMore() {
 
     loadingMore.value = true;
 
-    // reload() already preserves scroll + component state by default.
+    // preserveUrl keeps the address clean so a later mutation refresh lands on
+    // page 1 (the newest), not a stale ?page=N.
     router.reload({
         only: ['timeline'],
-        data: { page: currentPage.value + 1 },
-        onSuccess: (page) => {
-            const next = page.props.timeline as Paginated<InteractionRow>;
-            interactions.value.push(...next.data);
-            currentPage.value = next.current_page;
-            lastPage.value = next.last_page;
-        },
+        data: { page: props.timeline.current_page + 1 },
+        preserveUrl: true,
         onFinish: () => {
             loadingMore.value = false;
         },
     });
+}
+
+// Log-interaction modal (shared for create + edit).
+const modalOpen = ref(false);
+const editing = ref<InteractionRow | null>(null);
+
+function openCreate() {
+    editing.value = null;
+    modalOpen.value = true;
+}
+
+function openEdit(item: InteractionRow) {
+    editing.value = item;
+    modalOpen.value = true;
+}
+
+function onSaved() {
+    modalOpen.value = false;
 }
 </script>
 
@@ -71,7 +100,12 @@ function loadMore() {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-            <CustomerHeader :customer="customer" :stats="stats" :can="can" />
+            <CustomerHeader
+                :customer="customer"
+                :stats="stats"
+                :can="can"
+                @log="openCreate"
+            />
 
             <div class="grid gap-6 lg:grid-cols-3">
                 <!-- Timeline -->
@@ -80,7 +114,10 @@ function loadMore() {
                         :items="interactions"
                         :has-more="hasMore"
                         :loading="loadingMore"
+                        :can-log="can.logInteraction"
                         @load-more="loadMore"
+                        @edit="openEdit"
+                        @log="openCreate"
                     />
                 </div>
 
@@ -253,5 +290,13 @@ function loadMore() {
                 </div>
             </div>
         </div>
+
+        <LogInteractionModal
+            v-model:open="modalOpen"
+            :customer-id="customer.id"
+            :options="interactionOptions"
+            :interaction="editing"
+            @saved="onSaved"
+        />
     </AppLayout>
 </template>

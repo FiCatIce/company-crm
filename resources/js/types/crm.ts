@@ -53,3 +53,11 @@ export type CustomerStats = {
     transactionsCount: number;
     totalSpend: number;
 };
+
+export type InteractionOption = { value: string; label: string };
+
+export type InteractionOptions = {
+    types: InteractionOption[];
+    directions: InteractionOption[];
+    outcomes: InteractionOption[];
+};

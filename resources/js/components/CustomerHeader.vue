@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Mail, Network, Pencil, Phone, UserCircle } from '@lucide/vue';
+import { Mail, Network, Pencil, Phone, Plus, UserCircle } from '@lucide/vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerStatusBadge from '@/components/CustomerStatusBadge.vue';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ const props = defineProps<{
     stats: CustomerStats;
     can: { update: boolean; delete: boolean; logInteraction: boolean };
 }>();
+
+const emit = defineEmits<{ (e: 'log'): void }>();
 
 const initial = props.customer.name.trim().charAt(0).toUpperCase();
 </script>
@@ -90,12 +92,18 @@ const initial = props.customer.name.trim().charAt(0).toUpperCase();
                 </div>
             </div>
 
-            <Button v-if="can.update" as-child variant="outline">
-                <Link :href="CustomerController.edit(customer.id)">
-                    <Pencil />
-                    Edit
-                </Link>
-            </Button>
+            <div class="flex shrink-0 items-center gap-2">
+                <Button v-if="can.logInteraction" @click="emit('log')">
+                    <Plus />
+                    Catat Interaksi
+                </Button>
+                <Button v-if="can.update" as-child variant="outline">
+                    <Link :href="CustomerController.edit(customer.id)">
+                        <Pencil />
+                        Edit
+                    </Link>
+                </Button>
+            </div>
         </div>
     </div>
 </template>

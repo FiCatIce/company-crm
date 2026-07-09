@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { MessagesSquare } from '@lucide/vue';
+import { MessagesSquare, Plus } from '@lucide/vue';
 import { computed } from 'vue';
 import InteractionItem from '@/components/InteractionItem.vue';
+import { Button } from '@/components/ui/button';
 import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 import { dayGroupLabel } from '@/lib/format';
 import type { InteractionRow } from '@/types/crm';
@@ -10,9 +11,14 @@ const props = defineProps<{
     items: InteractionRow[];
     hasMore: boolean;
     loading: boolean;
+    canLog: boolean;
 }>();
 
-defineEmits<{ (e: 'load-more'): void }>();
+defineEmits<{
+    (e: 'load-more'): void;
+    (e: 'edit', item: InteractionRow): void;
+    (e: 'log'): void;
+}>();
 
 // Items arrive newest-first; group consecutive runs by day label.
 const groups = computed(() => {
@@ -46,8 +52,13 @@ const groups = computed(() => {
         <WidgetEmptyState
             v-if="items.length === 0"
             :icon="MessagesSquare"
-            message="Belum ada interaksi dengan customer ini."
-        />
+            message="Belum ada interaksi — catat yang pertama."
+        >
+            <Button v-if="canLog" size="sm" class="mt-2" @click="$emit('log')">
+                <Plus />
+                Catat Interaksi
+            </Button>
+        </WidgetEmptyState>
 
         <div v-else class="divide-y divide-border">
             <div v-for="group in groups" :key="group.label" class="p-5">
@@ -61,6 +72,7 @@ const groups = computed(() => {
                         v-for="item in group.items"
                         :key="item.id"
                         :item="item"
+                        @edit="$emit('edit', $event)"
                     />
                 </div>
             </div>
