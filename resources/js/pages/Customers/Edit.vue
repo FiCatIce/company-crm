@@ -15,12 +15,14 @@ const props = defineProps<{
         email: string | null;
         address: string | null;
         reseller_id: number;
+        assigned_to: number | null;
         status: string;
         source: string | null;
     };
     resellers: { id: number; name: string }[];
     statuses: SelectOption[];
     sources: SelectOption[];
+    users: SelectOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -54,6 +56,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                     :resellers="resellers"
                     :statuses="statuses"
                     :sources="sources"
+                    :users="users"
                     :errors="errors"
                     :customer="customer"
                 />

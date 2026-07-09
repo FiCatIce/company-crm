@@ -28,6 +28,7 @@ const props = defineProps<{
     warrantySummary: { active: number; expired: number; none: number };
     stats: CustomerStats;
     statuses: SelectOption[];
+    users: SelectOption[];
     can: { update: boolean; delete: boolean; logInteraction: boolean };
     interactionOptions: InteractionOptions;
 }>();
@@ -106,6 +107,7 @@ function onSaved() {
                 :customer="customer"
                 :stats="stats"
                 :statuses="statuses"
+                :users="users"
                 :can="can"
                 @log="openCreate"
             />

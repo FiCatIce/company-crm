@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerStatusBadge from '@/components/CustomerStatusBadge.vue';
 import IndexStatCard from '@/components/IndexStatCard.vue';
+import OwnerBadge from '@/components/OwnerBadge.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -31,6 +32,7 @@ type CustomerRow = {
     reseller: string | null;
     status: string;
     status_label: string;
+    owner: { id: number; name: string } | null;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
@@ -47,8 +49,14 @@ const props = defineProps<{
     customers: Paginated<CustomerRow>;
     resellers: { id: number; name: string }[];
     statuses: SelectOption[];
+    users: SelectOption[];
     stats: { total: number; underWarranty: number; resellers: number };
-    filters: { search: string; reseller: number | null; status: string | null };
+    filters: {
+        search: string;
+        reseller: number | null;
+        status: string | null;
+        owner: string | null;
+    };
     can: { create: boolean; update: boolean; delete: boolean };
 }>();
 
@@ -64,6 +72,7 @@ const reseller = ref(
     props.filters.reseller ? String(props.filters.reseller) : '',
 );
 const status = ref(props.filters.status ?? '');
+const owner = ref(props.filters.owner ?? '');
 
 function applyFilters() {
     router.get(
@@ -72,6 +81,7 @@ function applyFilters() {
             search: search.value || undefined,
             reseller: reseller.value || undefined,
             status: status.value || undefined,
+            owner: owner.value || undefined,
         },
         { preserveState: true, preserveScroll: true, replace: true },
     );
@@ -80,6 +90,7 @@ function applyFilters() {
 watchDebounced(search, applyFilters, { debounce: 300 });
 watch(reseller, applyFilters);
 watch(status, applyFilters);
+watch(owner, applyFilters);
 
 const initial = (name: string) => name.trim().charAt(0).toUpperCase();
 
@@ -183,6 +194,20 @@ const selectClasses =
                             {{ s.label }}
                         </option>
                     </select>
+                    <select v-model="owner" :class="selectClasses">
+                        <option value="">Semua owner</option>
+                        <option value="me">Punya Saya</option>
+                        <option value="unassigned">Belum ada owner</option>
+                        <optgroup label="Agen">
+                            <option
+                                v-for="u in users"
+                                :key="u.value"
+                                :value="u.value"
+                            >
+                                {{ u.label }}
+                            </option>
+                        </optgroup>
+                    </select>
                 </div>
 
                 <!-- Table -->
@@ -219,6 +244,11 @@ const selectClasses =
                                     class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                                 >
                                     Status
+                                </th>
+                                <th
+                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Owner
                                 </th>
                                 <th
                                     class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
@@ -278,6 +308,9 @@ const selectClasses =
                                         :status="c.status"
                                         :label="c.status_label"
                                     />
+                                </td>
+                                <td class="px-6 py-4">
+                                    <OwnerBadge :owner="c.owner" />
                                 </td>
                                 <td class="px-6 py-4">
                                     <div
@@ -368,7 +401,7 @@ const selectClasses =
                             </tr>
 
                             <tr v-if="customers.data.length === 0">
-                                <td colspan="7" class="px-6 py-16 text-center">
+                                <td colspan="8" class="px-6 py-16 text-center">
                                     <div
                                         class="mx-auto flex max-w-sm flex-col items-center gap-2"
                                     >

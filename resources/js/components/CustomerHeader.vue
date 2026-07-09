@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { Mail, Network, Pencil, Phone, Plus, UserCircle } from '@lucide/vue';
+import { Mail, Network, Pencil, Phone, Plus } from '@lucide/vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerStatusBadge from '@/components/CustomerStatusBadge.vue';
+import OwnerBadge from '@/components/OwnerBadge.vue';
 import { Button } from '@/components/ui/button';
 import { relativeDays } from '@/lib/format';
 import type { CustomerDetail, CustomerStats, SelectOption } from '@/types/crm';
@@ -11,6 +12,7 @@ const props = defineProps<{
     customer: CustomerDetail;
     stats: CustomerStats;
     statuses: SelectOption[];
+    users: SelectOption[];
     can: { update: boolean; delete: boolean; logInteraction: boolean };
 }>();
 
@@ -30,6 +32,22 @@ function changeStatus(event: Event) {
     router.patch(
         CustomerController.updateStatus.url(props.customer.id),
         { status: next },
+        { preserveScroll: true, preserveState: true, only: ['customer'] },
+    );
+}
+
+// Quick owner reassignment (attribution only, never gates access).
+function changeOwner(event: Event) {
+    const raw = (event.target as HTMLSelectElement).value;
+    const next = raw === '' ? null : Number(raw);
+
+    if (next === (props.customer.owner?.id ?? null)) {
+        return;
+    }
+
+    router.patch(
+        CustomerController.updateOwner.url(props.customer.id),
+        { assigned_to: next },
         { preserveScroll: true, preserveState: true, only: ['customer'] },
     );
 }
@@ -102,13 +120,31 @@ const selectClasses =
                                 customer.reseller.name
                             }}
                         </span>
-                        <span class="inline-flex items-center gap-1.5">
-                            <UserCircle class="size-4" aria-hidden="true" />
-                            {{
-                                customer.owner
-                                    ? customer.owner.name
-                                    : 'Belum ditugaskan'
-                            }}
+                        <span class="inline-flex items-center gap-2">
+                            <OwnerBadge
+                                :owner="customer.owner"
+                                empty-text="Belum ditugaskan"
+                            />
+                            <select
+                                v-if="can.update"
+                                :value="
+                                    customer.owner
+                                        ? String(customer.owner.id)
+                                        : ''
+                                "
+                                :class="selectClasses"
+                                aria-label="Ubah owner customer"
+                                @change="changeOwner"
+                            >
+                                <option value="">Belum ada owner</option>
+                                <option
+                                    v-for="u in users"
+                                    :key="u.value"
+                                    :value="u.value"
+                                >
+                                    {{ u.label }}
+                                </option>
+                            </select>
                         </span>
                     </div>
 

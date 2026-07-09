@@ -11,6 +11,7 @@ const props = defineProps<{
     resellers: Reseller[];
     statuses: SelectOption[];
     sources: SelectOption[];
+    users: SelectOption[];
     errors: Partial<Record<string, string>>;
     customer?: {
         name: string;
@@ -18,6 +19,7 @@ const props = defineProps<{
         email: string | null;
         address: string | null;
         reseller_id: number;
+        assigned_to: number | null;
         status: string;
         source: string | null;
     } | null;
@@ -27,6 +29,12 @@ const props = defineProps<{
 // (e.g. when the Inertia <Form> re-renders after a validation error).
 const resellerId = ref<number | ''>(props.customer?.reseller_id ?? '');
 const address = ref<string>(props.customer?.address ?? '');
+// Empty string = unassigned (Laravel converts it to null before validation).
+const assignedTo = ref<string>(
+    props.customer?.assigned_to != null
+        ? String(props.customer.assigned_to)
+        : '',
+);
 // New customers default to "active" (matches the DB default); source is optional.
 const status = ref<string>(props.customer?.status ?? 'active');
 const source = ref<string>(props.customer?.source ?? '');
@@ -102,6 +110,22 @@ const controlClasses =
             :class="controlClasses"
         />
         <InputError :message="errors.address" />
+    </div>
+
+    <div class="grid gap-2">
+        <Label for="assigned_to">Owner</Label>
+        <select
+            id="assigned_to"
+            v-model="assignedTo"
+            name="assigned_to"
+            :class="['h-9', controlClasses]"
+        >
+            <option value="">Belum ada owner</option>
+            <option v-for="u in users" :key="u.value" :value="u.value">
+                {{ u.label }}
+            </option>
+        </select>
+        <InputError :message="errors.assigned_to" />
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2">

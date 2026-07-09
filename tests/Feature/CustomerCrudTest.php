@@ -44,7 +44,7 @@ it('opens the create page for an authorized user', function () {
     $this->actingAs(userWithRole('cs'))
         ->get(route('customers.create'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('Customers/Create')->has('resellers'));
+        ->assertInertia(fn (Assert $page) => $page->component('Customers/Create')->has('resellers')->has('users'));
 });
 
 it('stores a customer and redirects with a success flash', function () {
@@ -375,4 +375,182 @@ it('forbids a roleless user from quick-changing status', function () {
         ->assertForbidden();
 
     expect($customer->fresh()->status)->toBe(CustomerStatus::Active);
+});
+
+// ---------------------------------------------------------------------------
+// Assignment / owner (attribution + filter only — NOT an access gate)
+// ---------------------------------------------------------------------------
+
+it('stores the assigned owner', function () {
+    $reseller = Reseller::factory()->create();
+    $agent = User::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('customers.store'), [
+            'reseller_id' => $reseller->id,
+            'name' => 'Punya Agen',
+            'assigned_to' => $agent->id,
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    $this->assertDatabaseHas('customers', ['name' => 'Punya Agen', 'assigned_to' => $agent->id]);
+});
+
+it('stores an unassigned customer (null owner)', function () {
+    $reseller = Reseller::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('customers.store'), [
+            'reseller_id' => $reseller->id,
+            'name' => 'Tanpa Owner',
+            'assigned_to' => null,
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    $this->assertDatabaseHas('customers', ['name' => 'Tanpa Owner', 'assigned_to' => null]);
+});
+
+it('rejects a non-existent owner when storing', function () {
+    $reseller = Reseller::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('customers.create'))
+        ->post(route('customers.store'), [
+            'reseller_id' => $reseller->id,
+            'name' => 'Bad Owner',
+            'assigned_to' => 999999,
+        ])
+        ->assertSessionHasErrors('assigned_to');
+});
+
+it('updates and clears the assigned owner', function () {
+    $agent = User::factory()->create();
+    $customer = Customer::factory()->create(['assigned_to' => $agent->id]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('customers.update', $customer), [
+            'reseller_id' => $customer->reseller_id,
+            'name' => $customer->name,
+            'assigned_to' => null,
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    expect($customer->fresh()->assigned_to)->toBeNull();
+});
+
+it('exposes the owner on each index row', function () {
+    $owner = User::factory()->create(['name' => 'Agen X']);
+    Customer::factory()->create(['assigned_to' => $owner->id, 'name' => 'Owned Cust']);
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('customers.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('customers.data.0.owner.name', 'Agen X'));
+});
+
+it('filters the index by owner=me', function () {
+    $agent = userWithRole('cs');
+    Customer::factory()->count(2)->create(['assigned_to' => $agent->id]);
+    Customer::factory()->create(['assigned_to' => null]);
+
+    $this->actingAs($agent)
+        ->get(route('customers.index', ['owner' => 'me']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers.data', 2)
+            ->where('filters.owner', 'me'));
+});
+
+it('filters the index by unassigned owner', function () {
+    $agent = userWithRole('admin');
+    Customer::factory()->create(['assigned_to' => $agent->id]);
+    Customer::factory()->count(2)->create(['assigned_to' => null]);
+
+    $this->actingAs($agent)
+        ->get(route('customers.index', ['owner' => 'unassigned']))
+        ->assertInertia(fn (Assert $page) => $page->has('customers.data', 2));
+});
+
+it('filters the index by a specific owner id and combines with status', function () {
+    $agentA = userWithRole('admin');
+    $agentB = User::factory()->create();
+    Customer::factory()->create(['assigned_to' => $agentB->id, 'status' => CustomerStatus::Lead]);
+    Customer::factory()->create(['assigned_to' => $agentB->id, 'status' => CustomerStatus::Active]);
+    Customer::factory()->create(['assigned_to' => null, 'status' => CustomerStatus::Lead]);
+
+    $this->actingAs($agentA)
+        ->get(route('customers.index', ['owner' => (string) $agentB->id, 'status' => 'lead']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers.data', 1)
+            ->where('customers.data.0.status', 'lead')
+            ->where('filters.owner', (string) $agentB->id));
+});
+
+it('ignores an unknown owner filter value', function () {
+    Customer::factory()->count(3)->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('customers.index', ['owner' => 'not-a-scope']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers.data', 3)
+            ->where('filters.owner', null));
+});
+
+it('quick-reassigns and clears the owner via the owner endpoint', function () {
+    $agent = User::factory()->create();
+    $customer = Customer::factory()->create(['assigned_to' => null]);
+
+    $this->actingAs(userWithRole('cs'))
+        ->from(route('customers.show', $customer))
+        ->patch(route('customers.owner', $customer), ['assigned_to' => $agent->id])
+        ->assertRedirect(route('customers.show', $customer))
+        ->assertSessionHas('success');
+
+    expect($customer->fresh()->assigned_to)->toBe($agent->id);
+
+    $this->actingAs(userWithRole('admin'))
+        ->patch(route('customers.owner', $customer), ['assigned_to' => null])
+        ->assertSessionHas('success');
+
+    expect($customer->fresh()->assigned_to)->toBeNull();
+});
+
+it('validates the owner on quick-reassign', function () {
+    $customer = Customer::factory()->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('customers.show', $customer))
+        ->patch(route('customers.owner', $customer), ['assigned_to' => 999999])
+        ->assertSessionHasErrors('assigned_to');
+});
+
+it('forbids a roleless user from reassigning the owner', function () {
+    $agent = User::factory()->create();
+    $customer = Customer::factory()->create(['assigned_to' => $agent->id]);
+
+    $this->actingAs(User::factory()->create())
+        ->patch(route('customers.owner', $customer), ['assigned_to' => null])
+        ->assertForbidden();
+
+    expect($customer->fresh()->assigned_to)->toBe($agent->id);
+});
+
+it('keeps access org-wide regardless of assignment', function () {
+    $ownerAgent = User::factory()->create();
+    $customer = Customer::factory()->create(['assigned_to' => $ownerAgent->id]);
+    $nonOwner = userWithRole('cs');
+
+    // A non-owner with a CRM role can still view the 360 page...
+    $this->actingAs($nonOwner)
+        ->get(route('customers.show', $customer))
+        ->assertOk();
+
+    // ...and still edit the customer — assignment is attribution, not a lock.
+    $this->actingAs($nonOwner)
+        ->put(route('customers.update', $customer), [
+            'reseller_id' => $customer->reseller_id,
+            'name' => 'Diedit Non-Owner',
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    $this->assertDatabaseHas('customers', ['id' => $customer->id, 'name' => 'Diedit Non-Owner']);
 });

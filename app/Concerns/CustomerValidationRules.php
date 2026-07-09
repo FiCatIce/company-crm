@@ -18,6 +18,8 @@ trait CustomerValidationRules
     {
         return [
             'reseller_id' => ['required', 'integer', Rule::exists('resellers', 'id')],
+            // Owning agent (attribution/filter only — NOT an access gate); null = unassigned.
+            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],

@@ -14,6 +14,7 @@ use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Reseller;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,9 +33,17 @@ class CustomerController extends Controller
         $search = trim((string) $request->input('search', ''));
         $resellerId = $request->integer('reseller') ?: null;
         $status = CustomerStatus::tryFrom((string) $request->input('status', ''));
+        // Owner scope: 'me' (mine), 'unassigned' (none), or a specific user id.
+        $ownerRaw = (string) $request->input('owner', '');
+        $owner = match (true) {
+            $ownerRaw === 'me', $ownerRaw === 'unassigned' => $ownerRaw,
+            ctype_digit($ownerRaw) => $ownerRaw,
+            default => null,
+        };
+        $authId = (int) $request->user()->id;
 
         $customers = Customer::query()
-            ->with('reseller:id,name')
+            ->with(['reseller:id,name', 'owner:id,name'])
             ->when($search !== '', function ($query) use ($search) {
                 // Case-insensitive across drivers (ILIKE on Postgres, lower() on SQLite);
                 // escape LIKE wildcards so a user's % or _ can't broaden the match.
@@ -47,6 +56,9 @@ class CustomerController extends Controller
             })
             ->when($resellerId, fn ($query, $id) => $query->where('reseller_id', $id))
             ->when($status, fn ($query) => $query->where('status', $status->value))
+            ->when($owner === 'me', fn ($query) => $query->where('assigned_to', $authId))
+            ->when($owner === 'unassigned', fn ($query) => $query->whereNull('assigned_to'))
+            ->when($owner !== null && ctype_digit($owner), fn ($query) => $query->where('assigned_to', (int) $owner))
             ->latest()
             ->paginate(10)
             ->withQueryString()
@@ -59,17 +71,22 @@ class CustomerController extends Controller
                 'reseller' => $customer->reseller?->name,
                 'status' => $customer->status->value,
                 'status_label' => $customer->status->label(),
+                'owner' => $customer->owner
+                    ? ['id' => $customer->owner->id, 'name' => $customer->owner->name]
+                    : null,
             ]);
 
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
+            'users' => $this->userOptions(),
             'stats' => $this->stats(),
             'filters' => [
                 'search' => $search,
                 'reseller' => $resellerId,
                 'status' => $status?->value,
+                'owner' => $owner,
             ],
             'can' => $this->abilities($request, new Customer),
         ]);
@@ -125,6 +142,21 @@ class CustomerController extends Controller
         );
     }
 
+    /**
+     * Staff options (value = user id as string) for the owner assign/filter selects.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function userOptions(): array
+    {
+        $users = User::orderBy('name')->get(['id', 'name'])->all();
+
+        return array_map(
+            fn (User $user) => ['value' => (string) $user->id, 'label' => $user->name],
+            array_values($users),
+        );
+    }
+
     public function create(Request $request): Response
     {
         $this->authorize('create', Customer::class);
@@ -133,6 +165,7 @@ class CustomerController extends Controller
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
             'sources' => $this->sourceOptions(),
+            'users' => $this->userOptions(),
         ]);
     }
 
@@ -237,6 +270,7 @@ class CustomerController extends Controller
                 'totalSpend' => (float) $transactions->sum(fn (Transaction $transaction) => (float) $transaction->amount),
             ],
             'statuses' => $this->statusOptions(),
+            'users' => $this->userOptions(),
             'can' => [
                 'update' => $user->can('update', $customer),
                 'delete' => $user->can('delete', $customer),
@@ -262,12 +296,14 @@ class CustomerController extends Controller
                 'email' => $customer->email,
                 'address' => $customer->address,
                 'reseller_id' => $customer->reseller_id,
+                'assigned_to' => $customer->assigned_to,
                 'status' => $customer->status->value,
                 'source' => $customer->source?->value,
             ],
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
             'sources' => $this->sourceOptions(),
+            'users' => $this->userOptions(),
         ]);
     }
 
@@ -293,6 +329,23 @@ class CustomerController extends Controller
         $customer->update($validated);
 
         return back()->with('success', 'Status customer diperbarui.');
+    }
+
+    /**
+     * Quick owner reassignment from the Customer 360 header (assigned_to only).
+     * Assignment is attribution/filtering — it never gates access.
+     */
+    public function updateOwner(Request $request, Customer $customer): RedirectResponse
+    {
+        $this->authorize('update', $customer);
+
+        $validated = $request->validate([
+            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')],
+        ]);
+
+        $customer->update(['assigned_to' => $validated['assigned_to'] ?? null]);
+
+        return back()->with('success', 'Owner customer diperbarui.');
     }
 
     public function destroy(Request $request, Customer $customer): RedirectResponse

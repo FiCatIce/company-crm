@@ -11,6 +11,7 @@ defineProps<{
     resellers: { id: number; name: string }[];
     statuses: SelectOption[];
     sources: SelectOption[];
+    users: SelectOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -44,6 +45,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                     :resellers="resellers"
                     :statuses="statuses"
                     :sources="sources"
+                    :users="users"
                     :errors="errors"
                 />
 
