@@ -55,6 +55,20 @@ test('the dashboard assembles every widget across three bands', function () {
         ->toContain('lg:col-span-2'); // 2fr / 1fr split
 });
 
+test('the dashboard has a personal band wired to the me block', function () {
+    expect(dashSource('pages/Dashboard.vue'))
+        ->toContain('Ringkasan Saya')
+        ->toContain('MyInteractionsCard')
+        ->toContain('me.myCustomers');
+});
+
+test('the my-interactions card links to the customer 360 and has an empty state', function () {
+    expect(dashSource('components/MyInteractionsCard.vue'))
+        ->toContain('Interaksi Terakhir Saya')
+        ->toContain('CustomerController.show') // quick-continue link
+        ->toContain('WidgetEmptyState');
+});
+
 test('the dashboard page is wired to the full data contract', function () {
     $this->seed(RoleSeeder::class);
     $this->withoutVite();
@@ -66,7 +80,7 @@ test('the dashboard page is wired to the full data contract', function () {
             ->component('Dashboard')
             ->hasAll([
                 'stats', 'trend', 'warrantyBreakdown',
-                'recentTransactions', 'expiringSoon', 'topResellers',
+                'recentTransactions', 'expiringSoon', 'topResellers', 'me',
             ]));
 });
 

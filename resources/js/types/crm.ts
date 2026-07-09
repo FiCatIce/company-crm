@@ -56,6 +56,16 @@ export type CustomerStats = {
     totalSpend: number;
 };
 
+export type MyInteractionRow = {
+    id: number;
+    customer: { id: number; name: string } | null;
+    type: string;
+    type_label: string;
+    direction: 'in' | 'out' | null;
+    occurred_at: string;
+    subject: string | null;
+};
+
 export type InteractionOption = { value: string; label: string };
 
 export type InteractionOptions = {

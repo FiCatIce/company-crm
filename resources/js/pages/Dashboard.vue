@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { Network, Receipt, ShieldCheck, Users } from '@lucide/vue';
+import {
+    MessageSquare,
+    Network,
+    Receipt,
+    ShieldAlert,
+    ShieldCheck,
+    UserCheck,
+    Users,
+} from '@lucide/vue';
 import ExpiringWarrantyCard from '@/components/ExpiringWarrantyCard.vue';
+import MyInteractionsCard from '@/components/MyInteractionsCard.vue';
 import RecentTransactionsCard from '@/components/RecentTransactionsCard.vue';
 import StatCard from '@/components/StatCard.vue';
 import TopResellersCard from '@/components/TopResellersCard.vue';
@@ -10,6 +19,7 @@ import WarrantyDonut from '@/components/WarrantyDonut.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
+import type { MyInteractionRow } from '@/types/crm';
 
 type TrendPoint = { month: string; label: string; count: number };
 
@@ -48,6 +58,12 @@ defineProps<{
     recentTransactions: RecentRow[];
     expiringSoon: ExpiringRow[];
     topResellers: TopReseller[];
+    me: {
+        myCustomers: number;
+        myInteractionsToday: number;
+        myExpiringWarranties: number;
+        myRecentInteractions: MyInteractionRow[];
+    };
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -72,6 +88,34 @@ const breadcrumbs: BreadcrumbItem[] = [
                     garansi.
                 </p>
             </div>
+
+            <!-- Band 0 — personal (scoped to the signed-in agent) -->
+            <section class="flex flex-col gap-4">
+                <h2 class="text-sm font-semibold text-foreground">
+                    Ringkasan Saya
+                </h2>
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <StatCard
+                        label="Customer Saya"
+                        :value="me.myCustomers"
+                        :icon="UserCheck"
+                        description="ditugaskan kepada Anda"
+                    />
+                    <StatCard
+                        label="Interaksi Saya Hari Ini"
+                        :value="me.myInteractionsToday"
+                        :icon="MessageSquare"
+                        description="dicatat hari ini"
+                    />
+                    <StatCard
+                        label="Garansi Akan Habis (Saya)"
+                        :value="me.myExpiringWarranties"
+                        :icon="ShieldAlert"
+                        description="customer Anda, ≤ 30 hari"
+                    />
+                </div>
+                <MyInteractionsCard :items="me.myRecentInteractions" />
+            </section>
 
             <!-- Band 1 — KPI row -->
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

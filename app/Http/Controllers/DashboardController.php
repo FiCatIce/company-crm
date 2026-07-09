@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Interaction;
 use App\Models\Reseller;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -38,7 +39,69 @@ class DashboardController extends Controller
             'recentTransactions' => $this->recentTransactions(),
             'expiringSoon' => $this->expiringSoon(),
             'topResellers' => $this->topResellers(),
+            'me' => $this->personalStats((int) $request->user()->id),
         ]);
+    }
+
+    /**
+     * Per-agent block scoped to the signed-in user (attribution/authorship only —
+     * every role still sees all the org-wide widgets above). A user with no
+     * assigned customers or interactions simply reads zeros / empty lists.
+     *
+     * @return array{myCustomers: int, myInteractionsToday: int, myExpiringWarranties: int, myRecentInteractions: array<int, array<string, mixed>>}
+     */
+    private function personalStats(int $userId): array
+    {
+        $threshold = now()->startOfDay()->addDays(30);
+
+        // Reuses the expiringSoon rule (active warranty ending within 30 days),
+        // scoped to transactions of customers this user owns.
+        $myExpiringWarranties = Transaction::query()
+            ->whereHas('customer', fn ($query) => $query->where('assigned_to', $userId))
+            ->with('product:id,warranty_months')
+            ->get(['id', 'customer_id', 'product_id', 'purchased_at'])
+            ->filter(fn (Transaction $transaction) => $transaction->product->warranty_months > 0
+                && $transaction->is_under_warranty
+                && $transaction->warranty_expires_at->lte($threshold))
+            ->count();
+
+        return [
+            'myCustomers' => Customer::where('assigned_to', $userId)->count(),
+            'myInteractionsToday' => Interaction::where('user_id', $userId)
+                ->whereDate('occurred_at', today())
+                ->count(),
+            'myExpiringWarranties' => $myExpiringWarranties,
+            'myRecentInteractions' => $this->myRecentInteractions($userId),
+        ];
+    }
+
+    /**
+     * The five most recent interactions authored by this user, for quick-continue
+     * (each links back to the customer 360).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function myRecentInteractions(int $userId): array
+    {
+        return Interaction::query()
+            ->where('user_id', $userId)
+            ->with('customer:id,name')
+            ->latest('occurred_at')
+            ->latest('id')
+            ->take(5)
+            ->get()
+            ->map(fn (Interaction $interaction) => [
+                'id' => $interaction->id,
+                'customer' => $interaction->customer
+                    ? ['id' => $interaction->customer->id, 'name' => $interaction->customer->name]
+                    : null,
+                'type' => $interaction->type->value,
+                'type_label' => $interaction->type->label(),
+                'direction' => $interaction->direction?->value,
+                'occurred_at' => $interaction->occurred_at->toIso8601String(),
+                'subject' => $interaction->subject,
+            ])
+            ->all();
     }
 
     /**
