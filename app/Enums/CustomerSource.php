@@ -9,6 +9,7 @@ enum CustomerSource: string
     case Online = 'online';
     case Reseller = 'reseller';
     case Event = 'event';
+    case Cti = 'cti';
     case Other = 'other';
 
     public function label(): string
@@ -19,6 +20,7 @@ enum CustomerSource: string
             self::Online => 'Online',
             self::Reseller => 'Reseller',
             self::Event => 'Event',
+            self::Cti => 'Telepon Masuk',
             self::Other => 'Lainnya',
         };
     }

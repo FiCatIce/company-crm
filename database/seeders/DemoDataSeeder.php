@@ -64,12 +64,14 @@ class DemoDataSeeder extends Seeder
      */
     protected function seedAgents(): Collection
     {
+        // PBX extensions so CTI ingest can map agent_extension -> user_id.
         $agents = collect([
-            User::factory()->create(['name' => 'Sinta Wijaya'])->assignRole('supervisor'),
+            User::factory()->create(['name' => 'Sinta Wijaya', 'extension' => '1001'])->assignRole('supervisor'),
         ]);
 
-        foreach (['Dewi Lestari', 'Rangga Pratama', 'Putri Anggraini'] as $name) {
-            $agents->push(User::factory()->create(['name' => $name])->assignRole('cs'));
+        $roster = ['Dewi Lestari' => '1002', 'Rangga Pratama' => '1003', 'Putri Anggraini' => '1004'];
+        foreach ($roster as $name => $extension) {
+            $agents->push(User::factory()->create(['name' => $name, 'extension' => $extension])->assignRole('cs'));
         }
 
         return $agents;

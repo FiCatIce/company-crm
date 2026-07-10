@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
- * @property int $reseller_id
+ * @property int|null $reseller_id
  * @property int|null $assigned_to
  * @property string $name
  * @property string|null $phone

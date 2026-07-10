@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $occurred_at
  * @property InteractionSource $source
  * @property string|null $external_ref
+ * @property array<string, mixed>|null $meta
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -47,6 +48,7 @@ class Interaction extends Model
         'occurred_at',
         'source',
         'external_ref',
+        'meta',
     ];
 
     protected $casts = [
@@ -58,6 +60,7 @@ class Interaction extends Model
         'source' => InteractionSource::class,
         'duration_sec' => 'integer',
         'occurred_at' => 'datetime',
+        'meta' => 'array',
     ];
 
     /**
