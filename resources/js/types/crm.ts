@@ -66,6 +66,19 @@ export type MyInteractionRow = {
     subject: string | null;
 };
 
+export type RecentCallRow = {
+    id: number;
+    customer: { id: number; name: string } | null;
+    direction: 'in' | 'out' | null;
+    outcome: string | null;
+    outcome_label: string | null;
+    duration_sec: number | null;
+    occurred_at: string;
+    source: string;
+    user: { id: number; name: string } | null;
+    is_cti_lead: boolean;
+};
+
 export type InteractionOption = { value: string; label: string };
 
 export type InteractionOptions = {

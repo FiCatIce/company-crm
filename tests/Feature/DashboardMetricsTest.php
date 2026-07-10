@@ -1,6 +1,11 @@
 <?php
 
+use App\Enums\CustomerSource;
+use App\Enums\CustomerStatus;
+use App\Enums\InteractionSource;
+use App\Enums\InteractionType;
 use App\Models\Customer;
+use App\Models\Interaction;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\Transaction;
@@ -237,6 +242,65 @@ it('ranks the top resellers by revenue, excluding those with none', function () 
             ->where('topResellersByRevenue.0.revenue', 8000000)
             ->where('topResellersByRevenue.1.name', 'Reseller Kecil')
             ->where('topResellersByRevenue.1.revenue', 1000000));
+});
+
+it('lists recent calls (any source) newest first, calls only, flagging CTI leads', function () {
+    $reseller = Reseller::factory()->create();
+    $agent = userWithRole('cs');
+
+    $lead = Customer::factory()->create([
+        'reseller_id' => null,
+        'name' => 'Penelepon Baru',
+        'status' => CustomerStatus::Lead,
+        'source' => CustomerSource::Cti,
+    ]);
+    $known = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Customer Lama']);
+
+    // A non-call interaction must be excluded from the feed.
+    Interaction::factory()->forCustomer($known)->create([
+        'type' => InteractionType::Note,
+        'occurred_at' => now(),
+    ]);
+
+    // Older manual call, handled by an agent.
+    Interaction::factory()->forCustomer($known)->call()->create([
+        'user_id' => $agent->id,
+        'source' => InteractionSource::Manual,
+        'occurred_at' => now()->subHour(),
+    ]);
+
+    // Newest: a CTI call on the auto-lead, no agent resolved.
+    Interaction::factory()->forCustomer($lead)->call()->create([
+        'user_id' => null,
+        'source' => InteractionSource::Cti,
+        'occurred_at' => now(),
+    ]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('recentCalls', 2) // the note is excluded
+            ->where('recentCalls.0.customer.name', 'Penelepon Baru') // newest first
+            ->where('recentCalls.0.source', 'cti')
+            ->where('recentCalls.0.is_cti_lead', true)
+            ->where('recentCalls.0.user', null) // "oleh sistem"
+            ->where('recentCalls.1.customer.name', 'Customer Lama')
+            ->where('recentCalls.1.source', 'manual')
+            ->where('recentCalls.1.is_cti_lead', false)
+            ->where('recentCalls.1.user.id', $agent->id)
+            ->has('recentCalls.0', fn (Assert $row) => $row->hasAll([
+                'id', 'customer', 'direction', 'outcome', 'outcome_label',
+                'duration_sec', 'occurred_at', 'source', 'user', 'is_cti_lead',
+            ])));
+});
+
+it('caps the recent calls feed at ten', function () {
+    $customer = Customer::factory()->create();
+    Interaction::factory()->forCustomer($customer)->call()->count(12)->create();
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page->has('recentCalls', 10));
 });
 
 it('counts a warranty expiring today as active and surfaces it in expiringSoon with zero days left', function () {

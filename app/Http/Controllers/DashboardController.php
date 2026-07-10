@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CustomerSource;
+use App\Enums\CustomerStatus;
+use App\Enums\InteractionType;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Reseller;
@@ -41,8 +44,47 @@ class DashboardController extends Controller
             'expiringSoon' => $this->expiringSoon(),
             'topResellers' => $this->topResellers(),
             'topResellersByRevenue' => $this->topResellersByRevenue(),
+            'recentCalls' => $this->recentCalls(),
             'me' => $this->personalStats((int) $request->user()->id),
         ]);
+    }
+
+    /**
+     * The ten most recent calls org-wide (CTI + manual), newest first — a
+     * monitoring feed of live phone activity across every agent. Calls handled
+     * for a customer that is still a CTI-sourced lead are flagged so agents can
+     * spot fresh prospects that need enriching/following up.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function recentCalls(): array
+    {
+        return Interaction::query()
+            ->where('type', InteractionType::Call)
+            ->with(['customer:id,name,status,source', 'user:id,name'])
+            ->latest('occurred_at')
+            ->latest('id')
+            ->take(10)
+            ->get()
+            ->map(fn (Interaction $call) => [
+                'id' => $call->id,
+                'customer' => $call->customer
+                    ? ['id' => $call->customer->id, 'name' => $call->customer->name]
+                    : null,
+                'direction' => $call->direction?->value,
+                'outcome' => $call->outcome?->value,
+                'outcome_label' => $call->outcome?->label(),
+                'duration_sec' => $call->duration_sec,
+                'occurred_at' => $call->occurred_at->toIso8601String(),
+                'source' => $call->source->value,
+                'user' => $call->user
+                    ? ['id' => $call->user->id, 'name' => $call->user->name]
+                    : null,
+                'is_cti_lead' => $call->customer !== null
+                    && $call->customer->source === CustomerSource::Cti
+                    && $call->customer->status === CustomerStatus::Lead,
+            ])
+            ->all();
     }
 
     /**

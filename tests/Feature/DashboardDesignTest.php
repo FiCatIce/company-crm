@@ -84,6 +84,25 @@ test('the revenue-by-reseller card formats IDR with a proportional bar', functio
         ->toContain('WidgetEmptyState');
 });
 
+test('the recent calls card links to the 360, reuses call badges, flags leads, and has an empty state', function () {
+    expect(dashSource('components/RecentCallsCard.vue'))
+        ->toContain('Panggilan Terbaru')
+        ->toContain('CustomerController.show') // 360 link
+        ->toContain('InteractionTypeIcon') // reused call icon
+        ->toContain('InteractionOutcomeBadge') // reused outcome badge
+        ->toContain('formatDuration') // shared mm:ss formatter
+        ->toContain('Otomatis') // cti source chip
+        ->toContain('Prospek baru') // unmatched-lead highlight
+        ->toContain('bg-amber-50') // subtle lead row tint
+        ->toContain('WidgetEmptyState');
+});
+
+test('the dashboard wires the recent calls band', function () {
+    expect(dashSource('pages/Dashboard.vue'))
+        ->toContain('RecentCallsCard')
+        ->toContain('recentCalls');
+});
+
 test('the dashboard page is wired to the full data contract', function () {
     $this->seed(RoleSeeder::class);
     $this->withoutVite();
@@ -96,7 +115,7 @@ test('the dashboard page is wired to the full data contract', function () {
             ->hasAll([
                 'stats', 'trend', 'warrantyBreakdown',
                 'recentTransactions', 'expiringSoon', 'topResellers',
-                'topResellersByRevenue', 'me',
+                'topResellersByRevenue', 'recentCalls', 'me',
             ]));
 });
 
@@ -112,6 +131,7 @@ test('every widget falls back to the shared muted-icon empty state', function ()
         'components/ExpiringWarrantyCard.vue',
         'components/TopResellersCard.vue',
         'components/TransactionTrendChart.vue',
+        'components/RecentCallsCard.vue',
     ];
 
     foreach ($widgets as $widget) {
@@ -142,5 +162,6 @@ test('the dashboard renders calmly with zero data', function () {
             ->where('warrantyBreakdown.none', 0)
             ->has('recentTransactions', 0)
             ->has('expiringSoon', 0)
-            ->has('topResellers', 0));
+            ->has('topResellers', 0)
+            ->has('recentCalls', 0));
 });

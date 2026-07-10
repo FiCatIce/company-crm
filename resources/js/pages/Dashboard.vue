@@ -14,6 +14,7 @@ import {
 import { computed } from 'vue';
 import ExpiringWarrantyCard from '@/components/ExpiringWarrantyCard.vue';
 import MyInteractionsCard from '@/components/MyInteractionsCard.vue';
+import RecentCallsCard from '@/components/RecentCallsCard.vue';
 import RecentTransactionsCard from '@/components/RecentTransactionsCard.vue';
 import RevenueByResellerCard from '@/components/RevenueByResellerCard.vue';
 import StatCard from '@/components/StatCard.vue';
@@ -24,7 +25,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { formatIdr } from '@/lib/format';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
-import type { MyInteractionRow } from '@/types/crm';
+import type { MyInteractionRow, RecentCallRow } from '@/types/crm';
 
 type TrendPoint = { month: string; label: string; count: number };
 
@@ -69,6 +70,7 @@ const props = defineProps<{
     expiringSoon: ExpiringRow[];
     topResellers: TopReseller[];
     topResellersByRevenue: RevenueReseller[];
+    recentCalls: RecentCallRow[];
     me: {
         myCustomers: number;
         myInteractionsToday: number;
@@ -216,6 +218,9 @@ const revenueDelta = computed(() => {
                     <TopResellersCard :items="topResellers" />
                 </div>
             </div>
+
+            <!-- Band 4 — recent calls across the org (CTI + manual) -->
+            <RecentCallsCard :items="recentCalls" />
         </div>
     </AppLayout>
 </template>
