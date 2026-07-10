@@ -13,6 +13,7 @@ const props = defineProps<{
         product_id: number;
         reseller_id: number;
         purchased_at: string | null;
+        amount: string | null;
     };
     customers: { id: number; name: string }[];
     products: { id: number; name: string }[];

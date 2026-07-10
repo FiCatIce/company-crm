@@ -314,3 +314,79 @@ it('paginates the index at 10 per page', function () {
             ->has('transactions.data', 10)
             ->where('transactions.total', 15));
 });
+
+// ---------------------------------------------------------------------------
+// Amount / revenue value
+// ---------------------------------------------------------------------------
+
+it('stores the sale amount', function () {
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('transactions.store'), [
+            ...transactionLinks(),
+            'purchased_at' => now()->toDateString(),
+            'amount' => 1500000,
+        ])
+        ->assertRedirect(route('transactions.index'));
+
+    $this->assertDatabaseHas('transactions', ['amount' => '1500000.00']);
+});
+
+it('stores a transaction without an amount (null)', function () {
+    $links = transactionLinks();
+
+    $this->actingAs(userWithRole('admin'))
+        ->post(route('transactions.store'), [
+            ...$links,
+            'purchased_at' => now()->toDateString(),
+            'amount' => null,
+        ])
+        ->assertRedirect(route('transactions.index'));
+
+    $this->assertDatabaseHas('transactions', [...$links, 'amount' => null]);
+});
+
+it('rejects a negative or non-numeric amount', function () {
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('transactions.create'))
+        ->post(route('transactions.store'), [
+            ...transactionLinks(),
+            'purchased_at' => now()->toDateString(),
+            'amount' => -5,
+        ])
+        ->assertSessionHasErrors('amount');
+
+    $this->actingAs(userWithRole('admin'))
+        ->from(route('transactions.create'))
+        ->post(route('transactions.store'), [
+            ...transactionLinks(),
+            'purchased_at' => now()->toDateString(),
+            'amount' => 'gratis',
+        ])
+        ->assertSessionHasErrors('amount');
+});
+
+it('updates and clears the amount', function () {
+    $transaction = Transaction::factory()->create(['amount' => 2000000]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('transactions.update', $transaction), [
+            'customer_id' => $transaction->customer_id,
+            'product_id' => $transaction->product_id,
+            'reseller_id' => $transaction->reseller_id,
+            'purchased_at' => $transaction->purchased_at->toDateString(),
+            'amount' => null,
+        ])
+        ->assertRedirect(route('transactions.index'));
+
+    expect($transaction->fresh()->amount)->toBeNull();
+});
+
+it('exposes the amount on each index row', function () {
+    $customer = Customer::factory()->create();
+    Transaction::factory()->forCustomer($customer)->create(['amount' => 750000]);
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('transactions.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('transactions.data.0.amount', '750000.00'));
+});

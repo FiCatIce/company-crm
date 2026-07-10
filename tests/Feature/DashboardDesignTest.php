@@ -69,6 +69,21 @@ test('the my-interactions card links to the customer 360 and has an empty state'
         ->toContain('WidgetEmptyState');
 });
 
+test('the dashboard has a revenue band wired to the revenue props', function () {
+    expect(dashSource('pages/Dashboard.vue'))
+        ->toContain('Total Pendapatan')
+        ->toContain('RevenueByResellerCard')
+        ->toContain('stats.revenue');
+});
+
+test('the revenue-by-reseller card formats IDR with a proportional bar', function () {
+    expect(dashSource('components/RevenueByResellerCard.vue'))
+        ->toContain('per pendapatan')
+        ->toContain('formatIdr') // shared IDR formatter reused
+        ->toContain('bg-primary') // blue proportion fill
+        ->toContain('WidgetEmptyState');
+});
+
 test('the dashboard page is wired to the full data contract', function () {
     $this->seed(RoleSeeder::class);
     $this->withoutVite();
@@ -80,7 +95,8 @@ test('the dashboard page is wired to the full data contract', function () {
             ->component('Dashboard')
             ->hasAll([
                 'stats', 'trend', 'warrantyBreakdown',
-                'recentTransactions', 'expiringSoon', 'topResellers', 'me',
+                'recentTransactions', 'expiringSoon', 'topResellers',
+                'topResellersByRevenue', 'me',
             ]));
 });
 
@@ -118,6 +134,9 @@ test('the dashboard renders calmly with zero data', function () {
             ->where('stats.transactions', 0)
             ->where('stats.customersThisMonth', 0)
             ->where('stats.activeWarranties', 0)
+            ->where('stats.revenue', 0)
+            ->where('stats.revenueThisMonth', 0)
+            ->has('topResellersByRevenue', 0)
             ->where('warrantyBreakdown.active', 0)
             ->where('warrantyBreakdown.expired', 0)
             ->where('warrantyBreakdown.none', 0)

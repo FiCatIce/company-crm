@@ -34,6 +34,8 @@ trait TransactionValidationRules
             ],
             // A purchase can't be recorded in the future.
             'purchased_at' => ['required', 'date', 'before_or_equal:today'],
+            // Sale value — optional (legacy rows have none); fits decimal(14,2).
+            'amount' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
         ];
     }
 }

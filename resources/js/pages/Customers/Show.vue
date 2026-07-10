@@ -232,7 +232,11 @@ function onSaved() {
                                     >
                                     <span
                                         class="shrink-0 text-sm font-medium text-foreground tabular-nums"
-                                        >{{ formatIdr(t.amount) }}</span
+                                        >{{
+                                            t.amount === null
+                                                ? '—'
+                                                : formatIdr(t.amount)
+                                        }}</span
                                     >
                                 </div>
                                 <div

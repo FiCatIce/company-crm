@@ -26,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import WarrantyBadge from '@/components/WarrantyBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatIdr } from '@/lib/format';
 import type { BreadcrumbItem } from '@/types';
 
 type TransactionRow = {
@@ -37,6 +38,7 @@ type TransactionRow = {
     warranty_months: number;
     warranty_expires_at: string | null;
     is_under_warranty: boolean;
+    amount: string | null;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
@@ -181,6 +183,11 @@ const initial = (name: string | null) =>
                                     Tanggal Beli
                                 </th>
                                 <th
+                                    class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Nilai
+                                </th>
+                                <th
                                     class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                                 >
                                     Garansi
@@ -228,6 +235,15 @@ const initial = (name: string | null) =>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">
                                     {{ t.purchased_at ?? '—' }}
+                                </td>
+                                <td
+                                    class="px-6 py-4 text-right font-medium text-foreground tabular-nums"
+                                >
+                                    {{
+                                        t.amount === null
+                                            ? '—'
+                                            : formatIdr(t.amount)
+                                    }}
                                 </td>
                                 <td class="px-6 py-4">
                                     <WarrantyBadge
@@ -329,7 +345,7 @@ const initial = (name: string | null) =>
                             </tr>
 
                             <tr v-if="transactions.data.length === 0">
-                                <td colspan="6" class="px-6 py-16 text-center">
+                                <td colspan="7" class="px-6 py-16 text-center">
                                     <div
                                         class="mx-auto flex max-w-sm flex-col items-center gap-2"
                                     >

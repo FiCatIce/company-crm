@@ -16,6 +16,7 @@ const props = defineProps<{
         product_id: number;
         reseller_id: number;
         purchased_at: string | null;
+        amount: string | null;
     } | null;
 }>();
 
@@ -90,5 +91,20 @@ const selectClass =
             required
         />
         <InputError :message="errors.purchased_at" />
+    </div>
+
+    <div class="grid gap-2">
+        <Label for="amount">Nilai (Rp)</Label>
+        <Input
+            id="amount"
+            type="number"
+            name="amount"
+            min="0"
+            step="0.01"
+            inputmode="numeric"
+            :default-value="transaction?.amount ?? ''"
+            placeholder="Opsional — mis. 1500000"
+        />
+        <InputError :message="errors.amount" />
     </div>
 </template>

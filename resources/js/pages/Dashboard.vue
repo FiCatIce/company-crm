@@ -6,17 +6,22 @@ import {
     Receipt,
     ShieldAlert,
     ShieldCheck,
+    TrendingUp,
     UserCheck,
     Users,
+    Wallet,
 } from '@lucide/vue';
+import { computed } from 'vue';
 import ExpiringWarrantyCard from '@/components/ExpiringWarrantyCard.vue';
 import MyInteractionsCard from '@/components/MyInteractionsCard.vue';
 import RecentTransactionsCard from '@/components/RecentTransactionsCard.vue';
+import RevenueByResellerCard from '@/components/RevenueByResellerCard.vue';
 import StatCard from '@/components/StatCard.vue';
 import TopResellersCard from '@/components/TopResellersCard.vue';
 import TransactionTrendChart from '@/components/TransactionTrendChart.vue';
 import WarrantyDonut from '@/components/WarrantyDonut.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatIdr } from '@/lib/format';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import type { MyInteractionRow } from '@/types/crm';
@@ -44,7 +49,9 @@ type ExpiringRow = {
 
 type TopReseller = { id: number; name: string; customers_count: number };
 
-defineProps<{
+type RevenueReseller = { id: number; name: string; revenue: number };
+
+const props = defineProps<{
     stats: {
         customers: number;
         customersThisMonth: number;
@@ -52,12 +59,16 @@ defineProps<{
         transactionsThisMonth: number;
         activeWarranties: number;
         activeResellers: number;
+        revenue: number;
+        revenueThisMonth: number;
+        revenueLastMonth: number;
     };
     trend: TrendPoint[];
     warrantyBreakdown: { active: number; expired: number; none: number };
     recentTransactions: RecentRow[];
     expiringSoon: ExpiringRow[];
     topResellers: TopReseller[];
+    topResellersByRevenue: RevenueReseller[];
     me: {
         myCustomers: number;
         myInteractionsToday: number;
@@ -69,6 +80,23 @@ defineProps<{
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
 ];
+
+// Month-over-month revenue movement, shown as the "this month" card's subtext.
+const revenueDelta = computed(() => {
+    const current = props.stats.revenueThisMonth;
+    const previous = props.stats.revenueLastMonth;
+
+    if (previous <= 0) {
+        return current > 0
+            ? 'pendapatan pertama bulan ini'
+            : 'belum ada bulan ini';
+    }
+
+    const pct = Math.round(((current - previous) / previous) * 100);
+    const arrow = pct >= 0 ? '▲' : '▼';
+
+    return `${arrow} ${Math.abs(pct)}% dari bulan lalu`;
+});
 </script>
 
 <template>
@@ -143,6 +171,27 @@ const breadcrumbs: BreadcrumbItem[] = [
                     :icon="Network"
                     description="punya customer atau transaksi"
                 />
+            </div>
+
+            <!-- Band 1b — revenue -->
+            <div class="grid gap-6 lg:grid-cols-3">
+                <div class="flex flex-col gap-4">
+                    <StatCard
+                        label="Total Pendapatan"
+                        :value="formatIdr(stats.revenue)"
+                        :icon="Wallet"
+                        description="akumulasi semua transaksi"
+                    />
+                    <StatCard
+                        label="Pendapatan Bulan Ini"
+                        :value="formatIdr(stats.revenueThisMonth)"
+                        :icon="TrendingUp"
+                        :description="revenueDelta"
+                    />
+                </div>
+                <div class="lg:col-span-2">
+                    <RevenueByResellerCard :items="topResellersByRevenue" />
+                </div>
             </div>
 
             <!-- Band 2 — trend + warranty donut -->

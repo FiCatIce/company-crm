@@ -189,6 +189,56 @@ it('keeps a warranty active through the end of its expiry day (endOfDay boundary
         ->and($expiredYesterday->is_under_warranty)->toBeFalse();
 });
 
+it('sums revenue all-time and per month, ignoring null amounts', function () {
+    $reseller = Reseller::factory()->create();
+    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $product = Product::factory()->create();
+
+    $tx = fn ($amount, $purchasedAt) => Transaction::factory()->create([
+        'customer_id' => $customer->id,
+        'reseller_id' => $reseller->id,
+        'product_id' => $product->id,
+        'amount' => $amount,
+        'purchased_at' => $purchasedAt,
+    ]);
+
+    $tx(1_000_000, now());                                        // this month
+    $tx(500_000, now());                                          // this month
+    $tx(null, now());                                             // null → ignored by SUM
+    $tx(2_000_000, now()->subMonthNoOverflow()->startOfMonth()); // last month
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('stats.revenue', 3500000)           // 1M + 500k + 2M (null skipped)
+            ->where('stats.revenueThisMonth', 1500000)
+            ->where('stats.revenueLastMonth', 2000000));
+});
+
+it('ranks the top resellers by revenue, excluding those with none', function () {
+    $big = Reseller::factory()->create(['name' => 'Reseller Kaya']);
+    $small = Reseller::factory()->create(['name' => 'Reseller Kecil']);
+    $none = Reseller::factory()->create(['name' => 'Reseller Nihil']);
+
+    $bigCust = Customer::factory()->create(['reseller_id' => $big->id]);
+    $smallCust = Customer::factory()->create(['reseller_id' => $small->id]);
+    $noneCust = Customer::factory()->create(['reseller_id' => $none->id]);
+
+    Transaction::factory()->forCustomer($bigCust)->create(['amount' => 5_000_000]);
+    Transaction::factory()->forCustomer($bigCust)->create(['amount' => 3_000_000]);
+    Transaction::factory()->forCustomer($smallCust)->create(['amount' => 1_000_000]);
+    Transaction::factory()->forCustomer($noneCust)->create(['amount' => null]); // no revenue → excluded
+
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('topResellersByRevenue', 2)
+            ->where('topResellersByRevenue.0.name', 'Reseller Kaya')
+            ->where('topResellersByRevenue.0.revenue', 8000000)
+            ->where('topResellersByRevenue.1.name', 'Reseller Kecil')
+            ->where('topResellersByRevenue.1.revenue', 1000000));
+});
+
 it('counts a warranty expiring today as active and surfaces it in expiringSoon with zero days left', function () {
     $reseller = Reseller::factory()->create();
     $customer = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Kadaluarsa Hari Ini']);

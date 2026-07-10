@@ -48,6 +48,7 @@ class TransactionController extends Controller
                 'warranty_months' => $transaction->product?->warranty_months,
                 'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
                 'is_under_warranty' => $transaction->is_under_warranty,
+                'amount' => $transaction->amount,
             ]);
 
         return Inertia::render('Transactions/Index', [
@@ -116,6 +117,7 @@ class TransactionController extends Controller
                 'product_id' => $transaction->product_id,
                 'reseller_id' => $transaction->reseller_id,
                 'purchased_at' => $transaction->purchased_at->toDateString(),
+                'amount' => $transaction->amount,
             ],
             ...$this->formOptions(),
         ]);

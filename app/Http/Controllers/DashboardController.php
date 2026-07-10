@@ -33,14 +33,58 @@ class DashboardController extends Controller
                 'transactionsThisMonth' => Transaction::where('purchased_at', '>=', now()->startOfMonth()->toDateString())->count(),
                 'activeWarranties' => $warranty['active'],
                 'activeResellers' => Reseller::has('customers')->orHas('transactions')->count(),
+                ...$this->revenueStats(),
             ],
             'trend' => $this->transactionTrend(),
             'warrantyBreakdown' => $warranty,
             'recentTransactions' => $this->recentTransactions(),
             'expiringSoon' => $this->expiringSoon(),
             'topResellers' => $this->topResellers(),
+            'topResellersByRevenue' => $this->topResellersByRevenue(),
             'me' => $this->personalStats((int) $request->user()->id),
         ]);
+    }
+
+    /**
+     * Revenue totals via DB SUM (nulls are ignored by SQL SUM — no PHP scan).
+     * All-time plus this/last month so the UI can show a month-over-month delta.
+     *
+     * @return array{revenue: float, revenueThisMonth: float, revenueLastMonth: float}
+     */
+    private function revenueStats(): array
+    {
+        $thisMonthStart = now()->startOfMonth()->toDateString();
+        $lastMonthStart = now()->subMonthNoOverflow()->startOfMonth()->toDateString();
+        $lastMonthEnd = now()->startOfMonth()->subDay()->toDateString();
+
+        return [
+            'revenue' => (float) Transaction::sum('amount'),
+            'revenueThisMonth' => (float) Transaction::where('purchased_at', '>=', $thisMonthStart)->sum('amount'),
+            'revenueLastMonth' => (float) Transaction::whereBetween('purchased_at', [$lastMonthStart, $lastMonthEnd])->sum('amount'),
+        ];
+    }
+
+    /**
+     * The five resellers with the highest total sales value (revenue > 0). The
+     * per-reseller SUM is computed in SQL via withSum, not by scanning in PHP.
+     *
+     * @return array<int, array{id: int, name: string, revenue: float}>
+     */
+    private function topResellersByRevenue(): array
+    {
+        return Reseller::query()
+            ->withSum('transactions as revenue', 'amount')
+            ->orderByDesc('revenue')
+            ->take(5)
+            ->get()
+            ->filter(fn (Reseller $reseller) => (float) $reseller->getAttribute('revenue') > 0)
+            ->map(fn (Reseller $reseller) => [
+                'id' => $reseller->id,
+                'name' => $reseller->name,
+                'revenue' => (float) $reseller->getAttribute('revenue'),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
