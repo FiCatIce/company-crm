@@ -17,7 +17,23 @@ trait TransactionValidationRules
     protected function transactionRules(): array
     {
         return [
-            'customer_id' => ['required', 'integer', Rule::exists('customers', 'id')],
+            'customer_id' => [
+                'required', 'integer', Rule::exists('customers', 'id'),
+                // Own-scoped users (Sales) may only transact for customers within
+                // their visibility scope — never another rep's customer. Skipped
+                // when the id doesn't exist (the exists rule reports that).
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $user = $this->user();
+
+                    if ($user === null || ! Customer::whereKey($value)->exists()) {
+                        return;
+                    }
+
+                    if (! Customer::visibleTo($user)->whereKey($value)->exists()) {
+                        $fail('Customer tidak valid.');
+                    }
+                },
+            ],
             'product_id' => ['required', 'integer', Rule::exists('products', 'id')],
             'reseller_id' => [
                 'required', 'integer', Rule::exists('resellers', 'id'),

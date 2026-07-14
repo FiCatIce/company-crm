@@ -60,16 +60,17 @@ const props = defineProps<{
         transactionsThisMonth: number;
         activeWarranties: number;
         activeResellers: number;
-        revenue: number;
-        revenueThisMonth: number;
-        revenueLastMonth: number;
+        // Revenue is omitted (absent) without revenue.view — see DESIGN_RBAC.md §4.4.
+        revenue?: number;
+        revenueThisMonth?: number;
+        revenueLastMonth?: number;
     };
     trend: TrendPoint[];
     warrantyBreakdown: { active: number; expired: number; none: number };
     recentTransactions: RecentRow[];
     expiringSoon: ExpiringRow[];
     topResellers: TopReseller[];
-    topResellersByRevenue: RevenueReseller[];
+    topResellersByRevenue?: RevenueReseller[];
     recentCalls: RecentCallRow[];
     me: {
         myCustomers: number;
@@ -83,10 +84,14 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
 ];
 
+// Revenue widgets are present only for users with revenue.view (the backend
+// omits the props otherwise).
+const hasRevenue = computed(() => props.stats.revenue !== undefined);
+
 // Month-over-month revenue movement, shown as the "this month" card's subtext.
 const revenueDelta = computed(() => {
-    const current = props.stats.revenueThisMonth;
-    const previous = props.stats.revenueLastMonth;
+    const current = props.stats.revenueThisMonth ?? 0;
+    const previous = props.stats.revenueLastMonth ?? 0;
 
     if (previous <= 0) {
         return current > 0
@@ -175,24 +180,24 @@ const revenueDelta = computed(() => {
                 />
             </div>
 
-            <!-- Band 1b — revenue -->
-            <div class="grid gap-6 lg:grid-cols-3">
+            <!-- Band 1b — revenue (only for users who may see money) -->
+            <div v-if="hasRevenue" class="grid gap-6 lg:grid-cols-3">
                 <div class="flex flex-col gap-4">
                     <StatCard
                         label="Total Pendapatan"
-                        :value="formatIdr(stats.revenue)"
+                        :value="formatIdr(stats.revenue ?? 0)"
                         :icon="Wallet"
                         description="akumulasi semua transaksi"
                     />
                     <StatCard
                         label="Pendapatan Bulan Ini"
-                        :value="formatIdr(stats.revenueThisMonth)"
+                        :value="formatIdr(stats.revenueThisMonth ?? 0)"
                         :icon="TrendingUp"
                         :description="revenueDelta"
                     />
                 </div>
                 <div class="lg:col-span-2">
-                    <RevenueByResellerCard :items="topResellersByRevenue" />
+                    <RevenueByResellerCard :items="topResellersByRevenue ?? []" />
                 </div>
             </div>
 

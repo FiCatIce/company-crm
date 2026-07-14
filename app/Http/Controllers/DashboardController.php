@@ -18,11 +18,16 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        abort_unless($request->user()->can(PermissionName::DashboardView->value), 403);
+        $user = $request->user();
+        abort_unless($user->can(PermissionName::DashboardView->value), 403);
 
+        // Money on the dashboard (revenue totals + revenue ranking) is gated by
+        // revenue.view and OMITTED — not zeroed — for everyone else (Sales, and
+        // later maintenance/CS/admin). See DESIGN_RBAC.md §4.4.
+        $canSeeRevenue = $user->can(PermissionName::RevenueView->value);
         $warranty = $this->warrantyBreakdown();
 
-        return Inertia::render('Dashboard', [
+        $props = [
             'stats' => [
                 'customers' => Customer::count(),
                 'customersThisMonth' => Customer::where('created_at', '>=', now()->startOfMonth())->count(),
@@ -30,17 +35,22 @@ class DashboardController extends Controller
                 'transactionsThisMonth' => Transaction::where('purchased_at', '>=', now()->startOfMonth()->toDateString())->count(),
                 'activeWarranties' => $warranty['active'],
                 'activeResellers' => Reseller::has('customers')->orHas('transactions')->count(),
-                ...$this->revenueStats(),
+                ...($canSeeRevenue ? $this->revenueStats() : []),
             ],
             'trend' => $this->transactionTrend(),
             'warrantyBreakdown' => $warranty,
             'recentTransactions' => $this->recentTransactions(),
             'expiringSoon' => $this->expiringSoon(),
             'topResellers' => $this->topResellers(),
-            'topResellersByRevenue' => $this->topResellersByRevenue(),
             'recentCalls' => $this->recentCalls(),
-            'me' => $this->personalStats((int) $request->user()->id),
-        ]);
+            'me' => $this->personalStats((int) $user->id),
+        ];
+
+        if ($canSeeRevenue) {
+            $props['topResellersByRevenue'] = $this->topResellersByRevenue();
+        }
+
+        return Inertia::render('Dashboard', $props);
     }
 
     /**

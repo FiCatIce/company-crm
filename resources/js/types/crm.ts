@@ -31,7 +31,8 @@ export type CustomerTransactionRow = {
     warranty_months: number | null;
     warranty_expires_at: string;
     is_under_warranty: boolean;
-    amount: string | null;
+    // Omitted (absent) when the viewer may not see money — see DESIGN_RBAC.md §4.3.
+    amount?: string | null;
 };
 
 export type CustomerDetail = {
@@ -53,7 +54,8 @@ export type CustomerStats = {
     interactionsCount: number;
     lastContactedAt: string | null;
     transactionsCount: number;
-    totalSpend: number;
+    // Omitted (absent) when the viewer may not see money.
+    totalSpend?: number;
 };
 
 export type MyInteractionRow = {

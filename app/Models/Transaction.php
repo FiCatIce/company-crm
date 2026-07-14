@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\PermissionName;
 use Database\Factories\TransactionFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -51,6 +53,30 @@ class Transaction extends Model
     public function reseller(): BelongsTo
     {
         return $this->belongsTo(Reseller::class);
+    }
+
+    /**
+     * Constrain a query to the transactions $user may see (DESIGN_RBAC.md §4.2):
+     * view.all → everything; view.own → transactions of customers the user can
+     * see (delegates to Customer::visibleTo, so the two never diverge); otherwise
+     * nothing.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->can(PermissionName::TransactionViewAll->value)) {
+            return $query;
+        }
+
+        if ($user->can(PermissionName::TransactionViewOwn->value)) {
+            // Transactions of the customers this user may see. Subquery (rather
+            // than whereHas) keeps the customer-visibility logic in one place.
+            return $query->whereIn('customer_id', Customer::visibleTo($user)->select('id'));
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
     /**

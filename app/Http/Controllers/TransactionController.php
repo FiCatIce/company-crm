@@ -25,8 +25,12 @@ class TransactionController extends Controller
         $this->authorize('viewAny', Transaction::class);
 
         $search = trim((string) $request->input('search', ''));
+        $canSeeAmount = $this->canSeeAmount($request->user());
 
         $transactions = Transaction::query()
+            // Row-level scope first, so search operates strictly within what this
+            // user may see (Sales → only their own customers' transactions).
+            ->visibleTo($request->user())
             ->with(['customer:id,name', 'product:id,name,warranty_months', 'reseller:id,name'])
             ->when($search !== '', function ($query) use ($search) {
                 // Case-insensitive across drivers (ILIKE on Postgres, lower() on SQLite);
@@ -39,37 +43,48 @@ class TransactionController extends Controller
             ->latest('id')
             ->paginate(10)
             ->withQueryString()
-            ->through(fn (Transaction $transaction) => [
-                'id' => $transaction->id,
-                'customer' => $transaction->customer?->name,
-                'product' => $transaction->product?->name,
-                'reseller' => $transaction->reseller?->name,
-                'purchased_at' => $transaction->purchased_at->toDateString(),
-                'warranty_months' => $transaction->product?->warranty_months,
-                'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
-                'is_under_warranty' => $transaction->is_under_warranty,
-                'amount' => $transaction->amount,
-            ]);
+            ->through(function (Transaction $transaction) use ($canSeeAmount) {
+                $row = [
+                    'id' => $transaction->id,
+                    'customer' => $transaction->customer?->name,
+                    'product' => $transaction->product?->name,
+                    'reseller' => $transaction->reseller?->name,
+                    'purchased_at' => $transaction->purchased_at->toDateString(),
+                    'warranty_months' => $transaction->product?->warranty_months,
+                    'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
+                    'is_under_warranty' => $transaction->is_under_warranty,
+                ];
+
+                // OMIT amount entirely (never send null) when the viewer lacks a
+                // money permission — see DESIGN_RBAC.md §4.3.
+                if ($canSeeAmount) {
+                    $row['amount'] = $transaction->amount;
+                }
+
+                return $row;
+            });
 
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions,
-            'stats' => $this->stats(),
+            'stats' => $this->stats($request),
             'filters' => ['search' => $search],
             'can' => $this->abilities($request, new Transaction),
         ]);
     }
 
     /**
-     * Summary metrics for the index header cards (whole dataset, ignores filters).
+     * Summary metrics for the index header cards (scoped to what the user sees,
+     * ignores filters).
      *
      * @return array{total: int, underWarranty: int, expired: int}
      */
-    private function stats(): array
+    private function stats(Request $request): array
     {
         // Warranty state comes from the model accessor, so resolve it in PHP.
         // "Expired" counts only transactions whose product carried a warranty
         // that has since ended — products sold without warranty are neither.
         $transactions = Transaction::query()
+            ->visibleTo($request->user())
             ->with('product:id,warranty_months')
             ->get(['id', 'product_id', 'purchased_at']);
 
@@ -89,7 +104,7 @@ class TransactionController extends Controller
     {
         $this->authorize('create', Transaction::class);
 
-        return Inertia::render('Transactions/Create', $this->formOptions());
+        return Inertia::render('Transactions/Create', $this->formOptions($request));
     }
 
     public function store(StoreTransactionRequest $request): RedirectResponse
@@ -119,7 +134,7 @@ class TransactionController extends Controller
                 'purchased_at' => $transaction->purchased_at->toDateString(),
                 'amount' => $transaction->amount,
             ],
-            ...$this->formOptions(),
+            ...$this->formOptions($request),
         ]);
     }
 
@@ -142,14 +157,16 @@ class TransactionController extends Controller
     }
 
     /**
-     * Select options shared by the create and edit forms.
+     * Select options shared by the create and edit forms. The customer list is
+     * scoped so a Sales user can only pick (and thus transact for) their own
+     * customers; products and resellers are shared reference data.
      *
      * @return array<string, mixed>
      */
-    private function formOptions(): array
+    private function formOptions(Request $request): array
     {
         return [
-            'customers' => Customer::orderBy('name')->get(['id', 'name']),
+            'customers' => Customer::visibleTo($request->user())->orderBy('name')->get(['id', 'name']),
             'products' => Product::orderBy('name')->get(['id', 'name']),
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
         ];

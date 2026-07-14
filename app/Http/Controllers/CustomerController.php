@@ -198,6 +198,7 @@ class CustomerController extends Controller
         $this->authorize('view', $customer);
 
         $user = $request->user();
+        $canSeeAmount = $this->canSeeAmount($user);
 
         $customer->load(['reseller:id,name', 'owner:id,name']);
 
@@ -269,21 +270,33 @@ class CustomerController extends Controller
                 'created_at' => $customer->created_at?->toIso8601String(),
             ],
             'timeline' => $timeline,
-            'transactions' => $transactions->map(fn (Transaction $transaction) => [
-                'id' => $transaction->id,
-                'product' => $transaction->product?->name,
-                'purchased_at' => $transaction->purchased_at->toDateString(),
-                'warranty_months' => $transaction->product?->warranty_months,
-                'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
-                'is_under_warranty' => $transaction->is_under_warranty,
-                'amount' => $transaction->amount,
-            ])->all(),
+            'transactions' => $transactions->map(function (Transaction $transaction) use ($canSeeAmount) {
+                $row = [
+                    'id' => $transaction->id,
+                    'product' => $transaction->product?->name,
+                    'purchased_at' => $transaction->purchased_at->toDateString(),
+                    'warranty_months' => $transaction->product?->warranty_months,
+                    'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
+                    'is_under_warranty' => $transaction->is_under_warranty,
+                ];
+
+                // Maintenance/CS-without-money see WHICH products were bought but
+                // never the price — omit amount entirely (DESIGN_RBAC.md §4.3).
+                if ($canSeeAmount) {
+                    $row['amount'] = $transaction->amount;
+                }
+
+                return $row;
+            })->all(),
             'warrantySummary' => $warrantySummary,
             'stats' => [
                 'interactionsCount' => $timeline->total(),
                 'lastContactedAt' => $lastContacted?->occurred_at->toIso8601String(),
                 'transactionsCount' => $transactions->count(),
-                'totalSpend' => (float) $transactions->sum(fn (Transaction $transaction) => (float) $transaction->amount),
+                // totalSpend omitted (not null) when the viewer can't see money.
+                ...($canSeeAmount
+                    ? ['totalSpend' => (float) $transactions->sum(fn (Transaction $transaction) => (float) $transaction->amount)]
+                    : []),
             ],
             'statuses' => $this->statusOptions(),
             'users' => $this->userOptions($request),

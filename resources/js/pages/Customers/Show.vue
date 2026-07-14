@@ -96,6 +96,17 @@ function openEdit(item: InteractionRow) {
 function onSaved() {
     modalOpen.value = false;
 }
+
+// Price label for a transaction row: null when the viewer may not see money (the
+// backend omits `amount` entirely), so the caller hides the price; '—' for a
+// recorded-but-empty amount; otherwise the formatted value.
+function amountText(amount: string | null | undefined): string | null {
+    if (amount === undefined) {
+        return null;
+    }
+
+    return amount === null ? '—' : formatIdr(amount);
+}
 </script>
 
 <template>
@@ -183,6 +194,7 @@ function onSaved() {
                             </div>
                         </dl>
                         <div
+                            v-if="stats.totalSpend !== undefined"
                             class="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm"
                         >
                             <span
@@ -196,7 +208,7 @@ function onSaved() {
                             <span
                                 class="font-semibold text-foreground tabular-nums"
                             >
-                                {{ formatIdr(stats.totalSpend) }}
+                                {{ formatIdr(stats.totalSpend ?? 0) }}
                             </span>
                         </div>
                     </div>
@@ -231,12 +243,9 @@ function onSaved() {
                                         >{{ t.product ?? '—' }}</span
                                     >
                                     <span
+                                        v-if="amountText(t.amount) !== null"
                                         class="shrink-0 text-sm font-medium text-foreground tabular-nums"
-                                        >{{
-                                            t.amount === null
-                                                ? '—'
-                                                : formatIdr(t.amount)
-                                        }}</span
+                                        >{{ amountText(t.amount) }}</span
                                     >
                                 </div>
                                 <div
