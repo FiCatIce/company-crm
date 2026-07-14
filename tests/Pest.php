@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\RoleName;
 use App\Models\User;
+use App\Support\RolePresets;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -51,9 +53,15 @@ function something()
 }
 
 /**
- * Create a user assigned the given spatie role (roles must already be seeded).
+ * Create a user provisioned with the given role and its preset permissions
+ * (roles + permissions must already be seeded — RoleSeeder does both). Runtime
+ * authorization checks permissions, so the preset must be synced, not just the
+ * role assigned.
  */
 function userWithRole(string $role): User
 {
-    return User::factory()->create()->assignRole($role);
+    $user = User::factory()->create();
+    RolePresets::assign($user, RoleName::from($role));
+
+    return $user;
 }

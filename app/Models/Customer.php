@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property int|null $reseller_id
  * @property int|null $assigned_to
+ * @property int|null $created_by
  * @property string $name
  * @property string|null $phone
  * @property string|null $phone_normalized
@@ -29,11 +30,15 @@ class Customer extends Model
     /** @use HasFactory<CustomerFactory> */
     use HasFactory;
 
+    // created_by is deliberately NOT fillable: it is the immutable "who entered
+    // this customer" attribution, set server-side on create so it cannot be
+    // forged via mass assignment (DESIGN_RBAC.md §4.1).
     protected $fillable = ['reseller_id', 'assigned_to', 'name', 'phone', 'email', 'address', 'status', 'source'];
 
     protected $casts = [
         'reseller_id' => 'integer',
         'assigned_to' => 'integer',
+        'created_by' => 'integer',
         'status' => CustomerStatus::class,
         'source' => CustomerSource::class,
     ];
@@ -70,6 +75,17 @@ class Customer extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /**
+     * The staff member who first entered this customer (immutable). Becomes the
+     * Sales visibility gate in B1; coexists with the mutable owner.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

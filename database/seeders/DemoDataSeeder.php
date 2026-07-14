@@ -3,12 +3,14 @@
 namespace Database\Seeders;
 
 use App\Enums\CustomerStatus;
+use App\Enums\RoleName;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\RolePresets;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
@@ -58,23 +60,40 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * Seed a small pool of staff agents (one supervisor + a few CS).
+     * Seed a small pool of staff agents across the roles (one of each new role
+     * so later batches have realistic fixtures). PBX extensions let CTI ingest
+     * map agent_extension -> user_id.
      *
      * @return Collection<int, User>
      */
     protected function seedAgents(): Collection
     {
-        // PBX extensions so CTI ingest can map agent_extension -> user_id.
         $agents = collect([
-            User::factory()->create(['name' => 'Sinta Wijaya', 'extension' => '1001'])->assignRole('supervisor'),
+            $this->makeAgent('Sinta Wijaya', '1001', RoleName::Supervisor),
         ]);
 
-        $roster = ['Dewi Lestari' => '1002', 'Rangga Pratama' => '1003', 'Putri Anggraini' => '1004'];
-        foreach ($roster as $name => $extension) {
-            $agents->push(User::factory()->create(['name' => $name, 'extension' => $extension])->assignRole('cs'));
+        $cs = ['Dewi Lestari' => '1002', 'Rangga Pratama' => '1003', 'Putri Anggraini' => '1004'];
+        foreach ($cs as $name => $extension) {
+            $agents->push($this->makeAgent($name, $extension, RoleName::Cs));
         }
 
+        // New-role examples. Created but not yet exercised — their row-scoping
+        // lands in B1 (DESIGN_RBAC.md §8).
+        $agents->push($this->makeAgent('Bayu Saputra', '1005', RoleName::Sales));
+        $agents->push($this->makeAgent('Maya Kusuma', '1006', RoleName::Maintenance));
+
         return $agents;
+    }
+
+    /**
+     * Create a staff user and provision it from its role preset.
+     */
+    protected function makeAgent(string $name, string $extension, RoleName $role): User
+    {
+        $user = User::factory()->create(['name' => $name, 'extension' => $extension]);
+        RolePresets::assign($user, $role);
+
+        return $user;
     }
 
     /**

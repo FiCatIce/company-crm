@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Enums\RoleName;
 use App\Models\User;
+use App\Support\RolePresets;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -19,10 +21,11 @@ class DatabaseSeeder extends Seeder
 
         // User::factory(10)->create();
 
-        User::factory()->create([
+        $admin = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-        ])->assignRole('admin');
+        ]);
+        RolePresets::assign($admin, RoleName::Admin);
 
         $this->call(DemoDataSeeder::class);
     }

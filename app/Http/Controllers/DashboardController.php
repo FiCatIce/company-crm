@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\CustomerSource;
 use App\Enums\CustomerStatus;
 use App\Enums\InteractionType;
+use App\Enums\PermissionName;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Reseller;
@@ -15,16 +16,9 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    /**
-     * Roles allowed to view the dashboard (same set that may manage the CRM).
-     *
-     * @var list<string>
-     */
-    private const VIEW_ROLES = ['admin', 'supervisor', 'cs'];
-
     public function __invoke(Request $request): Response
     {
-        abort_unless($request->user()->hasAnyRole(self::VIEW_ROLES), 403);
+        abort_unless($request->user()->can(PermissionName::DashboardView->value), 403);
 
         $warranty = $this->warrantyBreakdown();
 

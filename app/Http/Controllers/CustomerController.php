@@ -171,7 +171,10 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request): RedirectResponse
     {
-        Customer::create($request->validated());
+        $customer = new Customer($request->validated());
+        // Attribution set server-side (created_by is guarded) so it cannot be forged.
+        $customer->created_by = $request->user()->id;
+        $customer->save();
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer berhasil ditambahkan.');
