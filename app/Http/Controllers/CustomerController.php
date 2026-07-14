@@ -7,6 +7,7 @@ use App\Enums\CustomerStatus;
 use App\Enums\InteractionDirection;
 use App\Enums\InteractionOutcome;
 use App\Enums\InteractionType;
+use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
@@ -43,6 +44,9 @@ class CustomerController extends Controller
         $authId = (int) $request->user()->id;
 
         $customers = Customer::query()
+            // Row-level scope first, so every filter below (search, owner, …)
+            // operates strictly WITHIN what this user may see — never a bypass.
+            ->visibleTo($request->user())
             ->with(['reseller:id,name', 'owner:id,name'])
             ->when($search !== '', function ($query) use ($search) {
                 // Case-insensitive across drivers (ILIKE on Postgres, lower() on SQLite);
@@ -80,8 +84,8 @@ class CustomerController extends Controller
             'customers' => $customers,
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
-            'users' => $this->userOptions(),
-            'stats' => $this->stats(),
+            'users' => $this->userOptions($request),
+            'stats' => $this->stats($request),
             'filters' => [
                 'search' => $search,
                 'reseller' => $resellerId,
@@ -94,10 +98,13 @@ class CustomerController extends Controller
 
     /**
      * Summary metrics for the index header cards (whole dataset, ignores filters).
+     * The customer total honours the viewer's visibility scope; the warranty and
+     * reseller counts are still org-wide (they read transactions/resellers, whose
+     * scoping lands in B2 — tracked in DESIGN_RBAC.md).
      *
      * @return array{total: int, underWarranty: int, resellers: int}
      */
-    private function stats(): array
+    private function stats(Request $request): array
     {
         // "Under warranty" relies on the Transaction accessor (not a DB column),
         // so resolve it in PHP over the transactions and count distinct customers.
@@ -110,7 +117,7 @@ class CustomerController extends Controller
             ->count();
 
         return [
-            'total' => Customer::count(),
+            'total' => Customer::query()->visibleTo($request->user())->count(),
             'underWarranty' => $customersUnderWarranty,
             'resellers' => Reseller::count(),
         ];
@@ -144,11 +151,17 @@ class CustomerController extends Controller
 
     /**
      * Staff options (value = user id as string) for the owner assign/filter selects.
+     * Only users who may reassign customers get the staff directory; an own-scoped
+     * user (Sales) must not learn who else is on staff, so they get an empty list.
      *
      * @return list<array{value: string, label: string}>
      */
-    private function userOptions(): array
+    private function userOptions(Request $request): array
     {
+        if (! $request->user()->can(PermissionName::CustomerReassign->value)) {
+            return [];
+        }
+
         $users = User::orderBy('name')->get(['id', 'name'])->all();
 
         return array_map(
@@ -165,7 +178,7 @@ class CustomerController extends Controller
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
             'sources' => $this->sourceOptions(),
-            'users' => $this->userOptions(),
+            'users' => $this->userOptions($request),
         ]);
     }
 
@@ -273,7 +286,7 @@ class CustomerController extends Controller
                 'totalSpend' => (float) $transactions->sum(fn (Transaction $transaction) => (float) $transaction->amount),
             ],
             'statuses' => $this->statusOptions(),
-            'users' => $this->userOptions(),
+            'users' => $this->userOptions($request),
             'can' => [
                 'update' => $user->can('update', $customer),
                 'delete' => $user->can('delete', $customer),
@@ -306,7 +319,7 @@ class CustomerController extends Controller
             'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
             'sources' => $this->sourceOptions(),
-            'users' => $this->userOptions(),
+            'users' => $this->userOptions($request),
         ]);
     }
 

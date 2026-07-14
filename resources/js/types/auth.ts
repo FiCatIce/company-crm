@@ -12,6 +12,8 @@ export type User = {
 
 export type Auth = {
     user: User;
+    /** Effective permission names for the current user (UI gating only). */
+    permissions: string[];
 };
 
 /* @chisel-passkeys */

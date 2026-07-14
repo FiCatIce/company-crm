@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\CustomerSource;
 use App\Enums\CustomerStatus;
+use App\Enums\PermissionName;
 use App\Support\PhoneNormalizer;
 use Database\Factories\CustomerFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -78,14 +80,43 @@ class Customer extends Model
     }
 
     /**
-     * The staff member who first entered this customer (immutable). Becomes the
-     * Sales visibility gate in B1; coexists with the mutable owner.
+     * The staff member who first entered this customer (immutable). The Sales
+     * visibility gate; coexists with the mutable owner.
      *
      * @return BelongsTo<User, $this>
      */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Constrain a query to the customers $user may see (DESIGN_RBAC.md §4.2a):
+     *   - customer.view.all → everything (managers/CS/maintenance/admin today)
+     *   - customer.view.own → created_by OR assigned_to = $user (Sales; D1-B)
+     *   - otherwise → nothing
+     *
+     * The single source of truth for "which customers can this user reach" —
+     * every customer read path funnels through here (index, search, and, via the
+     * policy, show).
+     *
+     * @param  Builder<Customer>  $query
+     * @return Builder<Customer>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->can(PermissionName::CustomerViewAll->value)) {
+            return $query;
+        }
+
+        if ($user->can(PermissionName::CustomerViewOwn->value)) {
+            return $query->where(function (Builder $scoped) use ($user) {
+                $scoped->where('created_by', $user->id)
+                    ->orWhere('assigned_to', $user->id);
+            });
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
     /**

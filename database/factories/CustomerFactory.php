@@ -6,6 +6,7 @@ use App\Enums\CustomerSource;
 use App\Enums\CustomerStatus;
 use App\Models\Customer;
 use App\Models\Reseller;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -31,5 +32,18 @@ class CustomerFactory extends Factory
             'status' => CustomerStatus::Active,
             'source' => fake()->optional(weight: 0.6)->randomElement(CustomerSource::cases()),
         ];
+    }
+
+    /**
+     * Attribute the customer to a creator. created_by is guarded (not fillable),
+     * so it is set after creation rather than via the attribute array.
+     */
+    public function createdBy(User|int $user): static
+    {
+        $id = $user instanceof User ? $user->id : $user;
+
+        return $this->afterCreating(
+            fn (Customer $customer) => $customer->forceFill(['created_by' => $id])->save()
+        );
     }
 }
