@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { LayoutGrid, Network, Package, Receipt, Users } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import {
+    LayoutGrid,
+    Network,
+    Package,
+    Receipt,
+    UserCog,
+    Users,
+} from '@lucide/vue';
+import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import {
@@ -14,7 +22,7 @@ import {
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
+const allNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
@@ -40,7 +48,25 @@ const mainNavItems: NavItem[] = [
         href: '/transactions',
         icon: Receipt,
     },
+    {
+        title: 'Users',
+        href: '/users',
+        icon: UserCog,
+        permission: 'user.view',
+    },
 ];
+
+const page = usePage();
+
+// Permission-gated nav: an item with a `permission` only shows when the user
+// holds it (server still enforces access — this is UI only).
+const mainNavItems = computed(() =>
+    allNavItems.filter(
+        (item) =>
+            !item.permission ||
+            (page.props.auth?.permissions ?? []).includes(item.permission),
+    ),
+);
 </script>
 
 <template>

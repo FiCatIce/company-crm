@@ -6,6 +6,7 @@ use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ResellerController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -27,6 +28,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('customers/{customer}/interactions', [InteractionController::class, 'store'])->name('interactions.store');
     Route::put('interactions/{interaction}', [InteractionController::class, 'update'])->name('interactions.update');
     Route::delete('interactions/{interaction}', [InteractionController::class, 'destroy'])->name('interactions.destroy');
+
+    // Admin user management (RBAC B5) — gated per-action by UserPolicy.
+    Route::resource('users', UserController::class)->except(['show']);
 });
 
 require __DIR__.'/settings.php';

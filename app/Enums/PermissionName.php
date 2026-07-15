@@ -75,4 +75,91 @@ enum PermissionName: string
     {
         return array_map(fn (self $permission): string => $permission->value, self::cases());
     }
+
+    /**
+     * Display group for the admin permission-toggle UI. Keeps money-adjacent and
+     * meta permissions with the domain they concern (revenue → Transaction;
+     * role/permission → User & Access).
+     */
+    public function group(): string
+    {
+        return match ($this) {
+            self::CustomerViewAll, self::CustomerViewOwn, self::CustomerViewProducts,
+            self::CustomerCreate, self::CustomerUpdateAll, self::CustomerUpdateOwn,
+            self::CustomerDelete, self::CustomerReassign => 'Customer',
+            self::TransactionViewAll, self::TransactionViewOwn, self::TransactionCreate,
+            self::TransactionUpdate, self::TransactionDelete, self::RevenueView => 'Transaction',
+            self::ProductView, self::ProductCreate, self::ProductUpdate, self::ProductDelete => 'Product',
+            self::ResellerView, self::ResellerCreate, self::ResellerUpdate, self::ResellerDelete => 'Reseller',
+            self::InteractionViewAll, self::InteractionViewOwn, self::InteractionCreate,
+            self::InteractionUpdate, self::InteractionDelete, self::InteractionManageAll => 'Interaction',
+            self::DashboardView, self::DashboardStatsAggregate => 'Dashboard',
+            self::UserView, self::UserCreate, self::UserUpdate, self::UserDelete,
+            self::RoleAssign, self::PermissionAssign => 'User & Access',
+        };
+    }
+
+    /**
+     * Whether granting this permission opens broad PII, financial, or meta
+     * (grant-other-permissions) access — the toggles that warrant an explicit
+     * confirmation in the admin UI (DESIGN_RBAC.md §3.5).
+     */
+    public function sensitive(): bool
+    {
+        return match ($this) {
+            self::CustomerViewAll,
+            self::TransactionViewAll,
+            self::TransactionViewOwn,
+            self::RevenueView,
+            self::RoleAssign,
+            self::PermissionAssign,
+            self::UserDelete => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Short human label (Indonesian UI copy) for the permission toggle.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::CustomerViewAll => 'Lihat semua customer',
+            self::CustomerViewOwn => 'Lihat customer sendiri',
+            self::CustomerViewProducts => 'Lihat produk yang dibeli',
+            self::CustomerCreate => 'Tambah customer',
+            self::CustomerUpdateAll => 'Edit semua customer',
+            self::CustomerUpdateOwn => 'Edit customer sendiri',
+            self::CustomerDelete => 'Hapus customer',
+            self::CustomerReassign => 'Pindah owner customer',
+            self::TransactionViewAll => 'Lihat semua transaksi (uang)',
+            self::TransactionViewOwn => 'Lihat transaksi sendiri (uang)',
+            self::TransactionCreate => 'Catat transaksi',
+            self::TransactionUpdate => 'Edit transaksi',
+            self::TransactionDelete => 'Hapus transaksi',
+            self::RevenueView => 'Lihat pendapatan agregat',
+            self::ProductView => 'Lihat katalog produk',
+            self::ProductCreate => 'Tambah produk',
+            self::ProductUpdate => 'Edit produk',
+            self::ProductDelete => 'Hapus produk',
+            self::ResellerView => 'Lihat reseller',
+            self::ResellerCreate => 'Tambah reseller',
+            self::ResellerUpdate => 'Edit reseller',
+            self::ResellerDelete => 'Hapus reseller',
+            self::InteractionViewAll => 'Lihat semua call log',
+            self::InteractionViewOwn => 'Lihat call log sendiri',
+            self::InteractionCreate => 'Log interaksi',
+            self::InteractionUpdate => 'Edit interaksi sendiri',
+            self::InteractionDelete => 'Hapus interaksi sendiri',
+            self::InteractionManageAll => 'Kelola interaksi siapa pun',
+            self::DashboardView => 'Akses dashboard',
+            self::DashboardStatsAggregate => 'Lihat statistik agregat',
+            self::UserView => 'Lihat user',
+            self::UserCreate => 'Tambah user',
+            self::UserUpdate => 'Edit user',
+            self::UserDelete => 'Hapus user',
+            self::RoleAssign => 'Assign role',
+            self::PermissionAssign => 'Atur izin per user',
+        };
+    }
 }

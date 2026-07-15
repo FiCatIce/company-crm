@@ -86,6 +86,30 @@ export type RecentCallRow = {
     is_cti_lead: boolean;
 };
 
+// Admin user management (RBAC B5).
+export type RoleOption = { value: string; label: string };
+
+export type PermissionItem = {
+    name: string;
+    label: string;
+    sensitive: boolean;
+};
+
+export type PermissionGroup = {
+    group: string;
+    permissions: PermissionItem[];
+};
+
+export type UserRow = {
+    id: number;
+    name: string;
+    email: string;
+    extension: string | null;
+    role: RoleOption | null;
+    is_self: boolean;
+    can_delete: boolean;
+};
+
 export type InteractionOption = { value: string; label: string };
 
 export type InteractionOptions = {
