@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -28,6 +29,16 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
+
+        // When shared through a tunnel (see `composer share:tunnel`) the public
+        // origin is HTTPS but the local dev server speaks plain HTTP. If the
+        // tunnel omits X-Forwarded-Proto, asset URLs would render as http:// on
+        // an https:// page and get blocked as mixed content — a blank hang.
+        // Force https so injected asset URLs are always secure. Gated behind the
+        // flag so plain `composer dev` on http://localhost stays untouched.
+        if (env('SHARE_TUNNEL')) {
+            URL::forceScheme('https');
+        }
     }
 
     /**
