@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind a tunnel/proxy (VS Code port forwarding, ngrok, …) honour the
+        // X-Forwarded-* headers so the app knows it is served over HTTPS on the
+        // public host — otherwise redirects/cookies use http and login/CSRF break.
+        // Trusting all proxies is fine for a dev tunnel; narrow it in production.
+        $middleware->trustProxies(at: '*');
+
         $middleware->encryptCookies(except: ['sidebar_state']);
 
         $middleware->web(append: [
