@@ -170,6 +170,7 @@ class DashboardController extends Controller
 
         // Reuses the expiringSoon rule (active warranty ending within 30 days),
         // scoped to transactions of customers this user owns.
+        // unscoped-ok: personal band — scoped to the caller's own assigned customers.
         $myExpiringWarranties = Transaction::query()
             ->whereHas('customer', fn ($query) => $query->where('assigned_to', $userId))
             ->with('product:id,warranty_months')
@@ -197,6 +198,7 @@ class DashboardController extends Controller
      */
     private function myRecentInteractions(int $userId): array
     {
+        // unscoped-ok: personal band — interactions authored by the caller only.
         return Interaction::query()
             ->where('user_id', $userId)
             ->with('customer:id,name')
@@ -227,6 +229,8 @@ class DashboardController extends Controller
      */
     private function warrantyBreakdown(): array
     {
+        // unscoped-ok: aggregate — reads warranty columns only (no customer/amount);
+        // org-wide counts shown to every dashboard viewer (dashboard.stats.aggregate).
         $transactions = Transaction::query()
             ->with('product:id,warranty_months')
             ->get(['id', 'product_id', 'purchased_at']);
@@ -253,6 +257,8 @@ class DashboardController extends Controller
      */
     private function recentTransactions(): array
     {
+        // unscoped-ok: org-wide feed, added to props only for customer.view.all
+        // roles (gated at the __invoke call site) — a Sales user never receives it.
         return Transaction::query()
             ->with(['customer:id,name', 'product:id,name,warranty_months', 'reseller:id,name'])
             ->latest('purchased_at')
@@ -282,6 +288,8 @@ class DashboardController extends Controller
         $today = now()->startOfDay();
         $threshold = $today->copy()->addDays(30);
 
+        // unscoped-ok: org-wide watchlist, added to props only for customer.view.all
+        // roles (gated at the __invoke call site) — a Sales user never receives it.
         return Transaction::query()
             ->with(['customer:id,name', 'product:id,name,warranty_months'])
             ->get(['id', 'customer_id', 'product_id', 'purchased_at'])
@@ -332,6 +340,8 @@ class DashboardController extends Controller
     {
         $start = now()->startOfMonth()->subMonths(11);
 
+        // unscoped-ok: aggregate trend — reads only purchase dates (no customer or
+        // amount data), collapsed to monthly counts shown to all viewers.
         $counts = Transaction::query()
             ->where('purchased_at', '>=', $start->toDateString())
             ->get(['purchased_at'])

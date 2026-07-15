@@ -74,6 +74,16 @@ class IngestCall
                         ],
                     );
                     $customerCreated = $customer->wasRecentlyCreated;
+
+                    // Attribute the lead to the handling agent (D4). created_by is
+                    // guarded (not mass-assignable), so it is set here after the
+                    // insert — this puts the CTI lead inside the agent's Sales scope
+                    // (created_by OR assigned_to), so they see the prospect they just
+                    // spoke to. Null agent → stays null (manager-only visible).
+                    if ($customerCreated && $agentId !== null) {
+                        $customer->created_by = $agentId;
+                        $customer->save();
+                    }
                 }
 
                 // 7. Persist the call.

@@ -98,17 +98,19 @@ class CustomerController extends Controller
 
     /**
      * Summary metrics for the index header cards (whole dataset, ignores filters).
-     * The customer total honours the viewer's visibility scope; the warranty and
-     * reseller counts are still org-wide (they read transactions/resellers, whose
-     * scoping lands in B2 — tracked in DESIGN_RBAC.md).
+     * The customer total and the warranty count both honour the viewer's scope (a
+     * Sales user's cards reflect only their own book); the reseller count is an
+     * org-wide aggregate.
      *
      * @return array{total: int, underWarranty: int, resellers: int}
      */
     private function stats(Request $request): array
     {
-        // "Under warranty" relies on the Transaction accessor (not a DB column),
-        // so resolve it in PHP over the transactions and count distinct customers.
+        // "Under warranty" relies on the Transaction accessor (not a DB column), so
+        // resolve it in PHP over the transactions the viewer may see and count
+        // distinct customers.
         $customersUnderWarranty = Transaction::query()
+            ->visibleTo($request->user())
             ->with('product:id,warranty_months')
             ->get(['id', 'customer_id', 'product_id', 'purchased_at'])
             ->filter(fn (Transaction $transaction) => $transaction->is_under_warranty)
