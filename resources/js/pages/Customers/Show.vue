@@ -18,13 +18,18 @@ import type {
     InteractionOptions,
     InteractionRow,
     Paginated,
+    PurchasedProductRow,
     SelectOption,
 } from '@/types/crm';
 
 const props = defineProps<{
     customer: CustomerDetail;
     timeline: Paginated<InteractionRow>;
-    transactions: CustomerTransactionRow[];
+    // Money viewers get `transactions` (incl. amount); viewers with only
+    // customer.view.products get `purchasedProducts` (no price). Exactly one is
+    // present — see DESIGN_RBAC.md §4.3.
+    transactions?: CustomerTransactionRow[];
+    purchasedProducts?: PurchasedProductRow[];
     warrantySummary: { active: number; expired: number; none: number };
     stats: CustomerStats;
     statuses: SelectOption[];
@@ -97,10 +102,27 @@ function onSaved() {
     modalOpen.value = false;
 }
 
-// Price label for a transaction row: null when the viewer may not see money (the
-// backend omits `amount` entirely), so the caller hides the price; '—' for a
+// The product/warranty list on the 360 page comes from exactly one prop: the
+// full transactions (money viewers) or the money-free projection (CS/maintenance).
+const productRows = computed<(CustomerTransactionRow | PurchasedProductRow)[]>(
+    () => props.transactions ?? props.purchasedProducts ?? [],
+);
+const showsMoney = computed(() => props.transactions !== undefined);
+const productSectionTitle = computed(() =>
+    showsMoney.value ? 'Transaksi & Garansi' : 'Produk yang Dibeli',
+);
+const productEmptyMessage = computed(() =>
+    showsMoney.value ? 'Belum ada transaksi.' : 'Belum ada produk dibeli.',
+);
+
+// Price label for a row: null when the row carries no amount (the backend omits
+// it for money-less viewers), so the caller hides the price; '—' for a
 // recorded-but-empty amount; otherwise the formatted value.
-function amountText(amount: string | null | undefined): string | null {
+function amountText(
+    row: CustomerTransactionRow | PurchasedProductRow,
+): string | null {
+    const amount = 'amount' in row ? row.amount : undefined;
+
     if (amount === undefined) {
         return null;
     }
@@ -213,25 +235,25 @@ function amountText(amount: string | null | undefined): string | null {
                         </div>
                     </div>
 
-                    <!-- Transactions -->
+                    <!-- Transactions / purchased products -->
                     <div
                         class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
                     >
                         <div class="border-b border-border p-5">
                             <h2 class="text-sm font-semibold text-foreground">
-                                Transaksi &amp; Garansi
+                                {{ productSectionTitle }}
                             </h2>
                         </div>
 
                         <WidgetEmptyState
-                            v-if="transactions.length === 0"
+                            v-if="productRows.length === 0"
                             :icon="PackageCheck"
-                            message="Belum ada transaksi."
+                            :message="productEmptyMessage"
                         />
 
                         <ul v-else class="divide-y divide-border">
                             <li
-                                v-for="t in transactions"
+                                v-for="t in productRows"
                                 :key="t.id"
                                 class="space-y-2 p-4"
                             >
@@ -243,9 +265,9 @@ function amountText(amount: string | null | undefined): string | null {
                                         >{{ t.product ?? '—' }}</span
                                     >
                                     <span
-                                        v-if="amountText(t.amount) !== null"
+                                        v-if="amountText(t) !== null"
                                         class="shrink-0 text-sm font-medium text-foreground tabular-nums"
-                                        >{{ amountText(t.amount) }}</span
+                                        >{{ amountText(t) }}</span
                                     >
                                 </div>
                                 <div

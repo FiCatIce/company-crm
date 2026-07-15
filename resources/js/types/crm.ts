@@ -24,15 +24,20 @@ export type InteractionRow = {
     can_delete: boolean;
 };
 
-export type CustomerTransactionRow = {
+// A money-free purchased-product line (product + date + warranty). Shown to
+// viewers with customer.view.products but no money permission — DESIGN_RBAC.md §4.3.
+export type PurchasedProductRow = {
     id: number;
     product: string | null;
     purchased_at: string;
     warranty_months: number | null;
     warranty_expires_at: string;
     is_under_warranty: boolean;
-    // Omitted (absent) when the viewer may not see money — see DESIGN_RBAC.md §4.3.
-    amount?: string | null;
+};
+
+// A full transaction row (money viewers): a purchased-product line plus the price.
+export type CustomerTransactionRow = PurchasedProductRow & {
+    amount: string | null;
 };
 
 export type CustomerDetail = {

@@ -44,12 +44,13 @@ it('forbids authenticated users without an allowed role', function () {
         ->assertForbidden();
 });
 
-it('allows admin, supervisor, and cs to view the index', function (string $role) {
+it('allows admin and supervisor to view the index', function (string $role) {
     $this->actingAs(userWithRole($role))
         ->get(route('transactions.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Transactions/Index'));
-})->with(['admin', 'supervisor', 'cs']);
+})->with(['admin', 'supervisor']);
+// CS/maintenance denial (B3, money hidden) lives in Rbac/PartialVisibilityTest.
 
 // ---------------------------------------------------------------------------
 // Warranty status indicator (the headline requirement)
@@ -104,7 +105,7 @@ it('opens the create page with customer, product, and reseller options', functio
     Customer::factory()->create();
     Product::factory()->create();
 
-    $this->actingAs(userWithRole('cs'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('transactions.create'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page

@@ -15,14 +15,14 @@ use App\Models\User;
  * `role_has_permissions` is intentionally left empty. `assign()` writes both the
  * role (label) and the synced direct permissions.
  *
- * BATCH B0 NOTE — this is the *foundation* batch and must not change behaviour.
- * The admin/supervisor/cs presets below therefore MIRROR the legacy org-wide
- * access (admin == supervisor == full; cs == full minus destructive). They are
- * tightened toward the DESIGN_RBAC.md §3.3 target in later batches:
- *   - B3 removes transaction/revenue from cs (money hidden).
- *   - B4 strips all data permissions from admin (stats + user-management only).
- * The sales/maintenance presets are already the §3.3 target; those roles are
- * created but not yet exercised (their row-scoping lands in B1).
+ * BATCH B0 NOTE — the foundation batch introduced these presets mirroring the
+ * legacy org-wide access, then later batches tighten them toward the
+ * DESIGN_RBAC.md §3.3 target:
+ *   - B3 (done) removed all transaction/revenue permissions from cs, so CS (like
+ *     maintenance) sees customers + purchased products but never money.
+ *   - B4 will strip the remaining data permissions from admin (stats +
+ *     user-management only).
+ * The sales/maintenance presets are already the §3.3 target for the money axis.
  */
 final class RolePresets
 {
@@ -36,7 +36,7 @@ final class RolePresets
         return match ($role) {
             RoleName::Admin => [...self::fullDomainAccess(), ...self::userManagement()],
             RoleName::Supervisor => self::fullDomainAccess(),
-            RoleName::Cs => self::customerServiceLegacy(),
+            RoleName::Cs => self::customerService(),
             RoleName::Sales => self::sales(),
             RoleName::Maintenance => self::maintenance(),
         };
@@ -98,18 +98,18 @@ final class RolePresets
     }
 
     /**
-     * Legacy CS access: same as full access minus the destructive/moderation
-     * permissions (no record delete, no moderating other agents' interactions).
+     * Customer Service (DESIGN_RBAC.md §3.3, batch B3): front-line agents who see
+     * every customer's profile + purchased products and manage the call log, but
+     * NOT money — no transaction access, no revenue. Still create/update customers
+     * (unlike read-only maintenance) and no destructive/moderation access.
      *
      * @return list<P>
      */
-    private static function customerServiceLegacy(): array
+    private static function customerService(): array
     {
         return [
             P::CustomerViewAll, P::CustomerViewProducts, P::CustomerCreate,
             P::CustomerUpdateAll, P::CustomerReassign,
-            P::TransactionViewAll, P::TransactionCreate, P::TransactionUpdate,
-            P::RevenueView,
             P::ProductView, P::ProductCreate, P::ProductUpdate,
             P::ResellerView, P::ResellerCreate, P::ResellerUpdate,
             P::InteractionViewAll, P::InteractionCreate, P::InteractionUpdate,

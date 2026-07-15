@@ -125,12 +125,16 @@ it('omits amount and totalSpend entirely for a user without a money permission',
     $customer = Customer::factory()->create();
     Transaction::factory()->forCustomer($customer)->create(['amount' => 500_000]);
 
+    // B3: money-less viewers get the `purchasedProducts` projection instead of
+    // `transactions` — the amount-carrying array is absent entirely, so there is
+    // nothing to peek (omitted, not null).
     $this->actingAs($maintenance)
         ->get(route('customers.show', $customer))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('transactions.0')                 // still sees the product line...
-            ->missing('transactions.0.amount')      // ...but NOT the price (omitted, not null)
+            ->has('purchasedProducts.0')             // still sees the product line...
+            ->missing('transactions')                // ...but never the money array...
+            ->missing('purchasedProducts.0.amount')  // ...and no price on the projection.
             ->missing('stats.totalSpend'));
 });
 
@@ -163,7 +167,7 @@ it('shows dashboard revenue only to users with revenue.view', function (string $
     });
 })->with([
     ['supervisor', true],
-    ['cs', true],   // still has revenue.view in B2 (removed in B3)
+    ['cs', false],   // B3 removed revenue.view from cs (money hidden)
     ['admin', true], // still full in B2 (locked down in B4)
     ['sales', false],
     ['maintenance', false],

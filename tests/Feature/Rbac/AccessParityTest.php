@@ -9,9 +9,9 @@ use App\Models\User;
 use Database\Seeders\RoleSeeder;
 
 /**
- * B0 parity snapshot: after swapping the authorization engine from role strings
- * to permissions, the effective access for the three legacy roles must be
- * IDENTICAL to before. If any of these change, B0 was not a no-op.
+ * Access parity snapshot for the management roles. Started as the B0 no-op guard
+ * (engine swap must not change access); from B3 CS is intentionally tightened —
+ * it loses all transaction/money access — so CS gets its own expectations below.
  */
 beforeEach(fn () => $this->seed(RoleSeeder::class));
 
@@ -22,8 +22,8 @@ $resources = [
     'reseller' => Reseller::class,
 ];
 
-// admin/supervisor/cs may view/create/update every domain resource.
-it('lets managers and cs view, create and update every resource', function (string $role) use ($resources) {
+// admin/supervisor may view/create/update every domain resource.
+it('lets managers view, create and update every resource', function (string $role) use ($resources) {
     $user = userWithRole($role);
 
     foreach ($resources as $class) {
@@ -32,7 +32,26 @@ it('lets managers and cs view, create and update every resource', function (stri
             ->and($user->can('create', $class))->toBeTrue()
             ->and($user->can('update', $class))->toBeTrue();
     }
-})->with(['admin', 'supervisor', 'cs']);
+})->with(['admin', 'supervisor']);
+
+// CS keeps customers/products/resellers but B3 removed ALL transaction access.
+it('lets cs manage customers, products and resellers but not transactions', function () {
+    $user = userWithRole('cs');
+
+    foreach ([Customer::class, Product::class, Reseller::class] as $class) {
+        expect($user->can('viewAny', $class))->toBeTrue()
+            ->and($user->can('create', $class))->toBeTrue()
+            ->and($user->can('update', $class))->toBeTrue();
+    }
+
+    // No money: no view/create/update/delete on transactions, no revenue.
+    expect($user->can('viewAny', Transaction::class))->toBeFalse()
+        ->and($user->can('view', Transaction::class))->toBeFalse()
+        ->and($user->can('create', Transaction::class))->toBeFalse()
+        ->and($user->can('update', Transaction::class))->toBeFalse()
+        ->and($user->can('delete', Transaction::class))->toBeFalse()
+        ->and($user->can(PermissionName::RevenueView->value))->toBeFalse();
+});
 
 // Only admin + supervisor may delete (destructive — excludes cs).
 it('lets only admin and supervisor delete resources', function (string $role, bool $canDelete) use ($resources) {

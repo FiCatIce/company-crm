@@ -199,6 +199,7 @@ class CustomerController extends Controller
 
         $user = $request->user();
         $canSeeAmount = $this->canSeeAmount($user);
+        $canSeeProducts = $user->can(PermissionName::CustomerViewProducts->value);
 
         $customer->load(['reseller:id,name', 'owner:id,name']);
 
@@ -250,6 +251,25 @@ class CustomerController extends Controller
             ->latest('id')
             ->first();
 
+        // What products this customer bought is shown at two altitudes, gated by
+        // permission (DESIGN_RBAC.md §4.3):
+        //   - money viewers (transaction.view.*)  → full `transactions` incl. amount;
+        //   - customer.view.products only (CS/maintenance) → a money-free
+        //     `purchasedProducts` projection (product + date + warranty, no price);
+        //   - neither → no product section at all.
+        // amount is OMITTED by the entire `transactions` array being absent — never
+        // sent as null — so it cannot be read from the payload.
+        $productSection = match (true) {
+            $canSeeAmount => ['transactions' => $transactions
+                ->map(fn (Transaction $transaction) => [
+                    ...$this->productLine($transaction),
+                    'amount' => $transaction->amount,
+                ])->all()],
+            $canSeeProducts => ['purchasedProducts' => $transactions
+                ->map(fn (Transaction $transaction) => $this->productLine($transaction))->all()],
+            default => [],
+        };
+
         return Inertia::render('Customers/Show', [
             'customer' => [
                 'id' => $customer->id,
@@ -270,24 +290,7 @@ class CustomerController extends Controller
                 'created_at' => $customer->created_at?->toIso8601String(),
             ],
             'timeline' => $timeline,
-            'transactions' => $transactions->map(function (Transaction $transaction) use ($canSeeAmount) {
-                $row = [
-                    'id' => $transaction->id,
-                    'product' => $transaction->product?->name,
-                    'purchased_at' => $transaction->purchased_at->toDateString(),
-                    'warranty_months' => $transaction->product?->warranty_months,
-                    'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
-                    'is_under_warranty' => $transaction->is_under_warranty,
-                ];
-
-                // Maintenance/CS-without-money see WHICH products were bought but
-                // never the price — omit amount entirely (DESIGN_RBAC.md §4.3).
-                if ($canSeeAmount) {
-                    $row['amount'] = $transaction->amount;
-                }
-
-                return $row;
-            })->all(),
+            ...$productSection,
             'warrantySummary' => $warrantySummary,
             'stats' => [
                 'interactionsCount' => $timeline->total(),
@@ -311,6 +314,26 @@ class CustomerController extends Controller
                 'outcomes' => array_map(fn (InteractionOutcome $o) => ['value' => $o->value, 'label' => $o->label()], InteractionOutcome::cases()),
             ],
         ]);
+    }
+
+    /**
+     * The money-free view of a purchased product on the Customer 360 page: which
+     * product, when, and its warranty status. Shared by the full transaction rows
+     * (which append `amount`) and the purchased-products projection (which never
+     * carries a price) — DESIGN_RBAC.md §4.3.
+     *
+     * @return array{id: int, product: ?string, purchased_at: string, warranty_months: ?int, warranty_expires_at: string, is_under_warranty: bool}
+     */
+    private function productLine(Transaction $transaction): array
+    {
+        return [
+            'id' => $transaction->id,
+            'product' => $transaction->product?->name,
+            'purchased_at' => $transaction->purchased_at->toDateString(),
+            'warranty_months' => $transaction->product?->warranty_months,
+            'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
+            'is_under_warranty' => $transaction->is_under_warranty,
+        ];
     }
 
     public function edit(Request $request, Customer $customer): Response
