@@ -87,7 +87,7 @@ test('every index page carries the summary stat card row and a context sub-heade
 
 test('the redesigned index pages still render their data contract', function () {
     $this->seed(RoleSeeder::class);
-    $this->actingAs(userWithRole('admin'));
+    $this->actingAs(userWithRole('supervisor'));
     $this->withoutVite();
 
     $this->get('/products')

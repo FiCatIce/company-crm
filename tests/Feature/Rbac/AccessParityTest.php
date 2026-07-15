@@ -22,9 +22,10 @@ $resources = [
     'reseller' => Reseller::class,
 ];
 
-// admin/supervisor may view/create/update every domain resource.
-it('lets managers view, create and update every resource', function (string $role) use ($resources) {
-    $user = userWithRole($role);
+// Supervisor (Manager) may view/create/update every domain resource. Admin used
+// to as well, but B4 stripped its data access — see the admin lockdown below.
+it('lets the manager view, create and update every resource', function () use ($resources) {
+    $user = userWithRole('supervisor');
 
     foreach ($resources as $class) {
         expect($user->can('viewAny', $class))->toBeTrue()
@@ -32,7 +33,24 @@ it('lets managers view, create and update every resource', function (string $rol
             ->and($user->can('create', $class))->toBeTrue()
             ->and($user->can('update', $class))->toBeTrue();
     }
-})->with(['admin', 'supervisor']);
+});
+
+// B4: admin is a system role — DENIED every data resource, but keeps dashboard
+// (aggregate) + user management. Full lockdown matrix lives in AdminLockdownTest.
+it('denies admin every domain data action while keeping system access', function () use ($resources) {
+    $user = userWithRole('admin');
+
+    foreach ($resources as $class) {
+        expect($user->can('viewAny', $class))->toBeFalse()
+            ->and($user->can('view', $class))->toBeFalse()
+            ->and($user->can('create', $class))->toBeFalse()
+            ->and($user->can('update', $class))->toBeFalse()
+            ->and($user->can('delete', $class))->toBeFalse();
+    }
+
+    expect($user->can(PermissionName::DashboardView->value))->toBeTrue()
+        ->and($user->can(PermissionName::UserView->value))->toBeTrue();
+});
 
 // CS keeps customers/products/resellers but B3 removed ALL transaction access.
 it('lets cs manage customers, products and resellers but not transactions', function () {
@@ -53,16 +71,16 @@ it('lets cs manage customers, products and resellers but not transactions', func
         ->and($user->can(PermissionName::RevenueView->value))->toBeFalse();
 });
 
-// Only admin + supervisor may delete (destructive — excludes cs).
-it('lets only admin and supervisor delete resources', function (string $role, bool $canDelete) use ($resources) {
+// Only the supervisor may delete data resources (cs and — since B4 — admin cannot).
+it('lets only the manager delete resources', function (string $role, bool $canDelete) use ($resources) {
     $user = userWithRole($role);
 
     foreach ($resources as $class) {
         expect($user->can('delete', $class))->toBe($canDelete);
     }
 })->with([
-    ['admin', true],
     ['supervisor', true],
+    ['admin', false],
     ['cs', false],
 ]);
 

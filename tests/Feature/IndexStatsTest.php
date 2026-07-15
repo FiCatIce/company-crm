@@ -42,7 +42,7 @@ it('exposes customer summary stats independent of the search filter', function (
     ]);
     // customer[2]: no transactions.
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index', ['search' => 'zzz-no-match']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -57,7 +57,7 @@ it('exposes product summary stats including average warranty', function () {
     Product::factory()->create(['warranty_months' => 12]);
     Product::factory()->create(['warranty_months' => 24]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('products.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -75,7 +75,7 @@ it('exposes reseller summary stats for total, active, and top-level', function (
     // Only the child gains a customer, so only it counts as "active".
     Customer::factory()->create(['reseller_id' => $child->id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('resellers.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -114,7 +114,7 @@ it('exposes transaction summary stats with an active/expired warranty split', fu
         'purchased_at' => now()->subYear(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('transactions.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page

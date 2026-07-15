@@ -168,7 +168,7 @@ it('shows dashboard revenue only to users with revenue.view', function (string $
 })->with([
     ['supervisor', true],
     ['cs', false],   // B3 removed revenue.view from cs (money hidden)
-    ['admin', true], // still full in B2 (locked down in B4)
+    ['admin', false], // B4 stripped all data/money access from admin
     ['sales', false],
     ['maintenance', false],
 ]);

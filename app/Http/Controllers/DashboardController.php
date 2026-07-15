@@ -21,10 +21,20 @@ class DashboardController extends Controller
         $user = $request->user();
         abort_unless($user->can(PermissionName::DashboardView->value), 403);
 
-        // Money on the dashboard (revenue totals + revenue ranking) is gated by
-        // revenue.view and OMITTED — not zeroed — for everyone else (Sales, and
-        // later maintenance/CS/admin). See DESIGN_RBAC.md §4.4.
+        // The dashboard is composed PER PERMISSION (DESIGN_RBAC.md §4.4), never one
+        // blob. Aggregate counts + warranty/trend are pure numbers (dashboard.stats.
+        // aggregate) and always shown. The detail widgets — which expose customer
+        // names / purchase rows / money — are gated, so a system role like admin
+        // (no data permissions) gets ONLY the aggregates + the call log, never a
+        // single customer row. Do NOT add a Gate::before admin bypass here.
         $canSeeRevenue = $user->can(PermissionName::RevenueView->value);
+        // "Can view customers at all" (all OR own) — the widgets below expose
+        // customer names, so anyone who may see customers keeps them; admin, which
+        // holds neither, loses them.
+        $canViewCustomers = $user->can(PermissionName::CustomerViewAll->value)
+            || $user->can(PermissionName::CustomerViewOwn->value);
+        $canViewCalls = $user->can(PermissionName::InteractionViewAll->value)
+            || $user->can(PermissionName::InteractionViewOwn->value);
         $warranty = $this->warrantyBreakdown();
 
         $props = [
@@ -39,12 +49,20 @@ class DashboardController extends Controller
             ],
             'trend' => $this->transactionTrend(),
             'warrantyBreakdown' => $warranty,
-            'recentTransactions' => $this->recentTransactions(),
-            'expiringSoon' => $this->expiringSoon(),
-            'topResellers' => $this->topResellers(),
-            'recentCalls' => $this->recentCalls(),
             'me' => $this->personalStats((int) $user->id),
         ];
+
+        // Detail widgets exposing customer names / purchase rows.
+        if ($canViewCustomers) {
+            $props['recentTransactions'] = $this->recentTransactions();
+            $props['expiringSoon'] = $this->expiringSoon();
+            $props['topResellers'] = $this->topResellers();
+        }
+
+        // Org-wide call feed — admin keeps this (interaction.view.all).
+        if ($canViewCalls) {
+            $props['recentCalls'] = $this->recentCalls();
+        }
 
         if ($canSeeRevenue) {
             $props['topResellersByRevenue'] = $this->topResellersByRevenue();

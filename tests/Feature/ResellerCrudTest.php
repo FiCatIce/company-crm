@@ -31,7 +31,7 @@ it('allows admin, supervisor, and cs to view the index', function (string $role)
         ->get(route('resellers.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Resellers/Index'));
-})->with(['admin', 'supervisor', 'cs']);
+})->with(['supervisor', 'cs']);
 
 // ---------------------------------------------------------------------------
 // Tree view
@@ -41,7 +41,7 @@ it('returns the reseller hierarchy as a nested tree', function () {
     $parent = Reseller::factory()->create(['name' => 'Parent Co']);
     Reseller::factory()->count(2)->create(['parent_id' => $parent->id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('resellers.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Resellers/Index')
@@ -67,7 +67,7 @@ it('opens the create page with parent options', function () {
 });
 
 it('stores a top-level reseller', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('resellers.store'), ['name' => 'Root Co', 'parent_id' => null])
         ->assertRedirect(route('resellers.index'))
         ->assertSessionHas('success');
@@ -78,7 +78,7 @@ it('stores a top-level reseller', function () {
 it('stores a child reseller under a parent', function () {
     $parent = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('resellers.store'), ['name' => 'Child Co', 'parent_id' => $parent->id])
         ->assertRedirect(route('resellers.index'));
 
@@ -86,14 +86,14 @@ it('stores a child reseller under a parent', function () {
 });
 
 it('validates that the reseller name is required', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('resellers.create'))
         ->post(route('resellers.store'), ['name' => '', 'parent_id' => null])
         ->assertSessionHasErrors('name');
 });
 
 it('rejects a non-existent parent when storing', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('resellers.create'))
         ->post(route('resellers.store'), ['name' => 'X', 'parent_id' => 999999])
         ->assertSessionHasErrors('parent_id');
@@ -115,7 +115,7 @@ it('excludes self and descendants from the edit parent options', function () {
     $c = Reseller::factory()->create(['parent_id' => $b->id]);
 
     // Editing the root: self + both descendants are excluded -> no valid parents.
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('resellers.edit', $a))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Resellers/Edit')
@@ -123,7 +123,7 @@ it('excludes self and descendants from the edit parent options', function () {
             ->has('parentOptions', 0));
 
     // Editing the leaf: only itself is excluded -> the other two remain.
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('resellers.edit', $c))
         ->assertInertia(fn (Assert $page) => $page->has('parentOptions', 2));
 });
@@ -131,7 +131,7 @@ it('excludes self and descendants from the edit parent options', function () {
 it('updates a reseller name', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->put(route('resellers.update', $reseller), ['name' => 'Nama Baru', 'parent_id' => null])
         ->assertRedirect(route('resellers.index'))
         ->assertSessionHas('success');
@@ -146,7 +146,7 @@ it('updates a reseller name', function () {
 it('prevents a reseller from being its own parent', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('resellers.edit', $reseller))
         ->put(route('resellers.update', $reseller), [
             'name' => $reseller->name,
@@ -160,7 +160,7 @@ it('prevents re-parenting a reseller under its own descendant', function () {
     $b = Reseller::factory()->create(['parent_id' => $a->id]);
     $c = Reseller::factory()->create(['parent_id' => $b->id]);
 
-    $user = userWithRole('admin');
+    $user = userWithRole('supervisor');
 
     // A cannot be parented under its direct child B...
     $this->actingAs($user)
@@ -182,7 +182,7 @@ it('allows re-parenting a reseller under an unrelated reseller', function () {
     Reseller::factory()->create(['parent_id' => $a->id]);
     $unrelated = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->put(route('resellers.update', $a), ['name' => $a->name, 'parent_id' => $unrelated->id])
         ->assertRedirect(route('resellers.index'))
         ->assertSessionHasNoErrors();
@@ -197,7 +197,7 @@ it('allows re-parenting a reseller under an unrelated reseller', function () {
 it('deletes a reseller without dependents', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->delete(route('resellers.destroy', $reseller))
         ->assertRedirect(route('resellers.index'))
         ->assertSessionHas('success');
@@ -209,7 +209,7 @@ it('re-parents children to the top level when their parent is deleted', function
     $parent = Reseller::factory()->create();
     $child = Reseller::factory()->create(['parent_id' => $parent->id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->delete(route('resellers.destroy', $parent))
         ->assertRedirect(route('resellers.index'));
 
@@ -221,7 +221,7 @@ it('blocks deleting a reseller that still has customers', function () {
     $reseller = Reseller::factory()->create();
     Customer::factory()->create(['reseller_id' => $reseller->id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('resellers.index'))
         ->delete(route('resellers.destroy', $reseller))
         ->assertRedirect(route('resellers.index'))
@@ -239,7 +239,7 @@ it('blocks deleting a reseller that still has transactions', function () {
         'reseller_id' => $reseller->id,
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('resellers.index'))
         ->delete(route('resellers.destroy', $reseller))
         ->assertRedirect(route('resellers.index'))
@@ -256,7 +256,7 @@ it('lets admins and supervisors delete a reseller', function (string $role) {
         ->assertRedirect(route('resellers.index'));
 
     $this->assertDatabaseMissing('resellers', ['id' => $reseller->id]);
-})->with(['admin', 'supervisor']);
+})->with(['supervisor']);
 
 it('forbids cs from deleting a reseller', function () {
     $reseller = Reseller::factory()->create();

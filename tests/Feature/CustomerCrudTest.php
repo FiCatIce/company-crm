@@ -34,7 +34,7 @@ it('allows admin, supervisor, and cs to view the index', function (string $role)
         ->get(route('customers.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Customers/Index'));
-})->with(['admin', 'supervisor', 'cs']);
+})->with(['supervisor', 'cs']);
 
 // ---------------------------------------------------------------------------
 // Create / store
@@ -50,7 +50,7 @@ it('opens the create page for an authorized user', function () {
 it('stores a customer and redirects with a success flash', function () {
     $reseller = Reseller::factory()->create();
 
-    $response = $this->actingAs(userWithRole('admin'))
+    $response = $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Budi Santoso',
@@ -72,7 +72,7 @@ it('stores a customer and redirects with a success flash', function () {
 it('accepts null contact fields when storing', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Tanpa Kontak',
@@ -86,7 +86,7 @@ it('accepts null contact fields when storing', function () {
 });
 
 it('validates required and typed fields when storing', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.create'))
         ->post(route('customers.store'), [
             'reseller_id' => null,
@@ -97,7 +97,7 @@ it('validates required and typed fields when storing', function () {
 });
 
 it('rejects a non-existent reseller when storing', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.create'))
         ->post(route('customers.store'), [
             'reseller_id' => 999999,
@@ -137,7 +137,7 @@ it('updates a customer and redirects with a success flash', function () {
     $customer = Customer::factory()->create();
     $newReseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->put(route('customers.update', $customer), [
             'reseller_id' => $newReseller->id,
             'name' => 'Nama Baru',
@@ -158,7 +158,7 @@ it('updates a customer and redirects with a success flash', function () {
 it('validates when updating', function () {
     $customer = Customer::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.edit', $customer))
         ->put(route('customers.update', $customer), [
             'reseller_id' => $customer->reseller_id,
@@ -179,7 +179,7 @@ it('lets admins and supervisors delete a customer', function (string $role) {
         ->assertRedirect(route('customers.index'));
 
     $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
-})->with(['admin', 'supervisor']);
+})->with(['supervisor']);
 
 it('forbids cs from deleting a customer', function () {
     $customer = Customer::factory()->create();
@@ -195,7 +195,7 @@ it('blocks deleting a customer that still has transactions', function () {
     $customer = Customer::factory()->create();
     Transaction::factory()->forCustomer($customer)->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.index'))
         ->delete(route('customers.destroy', $customer))
         ->assertRedirect(route('customers.index'))
@@ -212,7 +212,7 @@ it('filters the index by search term', function () {
     Customer::factory()->create(['name' => 'Zebra Unique']);
     Customer::factory()->create(['name' => 'Common Name']);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index', ['search' => 'Zebra']))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Customers/Index')
@@ -226,7 +226,7 @@ it('filters the index by reseller', function () {
     Customer::factory()->count(2)->create(['reseller_id' => $resellerA->id]);
     Customer::factory()->create(['reseller_id' => $resellerB->id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index', ['reseller' => $resellerA->id]))
         ->assertInertia(fn (Assert $page) => $page->has('customers.data', 2));
 });
@@ -234,7 +234,7 @@ it('filters the index by reseller', function () {
 it('paginates the index at 10 per page', function () {
     Customer::factory()->count(15)->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 10)
@@ -248,7 +248,7 @@ it('paginates the index at 10 per page', function () {
 it('stores the lifecycle status and source', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Prospek Baru',
@@ -267,7 +267,7 @@ it('stores the lifecycle status and source', function () {
 it('defaults status to active when omitted', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Tanpa Status',
@@ -284,7 +284,7 @@ it('defaults status to active when omitted', function () {
 it('rejects an invalid status or source when storing', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.create'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
@@ -301,7 +301,7 @@ it('updates the lifecycle status and source', function () {
         'source' => null,
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->put(route('customers.update', $customer), [
             'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
@@ -321,7 +321,7 @@ it('filters the index by status', function () {
     Customer::factory()->create(['name' => 'A Lead', 'status' => CustomerStatus::Lead]);
     Customer::factory()->create(['name' => 'An Active', 'status' => CustomerStatus::Active]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index', ['status' => CustomerStatus::Lead->value]))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 1)
@@ -333,7 +333,7 @@ it('filters the index by status', function () {
 it('ignores an unknown status filter value', function () {
     Customer::factory()->count(3)->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index', ['status' => 'bogus']))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 3)
@@ -359,7 +359,7 @@ it('quick-changes the status via the status endpoint', function () {
 it('validates the status on quick-change', function () {
     $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.show', $customer))
         ->patch(route('customers.status', $customer), ['status' => 'nope'])
         ->assertSessionHasErrors('status');
@@ -385,7 +385,7 @@ it('stores the assigned owner', function () {
     $reseller = Reseller::factory()->create();
     $agent = User::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Punya Agen',
@@ -399,7 +399,7 @@ it('stores the assigned owner', function () {
 it('stores an unassigned customer (null owner)', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Tanpa Owner',
@@ -413,7 +413,7 @@ it('stores an unassigned customer (null owner)', function () {
 it('rejects a non-existent owner when storing', function () {
     $reseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.create'))
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
@@ -427,7 +427,7 @@ it('updates and clears the assigned owner', function () {
     $agent = User::factory()->create();
     $customer = Customer::factory()->create(['assigned_to' => $agent->id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->put(route('customers.update', $customer), [
             'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
@@ -442,7 +442,7 @@ it('exposes the owner on each index row', function () {
     $owner = User::factory()->create(['name' => 'Agen X']);
     Customer::factory()->create(['assigned_to' => $owner->id, 'name' => 'Owned Cust']);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('customers.data.0.owner.name', 'Agen X'));
@@ -461,7 +461,7 @@ it('filters the index by owner=me', function () {
 });
 
 it('filters the index by unassigned owner', function () {
-    $agent = userWithRole('admin');
+    $agent = userWithRole('supervisor');
     Customer::factory()->create(['assigned_to' => $agent->id]);
     Customer::factory()->count(2)->create(['assigned_to' => null]);
 
@@ -471,7 +471,7 @@ it('filters the index by unassigned owner', function () {
 });
 
 it('filters the index by a specific owner id and combines with status', function () {
-    $agentA = userWithRole('admin');
+    $agentA = userWithRole('supervisor');
     $agentB = User::factory()->create();
     Customer::factory()->create(['assigned_to' => $agentB->id, 'status' => CustomerStatus::Lead]);
     Customer::factory()->create(['assigned_to' => $agentB->id, 'status' => CustomerStatus::Active]);
@@ -488,7 +488,7 @@ it('filters the index by a specific owner id and combines with status', function
 it('ignores an unknown owner filter value', function () {
     Customer::factory()->count(3)->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.index', ['owner' => 'not-a-scope']))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 3)
@@ -507,7 +507,7 @@ it('quick-reassigns and clears the owner via the owner endpoint', function () {
 
     expect($customer->fresh()->assigned_to)->toBe($agent->id);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->patch(route('customers.owner', $customer), ['assigned_to' => null])
         ->assertSessionHas('success');
 
@@ -517,7 +517,7 @@ it('quick-reassigns and clears the owner via the owner endpoint', function () {
 it('validates the owner on quick-reassign', function () {
     $customer = Customer::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.show', $customer))
         ->patch(route('customers.owner', $customer), ['assigned_to' => 999999])
         ->assertSessionHasErrors('assigned_to');

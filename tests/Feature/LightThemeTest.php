@@ -51,7 +51,7 @@ test('the bootstrap does not initialize or switch a theme', function () {
 test('the appearance settings route no longer exists', function () {
     $this->seed(RoleSeeder::class);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get('/settings/appearance')
         ->assertNotFound();
 });

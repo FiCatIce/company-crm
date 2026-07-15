@@ -47,7 +47,7 @@ test('the replaced starter-kit nav components are removed', function () {
 
 test('the customers index renders its data contract for an authorized user', function () {
     $this->seed(RoleSeeder::class);
-    $this->actingAs(userWithRole('admin'));
+    $this->actingAs(userWithRole('supervisor'));
     $this->withoutVite();
 
     $this->get('/customers')

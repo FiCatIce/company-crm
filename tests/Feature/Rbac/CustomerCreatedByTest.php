@@ -22,7 +22,7 @@ it('stamps created_by with the authenticated user on store', function () {
 });
 
 it('ignores a forged created_by in the request payload', function () {
-    $actor = userWithRole('admin');
+    $actor = userWithRole('supervisor');
     $victim = User::factory()->create();
     $reseller = Reseller::factory()->create();
 

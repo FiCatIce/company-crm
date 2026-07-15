@@ -49,7 +49,7 @@ it('allows admin and supervisor to view the index', function (string $role) {
         ->get(route('transactions.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Transactions/Index'));
-})->with(['admin', 'supervisor']);
+})->with(['supervisor']);
 // CS/maintenance denial (B3, money hidden) lives in Rbac/PartialVisibilityTest.
 
 // ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ it('exposes an active warranty status from the accessors', function () {
         'purchased_at' => $purchased->toDateString(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('transactions.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Transactions/Index')
@@ -91,7 +91,7 @@ it('exposes an expired warranty status from the accessors', function () {
         'purchased_at' => now()->subYear()->toDateString(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('transactions.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('transactions.data.0.is_under_warranty', false));
@@ -118,7 +118,7 @@ it('opens the create page with customer, product, and reseller options', functio
 it('stores a transaction and redirects with a success flash', function () {
     $links = transactionLinks();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('transactions.store'), [
             ...$links,
             'purchased_at' => now()->toDateString(),
@@ -132,7 +132,7 @@ it('stores a transaction and redirects with a success flash', function () {
 it('promotes a lead customer to active on their first transaction', function () {
     $customer = Customer::factory()->create(['status' => CustomerStatus::Lead]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('transactions.store'), [
             'customer_id' => $customer->id,
             'product_id' => Product::factory()->create()->id,
@@ -147,7 +147,7 @@ it('promotes a lead customer to active on their first transaction', function () 
 it('does not change a non-lead customer status on a transaction', function () {
     $customer = Customer::factory()->create(['status' => CustomerStatus::Churned]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('transactions.store'), [
             'customer_id' => $customer->id,
             'product_id' => Product::factory()->create()->id,
@@ -160,14 +160,14 @@ it('does not change a non-lead customer status on a transaction', function () {
 });
 
 it('validates that all links and the purchase date are required', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.create'))
         ->post(route('transactions.store'), [])
         ->assertSessionHasErrors(['customer_id', 'product_id', 'reseller_id', 'purchased_at']);
 });
 
 it('rejects non-existent linked records', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.create'))
         ->post(route('transactions.store'), [
             'customer_id' => 999999,
@@ -182,7 +182,7 @@ it('rejects a reseller that does not own the selected customer', function () {
     $customer = Customer::factory()->create();
     $unrelatedReseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.create'))
         ->post(route('transactions.store'), [
             'customer_id' => $customer->id,
@@ -196,7 +196,7 @@ it('rejects a reseller that does not own the selected customer', function () {
 });
 
 it('rejects a future purchase date', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.create'))
         ->post(route('transactions.store'), [
             ...transactionLinks(),
@@ -235,7 +235,7 @@ it('updates a transaction and redirects with a success flash', function () {
     $transaction = Transaction::factory()->create();
     $newProduct = Product::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->put(route('transactions.update', $transaction), [
             'customer_id' => $transaction->customer_id,
             'product_id' => $newProduct->id,
@@ -254,7 +254,7 @@ it('updates a transaction and redirects with a success flash', function () {
 it('validates when updating', function () {
     $transaction = Transaction::factory()->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.edit', $transaction))
         ->put(route('transactions.update', $transaction), [
             'customer_id' => $transaction->customer_id,
@@ -277,7 +277,7 @@ it('lets admins and supervisors delete a transaction', function (string $role) {
         ->assertRedirect(route('transactions.index'));
 
     $this->assertDatabaseMissing('transactions', ['id' => $transaction->id]);
-})->with(['admin', 'supervisor']);
+})->with(['supervisor']);
 
 it('forbids cs from deleting a transaction', function () {
     $transaction = Transaction::factory()->create();
@@ -299,7 +299,7 @@ it('filters the index by customer name', function () {
     Transaction::factory()->create(['customer_id' => $match->id, 'reseller_id' => $match->reseller_id]);
     Transaction::factory()->create(['customer_id' => $other->id, 'reseller_id' => $other->reseller_id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('transactions.index', ['search' => 'Zebra']))
         ->assertInertia(fn (Assert $page) => $page
             ->has('transactions.data', 1)
@@ -309,7 +309,7 @@ it('filters the index by customer name', function () {
 it('paginates the index at 10 per page', function () {
     Transaction::factory()->count(15)->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('transactions.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('transactions.data', 10)
@@ -321,7 +321,7 @@ it('paginates the index at 10 per page', function () {
 // ---------------------------------------------------------------------------
 
 it('stores the sale amount', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('transactions.store'), [
             ...transactionLinks(),
             'purchased_at' => now()->toDateString(),
@@ -335,7 +335,7 @@ it('stores the sale amount', function () {
 it('stores a transaction without an amount (null)', function () {
     $links = transactionLinks();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->post(route('transactions.store'), [
             ...$links,
             'purchased_at' => now()->toDateString(),
@@ -347,7 +347,7 @@ it('stores a transaction without an amount (null)', function () {
 });
 
 it('rejects a negative or non-numeric amount', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.create'))
         ->post(route('transactions.store'), [
             ...transactionLinks(),
@@ -356,7 +356,7 @@ it('rejects a negative or non-numeric amount', function () {
         ])
         ->assertSessionHasErrors('amount');
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.create'))
         ->post(route('transactions.store'), [
             ...transactionLinks(),
@@ -369,7 +369,7 @@ it('rejects a negative or non-numeric amount', function () {
 it('updates and clears the amount', function () {
     $transaction = Transaction::factory()->create(['amount' => 2000000]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->put(route('transactions.update', $transaction), [
             'customer_id' => $transaction->customer_id,
             'product_id' => $transaction->product_id,
@@ -386,7 +386,7 @@ it('exposes the amount on each index row', function () {
     $customer = Customer::factory()->create();
     Transaction::factory()->forCustomer($customer)->create(['amount' => 750000]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('transactions.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('transactions.data.0.amount', '750000.00'));

@@ -27,7 +27,7 @@ it('renders the customer 360 page with the expected props', function () {
 
     Interaction::factory()->forCustomer($customer)->count(3)->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.show', $customer))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -54,7 +54,7 @@ it('computes the warranty summary for this customer only', function () {
     // Another customer's transaction must not leak in.
     Transaction::factory()->forCustomer($other)->create(['product_id' => $warrantied->id, 'purchased_at' => now()->subMonths(3)]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.show', $customer))
         ->assertInertia(fn (Assert $page) => $page
             ->where('warrantySummary.active', 1)
@@ -76,7 +76,7 @@ it('marks manual interactions editable but CTI logs immutable per row', function
         'occurred_at' => now()->subHour(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('customers.show', $customer))
         ->assertInertia(fn (Assert $page) => $page
             ->where('timeline.data.0.source', 'manual')
@@ -113,7 +113,7 @@ it('denies users without a CRM role', function () {
 });
 
 it('returns 404 for a missing customer', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get('/customers/999999')
         ->assertNotFound();
 });

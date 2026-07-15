@@ -137,7 +137,7 @@ it('still lets view-all roles see every customer', function (string $role) {
         ->get(route('customers.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->has('customers.data', 3));
-})->with(['admin', 'supervisor', 'cs', 'maintenance']);
+})->with(['supervisor', 'cs', 'maintenance']);
 
 it('still lets a view-all role open any customer by URL', function () {
     ['theirs' => $theirs] = scopedBooks();

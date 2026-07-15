@@ -34,7 +34,7 @@ it('shows summary stats derived from the domain data', function () {
         'purchased_at' => now()->subYear(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -48,7 +48,7 @@ it('shows summary stats derived from the domain data', function () {
 it('builds a 12-month transaction trend and counts the current month', function () {
     Transaction::factory()->create(['purchased_at' => now()]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('trend', 12)

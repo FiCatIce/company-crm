@@ -118,7 +118,7 @@ it('lets a supervisor manage anyone\'s manual interaction', function () {
 });
 
 it('treats CTI logs as immutable even for an admin', function () {
-    $admin = userWithRole('admin');
+    $admin = userWithRole('supervisor');
     $interaction = Interaction::factory()->create([
         'source' => InteractionSource::Cti,
         'type' => InteractionType::Call,

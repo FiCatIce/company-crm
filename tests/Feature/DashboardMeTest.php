@@ -40,7 +40,7 @@ it('scopes myCustomers and myRecentInteractions to the acting user', function ()
 });
 
 it('counts only my interactions dated today', function () {
-    $me = userWithRole('admin');
+    $me = userWithRole('supervisor');
     $customer = Customer::factory()->create(['assigned_to' => $me->id]);
 
     Interaction::factory()->forCustomer($customer)->count(2)->create([
@@ -62,7 +62,7 @@ it('counts only my interactions dated today', function () {
 });
 
 it('counts my expiring warranties from owned customers only, reusing the 30-day rule', function () {
-    $me = userWithRole('admin');
+    $me = userWithRole('supervisor');
     $reseller = Reseller::factory()->create();
     $product = Product::factory()->create(['warranty_months' => 12]);
 
@@ -115,7 +115,7 @@ it('returns my five most recent interactions newest first with the expected shap
 });
 
 it('renders the personal block calmly with no assignments or interactions', function () {
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page

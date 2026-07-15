@@ -146,10 +146,11 @@ it('ignores an attempt to change ones own role or permissions but still saves th
 
     // Profile updated...
     expect($admin->name)->toBe('Admin Baru')
-        // ...but role and permissions are untouched (self-edit blocked).
+        // ...but role and permissions are untouched (self-edit blocked). Proxy
+        // perms are admin's own system grants (post-B4 admin has no data perms).
         ->and($admin->hasRole('admin'))->toBeTrue()
         ->and($admin->can(PermissionName::PermissionAssign->value))->toBeTrue()
-        ->and($admin->can(PermissionName::CustomerViewAll->value))->toBeTrue();
+        ->and($admin->can(PermissionName::UserView->value))->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------

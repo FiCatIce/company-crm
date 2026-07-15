@@ -16,12 +16,14 @@ use App\Models\User;
  * role (label) and the synced direct permissions.
  *
  * BATCH B0 NOTE — the foundation batch introduced these presets mirroring the
- * legacy org-wide access, then later batches tighten them toward the
+ * legacy org-wide access; later batches tightened them toward the
  * DESIGN_RBAC.md §3.3 target:
  *   - B3 (done) removed all transaction/revenue permissions from cs, so CS (like
  *     maintenance) sees customers + purchased products but never money.
- *   - B4 will strip the remaining data permissions from admin (stats +
- *     user-management only).
+ *   - B4 (done) stripped ALL data permissions from admin — admin is now a
+ *     system/user-management role that sees only aggregate stats + the call log,
+ *     never customer/transaction/product detail or money. This is the design's
+ *     central "admin flip": admin is NOT a data super-user.
  * The sales/maintenance presets are already the §3.3 target for the money axis.
  */
 final class RolePresets
@@ -34,7 +36,7 @@ final class RolePresets
     public static function for(RoleName $role): array
     {
         return match ($role) {
-            RoleName::Admin => [...self::fullDomainAccess(), ...self::userManagement()],
+            RoleName::Admin => self::adminSystem(),
             RoleName::Supervisor => self::fullDomainAccess(),
             RoleName::Cs => self::customerService(),
             RoleName::Sales => self::sales(),
@@ -85,13 +87,19 @@ final class RolePresets
     }
 
     /**
-     * User-management + permission granting. Admin only (dormant until B5).
+     * Admin (DESIGN_RBAC.md §3.3 / batch B4): a system role, NOT a data super-user.
+     * User management + permission granting, dashboard AGGREGATE stats only (counts,
+     * never rows), and the org-wide call log (per the user's revised B4 matrix).
+     * Deliberately holds NO customer/transaction/product/reseller/revenue permission,
+     * so every data route 403s and the dashboard hides every detail widget.
      *
      * @return list<P>
      */
-    private static function userManagement(): array
+    private static function adminSystem(): array
     {
         return [
+            P::DashboardView, P::DashboardStatsAggregate,
+            P::InteractionViewAll,
             P::UserView, P::UserCreate, P::UserUpdate, P::UserDelete,
             P::RoleAssign, P::PermissionAssign,
         ];

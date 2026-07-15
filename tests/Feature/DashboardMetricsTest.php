@@ -49,7 +49,7 @@ it('counts new customers and transactions in the current month', function () {
         'purchased_at' => now()->subMonthNoOverflow(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('stats.customers', 3)
@@ -76,7 +76,7 @@ it('splits transactions into active, expired, and no-warranty buckets', function
     $make($warrantied, now()->subYears(2));   // expired
     $make($noWarranty, now()->subYear());     // none
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('warrantyBreakdown.active', 1)
@@ -102,7 +102,7 @@ it('lists the six most recent transactions, newest first', function () {
 
     $newest = now()->subDays(3)->toDateString();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('recentTransactions', 6)
@@ -137,7 +137,7 @@ it('surfaces active warranties expiring within 30 days, soonest first', function
         'purchased_at' => now()->subMonths(3),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('expiringSoon', 2)
@@ -158,7 +158,7 @@ it('ranks the top resellers by customer count, excluding empty ones', function (
     Customer::factory()->count(3)->create(['reseller_id' => $mid->id]);
     Customer::factory()->count(1)->create(['reseller_id' => $small->id]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('topResellers', 3) // the empty reseller is dropped
@@ -212,7 +212,7 @@ it('sums revenue all-time and per month, ignoring null amounts', function () {
     $tx(null, now());                                             // null → ignored by SUM
     $tx(2_000_000, now()->subMonthNoOverflow()->startOfMonth()); // last month
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('stats.revenue', 3500000)           // 1M + 500k + 2M (null skipped)
@@ -234,7 +234,7 @@ it('ranks the top resellers by revenue, excluding those with none', function () 
     Transaction::factory()->forCustomer($smallCust)->create(['amount' => 1_000_000]);
     Transaction::factory()->forCustomer($noneCust)->create(['amount' => null]); // no revenue → excluded
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('topResellersByRevenue', 2)
@@ -276,7 +276,7 @@ it('lists recent calls (any source) newest first, calls only, flagging CTI leads
         'occurred_at' => now(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('recentCalls', 2) // the note is excluded
@@ -298,7 +298,7 @@ it('caps the recent calls feed at ten', function () {
     $customer = Customer::factory()->create();
     Interaction::factory()->forCustomer($customer)->call()->count(12)->create();
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page->has('recentCalls', 10));
 });
@@ -324,7 +324,7 @@ it('counts a warranty expiring today as active and surfaces it in expiringSoon w
         'purchased_at' => now()->subMonths(12)->subDay(),
     ]);
 
-    $this->actingAs(userWithRole('admin'))
+    $this->actingAs(userWithRole('supervisor'))
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('warrantyBreakdown.active', 1)

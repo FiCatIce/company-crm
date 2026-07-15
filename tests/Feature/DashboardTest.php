@@ -20,7 +20,7 @@ class DashboardTest extends TestCase
     public function test_users_with_a_role_can_visit_the_dashboard()
     {
         $this->seed(RoleSeeder::class);
-        $this->actingAs(userWithRole('admin'));
+        $this->actingAs(userWithRole('supervisor'));
 
         $response = $this->get(route('dashboard'));
         $response->assertOk();

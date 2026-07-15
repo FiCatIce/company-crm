@@ -67,11 +67,13 @@ const props = defineProps<{
     };
     trend: TrendPoint[];
     warrantyBreakdown: { active: number; expired: number; none: number };
-    recentTransactions: RecentRow[];
-    expiringSoon: ExpiringRow[];
-    topResellers: TopReseller[];
+    // Detail widgets are omitted (absent) for roles without customer/call access —
+    // e.g. admin, which sees only aggregates + calls. See DESIGN_RBAC.md §4.4.
+    recentTransactions?: RecentRow[];
+    expiringSoon?: ExpiringRow[];
+    topResellers?: TopReseller[];
     topResellersByRevenue?: RevenueReseller[];
-    recentCalls: RecentCallRow[];
+    recentCalls?: RecentCallRow[];
     me: {
         myCustomers: number;
         myInteractionsToday: number;
@@ -87,6 +89,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 // Revenue widgets are present only for users with revenue.view (the backend
 // omits the props otherwise).
 const hasRevenue = computed(() => props.stats.revenue !== undefined);
+
+// Customer-detail widgets (recent transactions, expiring warranties, top
+// resellers) and the call feed are omitted for roles without the access — the
+// bands hide entirely rather than render empty.
+const hasCustomerWidgets = computed(
+    () => props.recentTransactions !== undefined,
+);
+const hasRecentCalls = computed(() => props.recentCalls !== undefined);
 
 // Month-over-month revenue movement, shown as the "this month" card's subtext.
 const revenueDelta = computed(() => {
@@ -214,18 +224,21 @@ const revenueDelta = computed(() => {
             </div>
 
             <!-- Band 3 — recent activity + watchlist -->
-            <div class="grid gap-6 lg:grid-cols-3">
+            <div
+                v-if="hasCustomerWidgets"
+                class="grid gap-6 lg:grid-cols-3"
+            >
                 <div class="lg:col-span-2">
-                    <RecentTransactionsCard :rows="recentTransactions" />
+                    <RecentTransactionsCard :rows="recentTransactions ?? []" />
                 </div>
                 <div class="flex flex-col gap-6">
-                    <ExpiringWarrantyCard :items="expiringSoon" />
-                    <TopResellersCard :items="topResellers" />
+                    <ExpiringWarrantyCard :items="expiringSoon ?? []" />
+                    <TopResellersCard :items="topResellers ?? []" />
                 </div>
             </div>
 
             <!-- Band 4 — recent calls across the org (CTI + manual) -->
-            <RecentCallsCard :items="recentCalls" />
+            <RecentCallsCard v-if="hasRecentCalls" :items="recentCalls ?? []" />
         </div>
     </AppLayout>
 </template>
