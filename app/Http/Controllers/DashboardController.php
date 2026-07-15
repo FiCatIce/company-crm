@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Reseller;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,11 +29,13 @@ class DashboardController extends Controller
         // (no data permissions) gets ONLY the aggregates + the call log, never a
         // single customer row. Do NOT add a Gate::before admin bypass here.
         $canSeeRevenue = $user->can(PermissionName::RevenueView->value);
-        // "Can view customers at all" (all OR own) — the widgets below expose
-        // customer names, so anyone who may see customers keeps them; admin, which
-        // holds neither, loses them.
-        $canViewCustomers = $user->can(PermissionName::CustomerViewAll->value)
-            || $user->can(PermissionName::CustomerViewOwn->value);
+        // The org-wide detail widgets (recent transactions, expiring warranties,
+        // top resellers) are UNSCOPED lists of customers/purchases, so they are
+        // gated on customer.view.ALL — a Sales user (view.own) must not see other
+        // reps' customers here; their own book is on the "Ringkasan Saya" band.
+        $canViewAllCustomers = $user->can(PermissionName::CustomerViewAll->value);
+        // The call feed IS scoped per-viewer (Interaction::visibleTo), so anyone
+        // who may see any calls gets it — Sales just sees their own customers'.
         $canViewCalls = $user->can(PermissionName::InteractionViewAll->value)
             || $user->can(PermissionName::InteractionViewOwn->value);
         $warranty = $this->warrantyBreakdown();
@@ -52,16 +55,17 @@ class DashboardController extends Controller
             'me' => $this->personalStats((int) $user->id),
         ];
 
-        // Detail widgets exposing customer names / purchase rows.
-        if ($canViewCustomers) {
+        // Org-wide detail widgets exposing every customer's name / purchase rows.
+        if ($canViewAllCustomers) {
             $props['recentTransactions'] = $this->recentTransactions();
             $props['expiringSoon'] = $this->expiringSoon();
             $props['topResellers'] = $this->topResellers();
         }
 
-        // Org-wide call feed — admin keeps this (interaction.view.all).
+        // Call feed — scoped per viewer: all for managers/CS/maintenance/admin,
+        // only their own customers' calls for Sales.
         if ($canViewCalls) {
-            $props['recentCalls'] = $this->recentCalls();
+            $props['recentCalls'] = $this->recentCalls($user);
         }
 
         if ($canSeeRevenue) {
@@ -72,16 +76,18 @@ class DashboardController extends Controller
     }
 
     /**
-     * The ten most recent calls org-wide (CTI + manual), newest first — a
-     * monitoring feed of live phone activity across every agent. Calls handled
-     * for a customer that is still a CTI-sourced lead are flagged so agents can
-     * spot fresh prospects that need enriching/following up.
+     * The ten most recent calls the viewer may see (CTI + manual), newest first —
+     * a monitoring feed of live phone activity. Scoped via Interaction::visibleTo:
+     * org-wide for managers/CS/maintenance/admin, but only the viewer's own
+     * customers' calls for Sales (DESIGN_RBAC.md §4.4). Calls for a customer that
+     * is still a CTI-sourced lead are flagged so agents can spot fresh prospects.
      *
      * @return array<int, array<string, mixed>>
      */
-    private function recentCalls(): array
+    private function recentCalls(User $user): array
     {
         return Interaction::query()
+            ->visibleTo($user)
             ->where('type', InteractionType::Call)
             ->with(['customer:id,name,status,source', 'user:id,name'])
             ->latest('occurred_at')

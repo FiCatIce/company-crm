@@ -6,7 +6,9 @@ use App\Enums\InteractionDirection;
 use App\Enums\InteractionOutcome;
 use App\Enums\InteractionSource;
 use App\Enums\InteractionType;
+use App\Enums\PermissionName;
 use Database\Factories\InteractionFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -77,5 +79,29 @@ class Interaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Constrain a query to the interactions (call log) $user may see
+     * (DESIGN_RBAC.md §4.2): view.all → everything; view.own → interactions of
+     * customers the user can see (delegates to Customer::visibleTo so call-log
+     * visibility never diverges from customer visibility); otherwise nothing.
+     *
+     * @param  Builder<Interaction>  $query
+     * @return Builder<Interaction>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->can(PermissionName::InteractionViewAll->value)) {
+            return $query;
+        }
+
+        if ($user->can(PermissionName::InteractionViewOwn->value)) {
+            // Subquery (rather than whereHas) keeps the customer-visibility logic
+            // in one place and stays analysable by static analysis.
+            return $query->whereIn('customer_id', Customer::visibleTo($user)->select('id'));
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 }
