@@ -58,6 +58,13 @@
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='server,queue,vite'"
         ],
+        "share:tunnel": [
+            "Composer\\Config::disableProcessTimeout",
+            "npm run build",
+            "@php -r \"file_exists('public/hot') && unlink('public/hot');\"",
+            "@php -r \"fwrite(STDERR, PHP_EOL.'>> Built assets ready. In VS Code Ports: forward 8000 and set it Public, then share the ...-8000 URL. (Ctrl+C to stop)'.PHP_EOL.PHP_EOL);\"",
+            "@php artisan serve --host=0.0.0.0 --port=8000"
+        ],
         "lint": [
             "pint --parallel"
         ],
