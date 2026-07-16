@@ -28,5 +28,9 @@ class DatabaseSeeder extends Seeder
         RolePresets::assign($admin, RoleName::Admin);
 
         $this->call(DemoDataSeeder::class);
+
+        // A second Sales rep with their own customers, for exercising RBAC
+        // row-scoping (Sales sees only their own book). Idempotent.
+        $this->call(DemoSalesScopingSeeder::class);
     }
 }

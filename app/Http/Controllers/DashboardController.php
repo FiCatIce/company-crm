@@ -41,14 +41,19 @@ class DashboardController extends Controller
         // reseller count needs reseller.view; money needs revenue.view.
         $canViewAllTransactions = $user->can(PermissionName::TransactionViewAll->value);
         $canViewResellers = $user->can(PermissionName::ResellerView->value);
-        $canSeeRevenue = $user->can(PermissionName::RevenueView->value);
+        // Revenue is ORG-WIDE money. Require revenue.view AND org-wide transaction
+        // access, so a dangling revenue.view (granted without any transaction view)
+        // can never surface money on its own — closes a latent gap even though no
+        // current preset produces that combination.
+        $canSeeRevenue = $user->can(PermissionName::RevenueView->value)
+            && $user->can(PermissionName::TransactionViewAll->value);
         // The call feed IS scoped per-viewer (Interaction::visibleTo), so anyone
         // who may see any calls gets it — Sales just sees their own customers'.
         $canViewCalls = $user->can(PermissionName::InteractionViewAll->value)
             || $user->can(PermissionName::InteractionViewOwn->value);
 
         $props = [
-            'me' => $this->personalStats((int) $user->id),
+            'me' => $this->personalStats($user),
         ];
 
         // Org-wide aggregate band — composed per permission, omitted entirely for a
@@ -201,15 +206,27 @@ class DashboardController extends Controller
      *
      * @return array{myCustomers: int, myInteractionsToday: int, myExpiringWarranties: int, myRecentInteractions: array<int, array<string, mixed>>}
      */
-    private function personalStats(int $userId): array
+    private function personalStats(User $user): array
     {
+        $userId = (int) $user->id;
         $threshold = now()->startOfDay()->addDays(30);
 
+        // "My" customers = the ones I ENTERED or currently OWN (created_by OR
+        // assigned_to = me) — the ownership rule (D1-B), the same one
+        // Customer::scopeVisibleTo uses for its own-branch, so the personal band
+        // matches the /customers page instead of quietly reading 0 for customers a
+        // rep created but was never "assigned". This is ownership, NOT role
+        // visibility: a manager's personal band is still only their own book, never
+        // the whole org. The nested group keeps the OR from escaping whereHas.
+        $ownedByMe = fn ($query) => $query->where(
+            fn ($inner) => $inner->where('created_by', $userId)->orWhere('assigned_to', $userId)
+        );
+
         // Reuses the expiringSoon rule (active warranty ending within 30 days),
-        // scoped to transactions of customers this user owns.
-        // unscoped-ok: personal band — scoped to the caller's own assigned customers.
+        // scoped to the transactions of customers this user owns.
+        // unscoped-ok: personal band — scoped to the caller's own book (created_by/assigned_to).
         $myExpiringWarranties = Transaction::query()
-            ->whereHas('customer', fn ($query) => $query->where('assigned_to', $userId))
+            ->whereHas('customer', $ownedByMe)
             ->with('product:id,warranty_months')
             ->get(['id', 'customer_id', 'product_id', 'purchased_at'])
             ->filter(fn (Transaction $transaction) => $transaction->product->warranty_months > 0
@@ -218,7 +235,7 @@ class DashboardController extends Controller
             ->count();
 
         return [
-            'myCustomers' => Customer::where('assigned_to', $userId)->count(),
+            'myCustomers' => Customer::query()->where($ownedByMe)->count(),
             'myInteractionsToday' => Interaction::where('user_id', $userId)
                 ->whereDate('occurred_at', today())
                 ->count(),

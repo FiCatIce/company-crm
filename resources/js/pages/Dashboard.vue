@@ -153,7 +153,7 @@ const revenueDelta = computed(() => {
                         label="Customer Saya"
                         :value="me.myCustomers"
                         :icon="UserCheck"
-                        description="ditugaskan kepada Anda"
+                        description="yang Anda input atau tangani"
                     />
                     <StatCard
                         label="Interaksi Saya Hari Ini"
