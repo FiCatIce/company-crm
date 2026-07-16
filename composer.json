@@ -63,7 +63,7 @@
             "npm run build",
             "@php -r \"file_exists('public/hot') && unlink('public/hot');\"",
             "@php -r \"fwrite(STDERR, PHP_EOL.'>> Built assets ready. In VS Code Ports: forward 8000 and set it Public, then share the ...-8000 URL. (Ctrl+C to stop)'.PHP_EOL.PHP_EOL);\"",
-            "@php -r \"putenv('SHARE_TUNNEL=true'); putenv('PHP_CLI_SERVER_WORKERS=4'); passthru(escapeshellarg(PHP_BINARY).' artisan serve --host=0.0.0.0 --port=8000 --no-reload');\""
+            "@php scripts/serve-tunnel.php"
         ],
         "lint": [
             "pint --parallel"
