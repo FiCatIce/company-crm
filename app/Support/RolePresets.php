@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\PermissionName as P;
 use App\Enums\RoleName;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 
 /**
  * Maps each role to its default permission set, and applies it to a user.
@@ -63,6 +64,47 @@ final class RolePresets
     {
         $user->syncRoles([$role->value]);
         $user->syncPermissions(self::permissions($role));
+    }
+
+    /**
+     * The effective permission strings a role currently grants — the single
+     * source of truth read by the role builder, the user-management preset map,
+     * and the re-sync seeder. Resolves the three kinds of role:
+     *
+     *  - Admin: ALWAYS its locked code preset. The admin role can never be
+     *    customized (privilege-escalation / lockout guard), so its attached
+     *    permissions, if any, are ignored.
+     *  - A role carrying its own permissions (role_has_permissions): those — a
+     *    custom role, OR a non-admin system role an admin has edited/renamed via
+     *    the role builder (the edit "detaches" it from its code preset).
+     *  - An un-customized system role (no attached permissions): its code preset
+     *    default.
+     *  - Anything else: empty.
+     *
+     * Results are reduced to valid permission names in the enum's canonical
+     * order, so callers get a clean, deterministic list.
+     *
+     * @return list<string>
+     */
+    public static function effectivePermissions(Role $role): array
+    {
+        if ($role->name === RoleName::Admin->value) {
+            return self::permissions(RoleName::Admin);
+        }
+
+        $held = $role->permissions->pluck('name');
+        if ($held->isNotEmpty()) {
+            return array_values(array_filter(
+                P::values(),
+                fn (string $permission): bool => $held->contains($permission),
+            ));
+        }
+
+        if ($systemRole = RoleName::tryFrom($role->name)) {
+            return self::permissions($systemRole);
+        }
+
+        return [];
     }
 
     /**

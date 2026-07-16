@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, Plus, ShieldCheck } from '@lucide/vue';
+import { Check, Lock, Plus, ShieldCheck } from '@lucide/vue';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,7 +43,8 @@ function destroy(role: RoleRow): void {
                         Role &amp; Izin
                     </h1>
                     <p class="text-sm text-muted-foreground">
-                        Buat role kustom dan atur izinnya. Role sistem terkunci.
+                        Kelola role beserta izinnya. Hanya role admin yang
+                        terkunci; role sistem lain bisa diubah.
                     </p>
                 </div>
 
@@ -121,7 +122,14 @@ function destroy(role: RoleRow): void {
                                 </td>
                                 <td class="px-6 py-4">
                                     <span
-                                        v-if="role.is_system"
+                                        v-if="role.is_locked"
+                                        class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+                                    >
+                                        <Lock class="size-3" />
+                                        Terkunci
+                                    </span>
+                                    <span
+                                        v-else-if="role.is_system"
                                         class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
                                         >Sistem</span
                                     >
@@ -153,14 +161,14 @@ function destroy(role: RoleRow): void {
                                             <Link
                                                 :href="`/roles/${role.id}/edit`"
                                                 >{{
-                                                    role.is_system
+                                                    role.is_locked
                                                         ? 'Lihat'
                                                         : 'Edit'
                                                 }}</Link
                                             >
                                         </Button>
 
-                                        <Dialog v-if="!role.is_system">
+                                        <Dialog v-if="!role.is_locked">
                                             <DialogTrigger as-child>
                                                 <Button
                                                     variant="ghost"
@@ -193,8 +201,24 @@ function destroy(role: RoleRow): void {
                                                                 role.users_count
                                                             }}
                                                             user — pindahkan
-                                                            dulu.
+                                                            dulu ke role lain.
                                                         </template>
+                                                        <span
+                                                            v-if="
+                                                                role.is_system
+                                                            "
+                                                            class="mt-2 block text-amber-700"
+                                                        >
+                                                            Ini role sistem —
+                                                            seeder &amp;
+                                                            integrasi CTI
+                                                            mungkin mengandalkan
+                                                            nama
+                                                            <strong>{{
+                                                                role.name
+                                                            }}</strong
+                                                            >. Yakin?
+                                                        </span>
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 <DialogFooter class="gap-2">

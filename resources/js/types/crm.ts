@@ -116,6 +116,7 @@ export type RoleRow = {
     name: string;
     label: string;
     is_system: boolean;
+    is_locked: boolean;
     users_count: number;
     permissions_count: number;
 };

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Support\RolePresets;
 use Database\Seeders\RolePresetSeeder;
 use Database\Seeders\RoleSeeder;
+use Spatie\Permission\Models\Role;
 
 beforeEach(fn () => $this->seed(RoleSeeder::class));
 
@@ -33,4 +34,38 @@ it('leaves a user without any role untouched', function () {
     $this->seed(RolePresetSeeder::class);
 
     expect($user->fresh()->getDirectPermissions())->toBeEmpty();
+});
+
+it('re-syncs a renamed system role\'s members without error or resurrecting the slug', function () {
+    $user = User::factory()->create();
+    RolePresets::assign($user, RoleName::Sales); // direct = sales preset, role = 'sales'
+
+    // Mimic the role builder editing then renaming the sales role: the template is
+    // materialized onto the role row, then the role is renamed.
+    $sales = Role::findByName('sales');
+    $sales->syncPermissions(RolePresets::permissions(RoleName::Sales));
+    $sales->name = 'penjualan';
+    $sales->save();
+
+    // Previously threw ValueError (RoleName::from('penjualan')). Idempotent re-run.
+    $this->seed(RolePresetSeeder::class);
+    $this->seed(RolePresetSeeder::class);
+
+    expect(Role::where('name', 'sales')->exists())->toBeFalse()      // not resurrected
+        ->and(Role::where('name', 'penjualan')->count())->toBe(1)    // no duplicate
+        ->and($user->fresh()->can(PermissionName::CustomerViewOwn->value))->toBeTrue()
+        ->and($user->fresh()->can(PermissionName::TransactionViewOwn->value))->toBeTrue();
+});
+
+it('re-syncs a custom-role user without error', function () {
+    $role = Role::create(['name' => 'Auditor', 'guard_name' => 'web']);
+    $role->syncPermissions([PermissionName::ProductView->value]);
+
+    $user = User::factory()->create();
+    $user->assignRole('Auditor');
+
+    // Previously threw ValueError (RoleName::from('Auditor')).
+    $this->seed(RolePresetSeeder::class);
+
+    expect($user->fresh()->can(PermissionName::ProductView->value))->toBeTrue();
 });

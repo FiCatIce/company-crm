@@ -118,10 +118,38 @@ it('lets an admin change a custom role\'s permissions', function () {
 });
 
 // ---------------------------------------------------------------------------
-// System-role protection
+// Admin role — fully locked (privilege-escalation + lockout guard)
 // ---------------------------------------------------------------------------
 
-it('blocks deleting a system role', function () {
+it('blocks re-permissioning the admin role', function () {
+    $admin = Role::findByName('admin');
+
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('roles.update', $admin), [
+            'name' => 'admin',
+            'permissions' => [P::CustomerViewAll->value],
+        ])
+        ->assertSessionHas('error');
+
+    // Untouched — no custom permissions attached to the admin role row.
+    expect($admin->fresh()->permissions)->toBeEmpty();
+});
+
+it('blocks renaming the admin role', function () {
+    $admin = Role::findByName('admin');
+
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('roles.update', $admin), [
+            'name' => 'superadmin',
+            'permissions' => [P::RoleManage->value],
+        ])
+        ->assertSessionHas('error');
+
+    expect(Role::where('name', 'admin')->exists())->toBeTrue()
+        ->and(Role::where('name', 'superadmin')->exists())->toBeFalse();
+});
+
+it('blocks deleting the admin role', function () {
     $admin = Role::findByName('admin');
 
     $this->actingAs(userWithRole('admin'))
@@ -131,15 +159,107 @@ it('blocks deleting a system role', function () {
     expect(Role::where('name', 'admin')->exists())->toBeTrue();
 });
 
-it('blocks renaming/re-permissioning a system role', function () {
+it('flags the admin role as locked and other system roles as editable', function () {
+    $this->actingAs(userWithRole('admin'))
+        ->get(route('roles.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Roles/Index')
+            ->where('roles', function ($roles) {
+                $byName = collect($roles)->keyBy('name');
+
+                return $byName['admin']['is_locked'] === true
+                    && $byName['sales']['is_locked'] === false
+                    && $byName['sales']['is_system'] === true
+                    && $byName['supervisor']['is_locked'] === false;
+            }));
+});
+
+// ---------------------------------------------------------------------------
+// Other system roles — editable like regular roles
+// ---------------------------------------------------------------------------
+
+it('lets an admin re-permission a non-admin system role', function () {
     $sales = Role::findByName('sales');
 
     $this->actingAs(userWithRole('admin'))
-        ->put(route('roles.update', $sales), ['name' => 'sales-renamed', 'permissions' => [P::RevenueView->value]]);
+        ->put(route('roles.update', $sales), [
+            'name' => 'sales',
+            'permissions' => [P::CustomerViewOwn->value, P::ProductView->value],
+        ])
+        ->assertRedirect(route('roles.index'));
 
-    // Untouched — still named 'sales' and no custom permissions attached.
-    expect(Role::where('name', 'sales')->exists())->toBeTrue()
-        ->and($sales->fresh()->permissions)->toBeEmpty();
+    expect($sales->fresh()->permissions->pluck('name')->sort()->values()->all())
+        ->toBe(['customer.view.own', 'product.view']);
+});
+
+it('applies a system-role permission change to its members immediately', function () {
+    // A sales agent provisioned with the sales preset (direct permissions).
+    $agent = userWithRole('sales');
+    expect($agent->can(P::TransactionViewOwn->value))->toBeTrue();
+
+    $sales = Role::findByName('sales');
+
+    // Admin drops transaction access from the sales role.
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('roles.update', $sales), [
+            'name' => 'sales',
+            'permissions' => [P::CustomerViewOwn->value, P::ProductView->value],
+        ])
+        ->assertRedirect(route('roles.index'));
+
+    // Removal took effect on the existing member (direct permissions re-stamped).
+    $agent = $agent->fresh();
+    expect($agent->can(P::TransactionViewOwn->value))->toBeFalse()
+        ->and($agent->can(P::CustomerViewOwn->value))->toBeTrue()
+        ->and($agent->can(P::ProductView->value))->toBeTrue();
+});
+
+it('lets an admin rename a non-admin system role', function () {
+    $supervisor = Role::findByName('supervisor');
+
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('roles.update', $supervisor), [
+            'name' => 'manajer-tim',
+            'permissions' => [P::CustomerViewAll->value],
+        ])
+        ->assertRedirect(route('roles.index'));
+
+    expect(Role::where('name', 'manajer-tim')->exists())->toBeTrue()
+        ->and(Role::where('name', 'supervisor')->exists())->toBeFalse();
+});
+
+it('refuses to rename a system role onto another system slug', function () {
+    $supervisor = Role::findByName('supervisor');
+
+    $this->actingAs(userWithRole('admin'))
+        ->put(route('roles.update', $supervisor), [
+            'name' => 'sales',
+            'permissions' => [P::CustomerViewAll->value],
+        ])
+        ->assertSessionHasErrors('name');
+
+    expect(Role::where('name', 'supervisor')->exists())->toBeTrue();
+});
+
+it('lets an admin delete an unused non-admin system role', function () {
+    $cs = Role::findByName('cs'); // no members in this test
+
+    $this->actingAs(userWithRole('admin'))
+        ->delete(route('roles.destroy', $cs))
+        ->assertRedirect(route('roles.index'));
+
+    expect(Role::where('name', 'cs')->exists())->toBeFalse();
+});
+
+it('refuses to delete a system role still assigned to a user', function () {
+    userWithRole('maintenance'); // provision a member
+    $maintenance = Role::findByName('maintenance');
+
+    $this->actingAs(userWithRole('admin'))
+        ->delete(route('roles.destroy', $maintenance))
+        ->assertSessionHas('error');
+
+    expect(Role::where('name', 'maintenance')->exists())->toBeTrue();
 });
 
 // ---------------------------------------------------------------------------

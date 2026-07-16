@@ -20,6 +20,15 @@ class RoleSeeder extends Seeder
 
     /**
      * Seed the application roles (and the permissions they draw from).
+     *
+     * Idempotent bootstrap of the DEFAULT system roles: firstOrCreate never throws
+     * and never clobbers an existing role's data. An admin may rename or delete a
+     * non-admin system role via the role builder — that is an intentional
+     * divergence they own. Re-running this seeder afterwards re-creates the default
+     * slug as an EMPTY role (no permissions, no users); it does NOT touch the
+     * renamed role or its members, and RolePresetSeeder never provisions anyone
+     * into the empty shell. The admin can simply delete it (it is unused). The
+     * production maintenance path is `migrate` + RolePresetSeeder, not this seeder.
      */
     public function run(): void
     {

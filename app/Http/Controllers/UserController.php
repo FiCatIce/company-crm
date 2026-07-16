@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\ProvidesPermissionCatalog;
-use App\Enums\PermissionName;
 use App\Enums\RoleName;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
@@ -79,13 +78,16 @@ class UserController extends Controller
         $user->password = $data['password']; // hashed by the model's 'hashed' cast
         $user->save();
 
-        // Assign the role. A system role seeds its preset onto the user as direct
-        // permissions (D6-A); a custom role carries its own permissions
-        // (role_has_permissions), inherited via getAllPermissions() — nothing to
-        // copy onto the user.
+        // Assign the role. A system role seeds its (effective) template onto the
+        // user as direct permissions (D6-A); a custom role carries its own
+        // permissions (role_has_permissions), inherited via getAllPermissions() —
+        // nothing to copy onto the user.
         $user->syncRoles([$data['role']]);
-        if ($systemRole = RoleName::tryFrom($data['role'])) {
-            $user->syncPermissions(RolePresets::permissions($systemRole));
+        if (RoleName::tryFrom($data['role']) !== null) {
+            $roleModel = Role::where('name', $data['role'])->with('permissions')->first();
+            if ($roleModel !== null) {
+                $user->syncPermissions(RolePresets::effectivePermissions($roleModel));
+            }
         }
 
         AuditLog::record($request->user(), $user, 'user.created', ['role' => $data['role']]);
@@ -245,9 +247,11 @@ class UserController extends Controller
     }
 
     /**
-     * Map of role slug → its template permission strings, so the Edit page can
-     * reset the checklist when the dropdown changes: a system role's coded preset,
-     * or a custom role's own permissions (role_has_permissions).
+     * Map of role slug → its effective template permission strings, so the Edit
+     * page can reset the checklist when the dropdown changes. Reflects reality for
+     * every role kind: the admin's locked preset, an un-customized system role's
+     * code preset, or a custom / edited-system role's own permissions
+     * (role_has_permissions). See RolePresets::effectivePermissions.
      *
      * @return array<string, list<string>>
      */
@@ -256,19 +260,7 @@ class UserController extends Controller
         $map = [];
 
         foreach (Role::with('permissions:id,name')->get() as $role) {
-            if ($systemRole = RoleName::tryFrom($role->name)) {
-                $map[$role->name] = RolePresets::permissions($systemRole);
-
-                continue;
-            }
-
-            // Custom role — its own permissions, intersected with the enum for a
-            // clean, ordered list of valid permission strings.
-            $held = $role->permissions->pluck('name')->all();
-            $map[$role->name] = array_values(array_filter(
-                PermissionName::values(),
-                fn (string $permission): bool => in_array($permission, $held, true),
-            ));
+            $map[$role->name] = RolePresets::effectivePermissions($role);
         }
 
         return $map;
