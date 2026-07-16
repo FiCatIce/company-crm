@@ -31,13 +31,20 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         // When shared through a tunnel (see `composer share:tunnel`) the public
-        // origin is HTTPS but the local dev server speaks plain HTTP. If the
-        // tunnel omits X-Forwarded-Proto, asset URLs would render as http:// on
-        // an https:// page and get blocked as mixed content — a blank hang.
-        // Force https so injected asset URLs are always secure. Gated behind the
-        // flag so plain `composer dev` on http://localhost stays untouched.
-        if (env('SHARE_TUNNEL')) {
-            URL::forceScheme('https');
+        // origin is HTTPS but the dev server speaks plain HTTP. If the tunnel
+        // omits X-Forwarded-Proto, asset URLs would render http:// on an https://
+        // page and get blocked as mixed content — a blank page. Force https so
+        // injected asset URLs stay secure. But the SAME server also answers on
+        // http://localhost:8000 (direct, no TLS): forcing https there would point
+        // assets at https://localhost, which has no listener → white screen. So
+        // decide per request by host, not globally: force https only for the
+        // public tunnel host, leave loopback on http.
+        if (env('SHARE_TUNNEL') && ! $this->app->runningInConsole()) {
+            $host = $this->app['request']->getHost();
+
+            if (! in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
+                URL::forceScheme('https');
+            }
         }
     }
 
