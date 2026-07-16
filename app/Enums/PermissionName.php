@@ -68,6 +68,12 @@ enum PermissionName: string
     // Create/edit/delete custom roles + set their permission templates (role builder).
     case RoleManage = 'role.manage';
 
+    // Team / hierarchy (dormant in H1 — no route/gate exercises these until H2/H4).
+    // NOTE: user.create already exists above (UserCreate); delegated creation reuses
+    // it, so only the assign + team-view capabilities are new here.
+    case UserAssign = 'user.assign';
+    case TeamView = 'team.view';
+
     /**
      * All permission strings.
      *
@@ -98,6 +104,7 @@ enum PermissionName: string
             self::DashboardView, self::DashboardStatsAggregate => 'Dashboard',
             self::UserView, self::UserCreate, self::UserUpdate, self::UserDelete,
             self::RoleAssign, self::PermissionAssign, self::RoleManage => 'User & Access',
+            self::UserAssign, self::TeamView => 'Tim',
         };
     }
 
@@ -164,6 +171,8 @@ enum PermissionName: string
             self::RoleAssign => 'Assign role',
             self::PermissionAssign => 'Atur izin per user',
             self::RoleManage => 'Kelola role & izin',
+            self::UserAssign => 'Assign CS/maintenance ke sales',
+            self::TeamView => 'Lihat menu Tim Saya',
         };
     }
 }

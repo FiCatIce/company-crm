@@ -7,6 +7,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -19,6 +21,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property int $id
+ * @property int|null $created_by_user
  * @property string $name
  * @property string $email
  * @property string|null $extension
@@ -70,5 +73,74 @@ class User extends Authenticatable implements PasskeyUser
     public function interactions(): HasMany
     {
         return $this->hasMany(Interaction::class);
+    }
+
+    // --- Hierarchy (DESIGN_HIERARCHY.md batch H1) ---------------------------
+    // Dormant: defined so later batches (scoping, dashboard, delegated creation)
+    // have the relations to build on. NOTHING here is read by a scope/gate yet.
+
+    /**
+     * The user who provisioned this account (delegated-creation trail, DH1/DH4).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function createdByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_user');
+    }
+
+    /**
+     * Accounts this user provisioned.
+     *
+     * @return HasMany<User, $this>
+     */
+    public function createdUsers(): HasMany
+    {
+        return $this->hasMany(User::class, 'created_by_user');
+    }
+
+    /**
+     * Teams this user belongs to (DH1). A pivot for DH6 multi-team; today DH2
+     * keeps it to one — use team() for that single team.
+     *
+     * @return BelongsToMany<Team, $this>
+     */
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class, 'team_user')
+            ->withPivot('role_in_team')
+            ->withTimestamps();
+    }
+
+    /**
+     * The user's single team (DH2 convenience — one team per user for now).
+     * Not an Eloquent relation: call as a method, e.g. $user->team().
+     */
+    public function team(): ?Team
+    {
+        return $this->teams()->first();
+    }
+
+    /**
+     * CS/Maintenance users assigned to help this Sales user (DH5).
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'sales_assignee', 'sales_user_id', 'assignee_user_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * The Sales users this CS/Maintenance account is assigned to (inverse of
+     * assignees(), DH5).
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function assignedSalesFor(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'sales_assignee', 'assignee_user_id', 'sales_user_id')
+            ->withTimestamps();
     }
 }

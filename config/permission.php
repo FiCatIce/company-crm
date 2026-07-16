@@ -1,8 +1,8 @@
 <?php
 
+use App\Models\Role;
 use Spatie\Permission\DefaultTeamResolver;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 return [
 
@@ -26,6 +26,9 @@ return [
          *
          * The model you want to use as a Role model needs to implement the
          * `Spatie\Permission\Contracts\Role` contract.
+         *
+         * Points at App\Models\Role (extends Spatie's) so roles carry the DH4
+         * `assignable_types` capability cast — see DESIGN_HIERARCHY.md.
          */
 
         'role' => Role::class,

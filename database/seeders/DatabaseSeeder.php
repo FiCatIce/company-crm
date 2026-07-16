@@ -32,5 +32,10 @@ class DatabaseSeeder extends Seeder
         // A second Sales rep with their own customers, for exercising RBAC
         // row-scoping (Sales sees only their own book). Idempotent.
         $this->call(DemoSalesScopingSeeder::class);
+
+        // Batch H1 hierarchy foundation (DESIGN_HIERARCHY.md): stamps dormant role
+        // capability defaults + wires the seeded agents into an example team and
+        // sales<->support assignments. Behavior-neutral (nothing reads it yet).
+        $this->call(HierarchySeeder::class);
     }
 }
