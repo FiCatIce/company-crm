@@ -5,6 +5,7 @@ import {
     Network,
     Package,
     Receipt,
+    ShieldCheck,
     UserCog,
     Users,
 } from '@lucide/vue';
@@ -27,26 +28,38 @@ const allNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+        permission: 'dashboard.view',
     },
     {
         title: 'Customers',
         href: '/customers',
         icon: Users,
+        // Scope variants: full-list roles hold `.all`, Sales holds `.own`.
+        permission: ['customer.view.all', 'customer.view.own'],
     },
     {
         title: 'Products',
         href: '/products',
         icon: Package,
+        permission: 'product.view',
     },
     {
         title: 'Resellers',
         href: '/resellers',
         icon: Network,
+        permission: 'reseller.view',
     },
     {
         title: 'Transactions',
         href: '/transactions',
         icon: Receipt,
+        permission: ['transaction.view.all', 'transaction.view.own'],
+    },
+    {
+        title: 'Roles',
+        href: '/roles',
+        icon: ShieldCheck,
+        permission: 'role.manage',
     },
     {
         title: 'Users',
@@ -59,14 +72,23 @@ const allNavItems: NavItem[] = [
 const page = usePage();
 
 // Permission-gated nav: an item with a `permission` only shows when the user
-// holds it (server still enforces access — this is UI only).
-const mainNavItems = computed(() =>
-    allNavItems.filter(
-        (item) =>
-            !item.permission ||
-            (page.props.auth?.permissions ?? []).includes(item.permission),
-    ),
-);
+// holds it (an array means "any of" — OR). The server still enforces access;
+// this is UI only.
+const mainNavItems = computed(() => {
+    const held = page.props.auth?.permissions ?? [];
+
+    return allNavItems.filter((item) => {
+        if (!item.permission) {
+            return true;
+        }
+
+        const required = Array.isArray(item.permission)
+            ? item.permission
+            : [item.permission];
+
+        return required.some((permission) => held.includes(permission));
+    });
+});
 </script>
 
 <template>

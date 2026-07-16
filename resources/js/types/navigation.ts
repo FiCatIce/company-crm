@@ -11,6 +11,8 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon;
     isActive?: boolean;
-    // When set, the item only renders if the user holds this permission.
-    permission?: string;
+    // When set, the item only renders if the user holds the permission. An array
+    // means "any of these" (OR) — e.g. a resource with `.view.all`/`.view.own`
+    // scope variants shows if the user holds either.
+    permission?: string | string[];
 };

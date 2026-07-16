@@ -229,7 +229,11 @@ function confirmAndSubmit(): void {
                         <p class="text-sm font-medium text-foreground">
                             {{ roleLabel }}
                         </p>
-                        <input type="hidden" name="role" :value="user.role ?? ''" />
+                        <input
+                            type="hidden"
+                            name="role"
+                            :value="user.role ?? ''"
+                        />
                         <p class="text-xs text-muted-foreground">
                             {{
                                 isSelf
@@ -248,8 +252,8 @@ function confirmAndSubmit(): void {
                         </h2>
                         <p class="text-xs text-muted-foreground">
                             <template v-if="can.managePermissions">
-                                Izin efektif per pengguna. Centang untuk memberi,
-                                hapus centang untuk mencabut.
+                                Izin efektif per pengguna. Centang untuk
+                                memberi, hapus centang untuk mencabut.
                             </template>
                             <template v-else>
                                 {{
@@ -263,7 +267,11 @@ function confirmAndSubmit(): void {
 
                     <!-- Managed submission: flag + one hidden input per granted perm. -->
                     <template v-if="can.managePermissions">
-                        <input type="hidden" name="manage_permissions" value="1" />
+                        <input
+                            type="hidden"
+                            name="manage_permissions"
+                            value="1"
+                        />
                         <input
                             v-for="p in granted"
                             :key="p"
@@ -333,9 +341,7 @@ function confirmAndSubmit(): void {
                 <Dialog v-model:open="confirmOpen">
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle
-                                class="inline-flex items-center gap-2"
-                            >
+                            <DialogTitle class="inline-flex items-center gap-2">
                                 <ShieldAlert class="size-5 text-amber-600" />
                                 Konfirmasi izin sensitif
                             </DialogTitle>

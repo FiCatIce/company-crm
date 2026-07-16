@@ -110,6 +110,16 @@ export type UserRow = {
     can_delete: boolean;
 };
 
+// Admin role builder. `is_system` roles are locked (preset defined in code).
+export type RoleRow = {
+    id: number;
+    name: string;
+    label: string;
+    is_system: boolean;
+    users_count: number;
+    permissions_count: number;
+};
+
 export type InteractionOption = { value: string; label: string };
 
 export type InteractionOptions = {

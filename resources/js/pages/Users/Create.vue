@@ -79,7 +79,11 @@ const breadcrumbs: BreadcrumbItem[] = [
                         class="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:ring-2 focus:ring-ring focus:outline-none"
                     >
                         <option value="" disabled selected>Pilih role</option>
-                        <option v-for="r in roles" :key="r.value" :value="r.value">
+                        <option
+                            v-for="r in roles"
+                            :key="r.value"
+                            :value="r.value"
+                        >
                             {{ r.label }}
                         </option>
                     </select>
@@ -99,7 +103,9 @@ const breadcrumbs: BreadcrumbItem[] = [
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password_confirmation">Konfirmasi password</Label>
+                    <Label for="password_confirmation"
+                        >Konfirmasi password</Label
+                    >
                     <Input
                         id="password_confirmation"
                         name="password_confirmation"

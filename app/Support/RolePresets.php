@@ -101,7 +101,7 @@ final class RolePresets
             P::DashboardView, P::DashboardStatsAggregate,
             P::InteractionViewAll,
             P::UserView, P::UserCreate, P::UserUpdate, P::UserDelete,
-            P::RoleAssign, P::PermissionAssign,
+            P::RoleAssign, P::PermissionAssign, P::RoleManage,
         ];
     }
 

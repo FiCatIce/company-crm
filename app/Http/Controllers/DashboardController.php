@@ -23,37 +23,74 @@ class DashboardController extends Controller
         abort_unless($user->can(PermissionName::DashboardView->value), 403);
 
         // The dashboard is composed PER PERMISSION (DESIGN_RBAC.md §4.4), never one
-        // blob. Aggregate counts + warranty/trend are pure numbers (dashboard.stats.
-        // aggregate) and always shown. The detail widgets — which expose customer
-        // names / purchase rows / money — are gated, so a system role like admin
-        // (no data permissions) gets ONLY the aggregates + the call log, never a
-        // single customer row. Do NOT add a Gate::before admin bypass here.
-        $canSeeRevenue = $user->can(PermissionName::RevenueView->value);
-        // The org-wide detail widgets (recent transactions, expiring warranties,
-        // top resellers) are UNSCOPED lists of customers/purchases, so they are
-        // gated on customer.view.ALL — a Sales user (view.own) must not see other
-        // reps' customers here; their own book is on the "Ringkasan Saya" band.
+        // blob — EVERY number is gated by the permission for the data it summarises,
+        // so a role only ever reads totals it is entitled to. Do NOT add a
+        // Gate::before admin bypass here.
+        $canSeeAggregate = $user->can(PermissionName::DashboardStatsAggregate->value);
         $canViewAllCustomers = $user->can(PermissionName::CustomerViewAll->value);
+        $canViewOwnCustomers = $user->can(PermissionName::CustomerViewOwn->value);
+        // A "scoped" viewer sees only their own book (Sales: view.own without
+        // view.all). Org-wide totals are GLOBAL data they must not read, so they
+        // get the personal "Ringkasan Saya" band only — never the aggregate band.
+        $isScopedViewer = $canViewOwnCustomers && ! $canViewAllCustomers;
+        $canSeeOrgStats = $canSeeAggregate && ! $isScopedViewer;
+
+        // Each aggregate is gated by the permission for its data domain: transaction
+        // counts/trend need transaction.view.all (so admin, which holds neither,
+        // never sees "Total Transaksi"); warranty needs customer.view.all; the
+        // reseller count needs reseller.view; money needs revenue.view.
+        $canViewAllTransactions = $user->can(PermissionName::TransactionViewAll->value);
+        $canViewResellers = $user->can(PermissionName::ResellerView->value);
+        $canSeeRevenue = $user->can(PermissionName::RevenueView->value);
         // The call feed IS scoped per-viewer (Interaction::visibleTo), so anyone
         // who may see any calls gets it — Sales just sees their own customers'.
         $canViewCalls = $user->can(PermissionName::InteractionViewAll->value)
             || $user->can(PermissionName::InteractionViewOwn->value);
-        $warranty = $this->warrantyBreakdown();
 
         $props = [
-            'stats' => [
-                'customers' => Customer::count(),
-                'customersThisMonth' => Customer::where('created_at', '>=', now()->startOfMonth())->count(),
-                'transactions' => Transaction::count(),
-                'transactionsThisMonth' => Transaction::where('purchased_at', '>=', now()->startOfMonth()->toDateString())->count(),
-                'activeWarranties' => $warranty['active'],
-                'activeResellers' => Reseller::has('customers')->orHas('transactions')->count(),
-                ...($canSeeRevenue ? $this->revenueStats() : []),
-            ],
-            'trend' => $this->transactionTrend(),
-            'warrantyBreakdown' => $warranty,
             'me' => $this->personalStats((int) $user->id),
         ];
+
+        // Org-wide aggregate band — composed per permission, omitted entirely for a
+        // scoped (own-only) viewer. `customers` is the base aggregate; the rest are
+        // added only with the matching data permission.
+        if ($canSeeOrgStats) {
+            $warranty = $this->warrantyBreakdown();
+
+            $stats = [
+                'customers' => Customer::count(),
+                'customersThisMonth' => Customer::where('created_at', '>=', now()->startOfMonth())->count(),
+            ];
+
+            if ($canViewAllTransactions) {
+                $stats['transactions'] = Transaction::count();
+                $stats['transactionsThisMonth'] = Transaction::where('purchased_at', '>=', now()->startOfMonth()->toDateString())->count();
+            }
+
+            if ($canViewAllCustomers) {
+                $stats['activeWarranties'] = $warranty['active'];
+            }
+
+            if ($canViewResellers) {
+                $stats['activeResellers'] = Reseller::has('customers')->orHas('transactions')->count();
+            }
+
+            if ($canSeeRevenue) {
+                $stats = [...$stats, ...$this->revenueStats()];
+            }
+
+            $props['stats'] = $stats;
+
+            // Warranty donut mirrors the warranty aggregate; monthly transaction
+            // trend is transaction data — gate each on its domain permission.
+            if ($canViewAllCustomers) {
+                $props['warrantyBreakdown'] = $warranty;
+            }
+
+            if ($canViewAllTransactions) {
+                $props['trend'] = $this->transactionTrend();
+            }
+        }
 
         // Org-wide detail widgets exposing every customer's name / purchase rows.
         if ($canViewAllCustomers) {

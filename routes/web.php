@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ResellerController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin user management (RBAC B5) — gated per-action by UserPolicy.
     Route::resource('users', UserController::class)->except(['show']);
+
+    // Admin role builder — create/edit/delete custom roles + their permission
+    // templates. Gated by role.manage inside the controller; system roles locked.
+    Route::resource('roles', RoleController::class)->except(['show']);
 });
 
 require __DIR__.'/settings.php';

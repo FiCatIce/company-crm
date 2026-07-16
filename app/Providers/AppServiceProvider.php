@@ -39,8 +39,10 @@ class AppServiceProvider extends ServiceProvider
         // assets at https://localhost, which has no listener → white screen. So
         // decide per request by host, not globally: force https only for the
         // public tunnel host, leave loopback on http.
-        if (env('SHARE_TUNNEL') && ! $this->app->runningInConsole()) {
-            $host = $this->app['request']->getHost();
+        // getenv (not env()) so it reads the OS var the serve wrapper exports and
+        // is safe when the config cache is warm — matches public/index.php.
+        if (getenv('SHARE_TUNNEL') && ! $this->app->runningInConsole()) {
+            $host = request()->getHost();
 
             if (! in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
                 URL::forceScheme('https');

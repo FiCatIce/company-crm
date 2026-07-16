@@ -76,15 +76,17 @@ it('hides the org-wide detail widgets from a sales user but keeps their call fee
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            // Personal band + aggregate counts + own call feed are present...
+            // Personal band + own (scoped) call feed are present...
             ->has('me')
-            ->has('stats.customers')
             ->has('recentCalls')
-            // ...but no org-wide customer/purchase widgets and no money.
+            // ...but the ENTIRE org-wide aggregate band is gone — a view.own viewer
+            // must never read global totals (no Total Customer/Transaksi/Garansi).
+            ->missing('stats')
+            ->missing('trend')
+            ->missing('warrantyBreakdown')
             ->missing('recentTransactions')
             ->missing('expiringSoon')
             ->missing('topResellers')
-            ->missing('stats.revenue')
             ->missing('topResellersByRevenue'));
 });
 

@@ -53,20 +53,25 @@ type TopReseller = { id: number; name: string; customers_count: number };
 type RevenueReseller = { id: number; name: string; revenue: number };
 
 const props = defineProps<{
-    stats: {
-        customers: number;
-        customersThisMonth: number;
-        transactions: number;
-        transactionsThisMonth: number;
-        activeWarranties: number;
-        activeResellers: number;
-        // Revenue is omitted (absent) without revenue.view — see DESIGN_RBAC.md §4.4.
+    // The org-wide aggregate band is composed per permission (DESIGN_RBAC.md §4.4):
+    // `stats` is absent entirely for a scoped viewer (Sales), and each field within
+    // it is present only if the viewer holds the matching data permission — so admin
+    // gets `customers` alone, never `transactions`.
+    stats?: {
+        customers?: number;
+        customersThisMonth?: number;
+        transactions?: number;
+        transactionsThisMonth?: number;
+        activeWarranties?: number;
+        activeResellers?: number;
         revenue?: number;
         revenueThisMonth?: number;
         revenueLastMonth?: number;
     };
-    trend: TrendPoint[];
-    warrantyBreakdown: { active: number; expired: number; none: number };
+    // Trend (transaction data) and warranty donut are each gated on their domain
+    // permission, so both are optional.
+    trend?: TrendPoint[];
+    warrantyBreakdown?: { active: number; expired: number; none: number };
     // Detail widgets are omitted (absent) for roles without customer/call access —
     // e.g. admin, which sees only aggregates + calls. See DESIGN_RBAC.md §4.4.
     recentTransactions?: RecentRow[];
@@ -88,7 +93,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // Revenue widgets are present only for users with revenue.view (the backend
 // omits the props otherwise).
-const hasRevenue = computed(() => props.stats.revenue !== undefined);
+const hasRevenue = computed(() => props.stats?.revenue !== undefined);
+
+// The org-wide KPI band shows only when the viewer receives at least one
+// aggregate (absent entirely for a scoped Sales viewer).
+const hasOrgStats = computed(() => props.stats !== undefined);
 
 // Customer-detail widgets (recent transactions, expiring warranties, top
 // resellers) and the call feed are omitted for roles without the access — the
@@ -100,8 +109,8 @@ const hasRecentCalls = computed(() => props.recentCalls !== undefined);
 
 // Month-over-month revenue movement, shown as the "this month" card's subtext.
 const revenueDelta = computed(() => {
-    const current = props.stats.revenueThisMonth ?? 0;
-    const previous = props.stats.revenueLastMonth ?? 0;
+    const current = props.stats?.revenueThisMonth ?? 0;
+    const previous = props.stats?.revenueLastMonth ?? 0;
 
     if (previous <= 0) {
         return current > 0
@@ -162,27 +171,36 @@ const revenueDelta = computed(() => {
                 <MyInteractionsCard :items="me.myRecentInteractions" />
             </section>
 
-            <!-- Band 1 — KPI row -->
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <!-- Band 1 — org-wide KPI row. Absent for scoped (Sales) viewers; each
+                 card is gated on its own data permission (e.g. admin gets only
+                 Total Customer, never Total Transaksi). -->
+            <div
+                v-if="hasOrgStats"
+                class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+            >
                 <StatCard
+                    v-if="stats?.customers !== undefined"
                     label="Total Customer"
                     :value="stats.customers"
                     :icon="Users"
-                    :description="`${stats.customersThisMonth} baru bulan ini`"
+                    :description="`${stats.customersThisMonth ?? 0} baru bulan ini`"
                 />
                 <StatCard
+                    v-if="stats?.transactions !== undefined"
                     label="Total Transaksi"
                     :value="stats.transactions"
                     :icon="Receipt"
-                    :description="`${stats.transactionsThisMonth} transaksi bulan ini`"
+                    :description="`${stats.transactionsThisMonth ?? 0} transaksi bulan ini`"
                 />
                 <StatCard
+                    v-if="stats?.activeWarranties !== undefined"
                     label="Garansi Aktif"
                     :value="stats.activeWarranties"
                     :icon="ShieldCheck"
                     description="unit masih bergaransi"
                 />
                 <StatCard
+                    v-if="stats?.activeResellers !== undefined"
                     label="Reseller Aktif"
                     :value="stats.activeResellers"
                     :icon="Network"
@@ -195,28 +213,36 @@ const revenueDelta = computed(() => {
                 <div class="flex flex-col gap-4">
                     <StatCard
                         label="Total Pendapatan"
-                        :value="formatIdr(stats.revenue ?? 0)"
+                        :value="formatIdr(stats?.revenue ?? 0)"
                         :icon="Wallet"
                         description="akumulasi semua transaksi"
                     />
                     <StatCard
                         label="Pendapatan Bulan Ini"
-                        :value="formatIdr(stats.revenueThisMonth ?? 0)"
+                        :value="formatIdr(stats?.revenueThisMonth ?? 0)"
                         :icon="TrendingUp"
                         :description="revenueDelta"
                     />
                 </div>
                 <div class="lg:col-span-2">
-                    <RevenueByResellerCard :items="topResellersByRevenue ?? []" />
+                    <RevenueByResellerCard
+                        :items="topResellersByRevenue ?? []"
+                    />
                 </div>
             </div>
 
-            <!-- Band 2 — trend + warranty donut -->
-            <div class="grid gap-6 lg:grid-cols-3">
-                <div class="lg:col-span-2">
+            <!-- Band 2 — trend + warranty donut. Each is gated on its domain
+                 permission (trend → transaction.view.all, donut → customer.view.all),
+                 so the band hides when the viewer receives neither. -->
+            <div
+                v-if="trend || warrantyBreakdown"
+                class="grid gap-6 lg:grid-cols-3"
+            >
+                <div v-if="trend" class="lg:col-span-2">
                     <TransactionTrendChart :data="trend" />
                 </div>
                 <WarrantyDonut
+                    v-if="warrantyBreakdown"
                     :active="warrantyBreakdown.active"
                     :expired="warrantyBreakdown.expired"
                     :none="warrantyBreakdown.none"
@@ -224,10 +250,7 @@ const revenueDelta = computed(() => {
             </div>
 
             <!-- Band 3 — recent activity + watchlist -->
-            <div
-                v-if="hasCustomerWidgets"
-                class="grid gap-6 lg:grid-cols-3"
-            >
+            <div v-if="hasCustomerWidgets" class="grid gap-6 lg:grid-cols-3">
                 <div class="lg:col-span-2">
                     <RecentTransactionsCard :rows="recentTransactions ?? []" />
                 </div>

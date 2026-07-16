@@ -3,7 +3,6 @@
 namespace App\Concerns;
 
 use App\Enums\PermissionName;
-use App\Enums\RoleName;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +20,9 @@ trait UserValidationRules
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($ignoreUserId)],
             'extension' => ['nullable', 'string', 'max:20'],
-            'role' => ['required', Rule::in(RoleName::values())],
+            // Any existing role — a system role (RoleName) or an admin-built custom
+            // one. Never trust an arbitrary string: it must be a real role row.
+            'role' => ['required', Rule::exists('roles', 'name')],
         ];
     }
 

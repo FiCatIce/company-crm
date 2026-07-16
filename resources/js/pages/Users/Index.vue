@@ -171,7 +171,9 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
                                             size="sm"
                                         >
                                             <Link
-                                                :href="UserController.edit(u.id)"
+                                                :href="
+                                                    UserController.edit(u.id)
+                                                "
                                                 >Edit</Link
                                             >
                                         </Button>
@@ -269,7 +271,9 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
                     class="flex flex-wrap items-center justify-between gap-4 border-t border-border p-4"
                 >
                     <p class="text-sm text-muted-foreground">
-                        Menampilkan {{ users.from ?? 0 }}–{{ users.to ?? 0 }}
+                        Menampilkan {{ users.from ?? 0 }}–{{
+                            users.to ?? 0
+                        }}
                         dari {{ users.total }}
                     </p>
                     <div

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\ProvidesPermissionCatalog;
 use App\Enums\PermissionName;
 use App\Enums\RoleName;
 use App\Http\Requests\StoreUserRequest;
@@ -12,8 +13,10 @@ use App\Support\RolePresets;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 /**
  * Admin user management (DESIGN_RBAC.md §3.5 / batch B5). Create users, assign a
@@ -25,6 +28,7 @@ use Inertia\Response;
 class UserController extends Controller
 {
     use AuthorizesRequests;
+    use ProvidesPermissionCatalog;
 
     public function index(Request $request): Response
     {
@@ -75,8 +79,14 @@ class UserController extends Controller
         $user->password = $data['password']; // hashed by the model's 'hashed' cast
         $user->save();
 
-        // Role seeds the preset as direct permissions (the one provisioning path).
-        RolePresets::assign($user, RoleName::from($data['role']));
+        // Assign the role. A system role seeds its preset onto the user as direct
+        // permissions (D6-A); a custom role carries its own permissions
+        // (role_has_permissions), inherited via getAllPermissions() — nothing to
+        // copy onto the user.
+        $user->syncRoles([$data['role']]);
+        if ($systemRole = RoleName::tryFrom($data['role'])) {
+            $user->syncPermissions(RolePresets::permissions($systemRole));
+        }
 
         AuditLog::record($request->user(), $user, 'user.created', ['role' => $data['role']]);
 
@@ -205,51 +215,39 @@ class UserController extends Controller
         $slug = $this->roleSlug($user);
 
         return $slug !== null
-            ? ['value' => $slug, 'label' => RoleName::from($slug)->label()]
+            ? ['value' => $slug, 'label' => $this->roleLabel($slug)]
             : null;
     }
 
     /**
-     * Role options for the create/edit dropdown (slug + UI label, e.g. Manager).
+     * UI label for a role slug — the enum's label for a system role (e.g.
+     * supervisor → "Manager"), a headline-cased name for a custom role.
+     */
+    private function roleLabel(string $slug): string
+    {
+        return RoleName::tryFrom($slug)?->label() ?? Str::headline($slug);
+    }
+
+    /**
+     * Role options for the create/edit dropdown — every role, system and custom.
      *
      * @return list<array{value: string, label: string}>
      */
     private function roleOptions(): array
     {
-        return array_map(
-            fn (RoleName $role) => ['value' => $role->value, 'label' => $role->label()],
-            RoleName::cases(),
+        return array_values(
+            Role::query()
+                ->orderBy('name')
+                ->pluck('name')
+                ->map(fn (string $name) => ['value' => $name, 'label' => $this->roleLabel($name)])
+                ->all()
         );
     }
 
     /**
-     * The full permission catalog grouped by domain, each flagged sensitive or
-     * not — drives the grouped checklist + warning badges on the Edit page.
-     *
-     * @return list<array{group: string, permissions: list<array{name: string, label: string, sensitive: bool}>}>
-     */
-    private function permissionCatalog(): array
-    {
-        $groups = [];
-
-        foreach (PermissionName::cases() as $permission) {
-            $groups[$permission->group()][] = [
-                'name' => $permission->value,
-                'label' => $permission->label(),
-                'sensitive' => $permission->sensitive(),
-            ];
-        }
-
-        return array_map(
-            fn (string $group, array $permissions) => ['group' => $group, 'permissions' => $permissions],
-            array_keys($groups),
-            array_values($groups),
-        );
-    }
-
-    /**
-     * Map of role slug → its preset permission strings, so the Edit page can reset
-     * the checklist to a role's template when the dropdown changes.
+     * Map of role slug → its template permission strings, so the Edit page can
+     * reset the checklist when the dropdown changes: a system role's coded preset,
+     * or a custom role's own permissions (role_has_permissions).
      *
      * @return array<string, list<string>>
      */
@@ -257,8 +255,20 @@ class UserController extends Controller
     {
         $map = [];
 
-        foreach (RoleName::cases() as $role) {
-            $map[$role->value] = RolePresets::permissions($role);
+        foreach (Role::with('permissions:id,name')->get() as $role) {
+            if ($systemRole = RoleName::tryFrom($role->name)) {
+                $map[$role->name] = RolePresets::permissions($systemRole);
+
+                continue;
+            }
+
+            // Custom role — its own permissions, intersected with the enum for a
+            // clean, ordered list of valid permission strings.
+            $held = $role->permissions->pluck('name')->all();
+            $map[$role->name] = array_values(array_filter(
+                PermissionName::values(),
+                fn (string $permission): bool => in_array($permission, $held, true),
+            ));
         }
 
         return $map;

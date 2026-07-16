@@ -73,7 +73,7 @@ test('the dashboard has a revenue band wired to the revenue props', function () 
     expect(dashSource('pages/Dashboard.vue'))
         ->toContain('Total Pendapatan')
         ->toContain('RevenueByResellerCard')
-        ->toContain('stats.revenue');
+        ->toContain('stats?.revenue'); // optional — the band is permission-gated
 });
 
 test('the revenue-by-reseller card formats IDR with a proportional bar', function () {

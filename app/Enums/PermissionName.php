@@ -65,6 +65,8 @@ enum PermissionName: string
     case UserDelete = 'user.delete';
     case RoleAssign = 'role.assign';
     case PermissionAssign = 'permission.assign';
+    // Create/edit/delete custom roles + set their permission templates (role builder).
+    case RoleManage = 'role.manage';
 
     /**
      * All permission strings.
@@ -95,7 +97,7 @@ enum PermissionName: string
             self::InteractionUpdate, self::InteractionDelete, self::InteractionManageAll => 'Interaction',
             self::DashboardView, self::DashboardStatsAggregate => 'Dashboard',
             self::UserView, self::UserCreate, self::UserUpdate, self::UserDelete,
-            self::RoleAssign, self::PermissionAssign => 'User & Access',
+            self::RoleAssign, self::PermissionAssign, self::RoleManage => 'User & Access',
         };
     }
 
@@ -113,6 +115,7 @@ enum PermissionName: string
             self::RevenueView,
             self::RoleAssign,
             self::PermissionAssign,
+            self::RoleManage,
             self::UserDelete => true,
             default => false,
         };
@@ -160,6 +163,7 @@ enum PermissionName: string
             self::UserDelete => 'Hapus user',
             self::RoleAssign => 'Assign role',
             self::PermissionAssign => 'Atur izin per user',
+            self::RoleManage => 'Kelola role & izin',
         };
     }
 }

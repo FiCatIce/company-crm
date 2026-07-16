@@ -63,7 +63,7 @@ it('still lets admin manage users', function () {
 // Dashboard: aggregates + call log only, every detail widget hidden
 // ---------------------------------------------------------------------------
 
-it('gives admin an aggregate-only dashboard with the call log but no detail widgets', function () {
+it('gives admin only the customer-count aggregate + call log, never transaction numbers', function () {
     $customer = Customer::factory()->create();
     Transaction::factory()->forCustomer($customer)->create(['amount' => 500_000]);
     Interaction::factory()->forCustomer($customer)->create(['type' => InteractionType::Call]);
@@ -73,12 +73,14 @@ it('gives admin an aggregate-only dashboard with the call log but no detail widg
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')
-            // Aggregate counts + call log are present...
+            // Only the customer-count aggregate + the call log are present...
             ->has('stats.customers')
-            ->has('stats.transactions')
-            ->has('warrantyBreakdown')
             ->has('recentCalls')
-            // ...but no customer-detail widgets and no money.
+            // ...never transaction/warranty numbers (admin holds no transaction/
+            // customer data permission), no trend, no detail widgets, no money.
+            ->missing('stats.transactions')
+            ->missing('warrantyBreakdown')
+            ->missing('trend')
             ->missing('recentTransactions')
             ->missing('expiringSoon')
             ->missing('topResellers')
