@@ -22,17 +22,23 @@ $resources = [
     'reseller' => Reseller::class,
 ];
 
-// Supervisor (Manager) may view/create/update every domain resource. Admin used
-// to as well, but B4 stripped its data access — see the admin lockdown below.
-it('lets the manager view, create and update every resource', function () use ($resources) {
+// Supervisor (Manager) may view/create/update customers, products and resellers.
+// H3: transactions are hierarchy-scoped now — the list (viewAny) + create stay
+// open, but class-level view/update resolve only against a concrete record (a
+// null-record check is false, exactly like any other scoped viewer).
+it('lets the manager view, create and update the non-scoped resources', function () {
     $user = userWithRole('supervisor');
 
-    foreach ($resources as $class) {
+    foreach ([Customer::class, Product::class, Reseller::class] as $class) {
         expect($user->can('viewAny', $class))->toBeTrue()
             ->and($user->can('view', $class))->toBeTrue()
             ->and($user->can('create', $class))->toBeTrue()
             ->and($user->can('update', $class))->toBeTrue();
     }
+
+    // Transactions: list + create open, record-level checks are scoped.
+    expect($user->can('viewAny', Transaction::class))->toBeTrue()
+        ->and($user->can('create', Transaction::class))->toBeTrue();
 });
 
 // B4: admin is a system role — DENIED every data resource, but keeps dashboard
@@ -72,17 +78,25 @@ it('lets cs manage customers, products and resellers but not transactions', func
 });
 
 // Only the supervisor may delete data resources (cs and — since B4 — admin cannot).
-it('lets only the manager delete resources', function (string $role, bool $canDelete) use ($resources) {
+// H3: the manager's transaction delete is hierarchy-scoped, so the class-level
+// (no-record) check is false — it deletes only transactions it can see.
+it('lets the manager delete the non-scoped resources', function () {
+    $user = userWithRole('supervisor');
+
+    foreach ([Customer::class, Product::class, Reseller::class] as $class) {
+        expect($user->can('delete', $class))->toBeTrue();
+    }
+
+    expect($user->can('delete', Transaction::class))->toBeFalse(); // scoped: needs a record
+});
+
+it('denies deleting any resource to cs and admin', function (string $role) use ($resources) {
     $user = userWithRole($role);
 
     foreach ($resources as $class) {
-        expect($user->can('delete', $class))->toBe($canDelete);
+        expect($user->can('delete', $class))->toBeFalse();
     }
-})->with([
-    ['supervisor', true],
-    ['admin', false],
-    ['cs', false],
-]);
+})->with(['admin', 'cs']);
 
 it('lets admin, supervisor and cs reach the dashboard permission', function (string $role) {
     expect(userWithRole($role)->can(PermissionName::DashboardView->value))->toBeTrue();

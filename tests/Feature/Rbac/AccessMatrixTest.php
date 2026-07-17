@@ -62,7 +62,10 @@ it('denies cs and maintenance all money, and keeps maintenance read-only', funct
     foreach (['cs', 'maintenance'] as $role) {
         $user = userWithRole($role);
 
-        expect($user->can(P::CustomerViewAll->value))->toBeTrue()          // see customers
+        // H3: cs/maintenance are hierarchy-scoped now (assigned sales' books), no
+        // longer global — but still no money.
+        expect($user->can(P::CustomerViewAll->value))->toBeFalse()
+            ->and($user->can(P::CustomerViewAssigned->value))->toBeTrue()
             ->and($user->can(P::TransactionViewAll->value))->toBeFalse()   // no money
             ->and($user->can(P::TransactionViewOwn->value))->toBeFalse()
             ->and($user->can(P::RevenueView->value))->toBeFalse();

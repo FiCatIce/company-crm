@@ -127,22 +127,51 @@ it('does not leak the staff directory to a sales user', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Other roles unchanged (scoping only affects own-scoped users this batch)
+// Hierarchy roll-up (H3) — managers see their team, CS/maintenance see the
+// assigning sales' books. Full cross-team isolation lives in HierarchyScopeTest;
+// this pins the /customers list + show for the scoped roles.
 // ---------------------------------------------------------------------------
 
-it('still lets view-all roles see every customer', function (string $role) {
-    scopedBooks(); // 3 customers total, owned by two different sales reps
+it('scopes a manager to their team\'s book, never another team\'s', function () {
+    ['a' => $a, 'created' => $created, 'theirs' => $theirs] = scopedBooks();
 
-    $this->actingAs(userWithRole($role))
+    // A manager over sales A's team sees A's customers but not B's (B is off-team).
+    $manager = managerOverTeamOf($a);
+
+    $this->actingAs($manager)
         ->get(route('customers.index'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('customers.data', 3));
-})->with(['supervisor', 'cs', 'maintenance']);
+        ->assertInertia(fn (Assert $page) => $page->where('customers.data', function ($rows) use ($created, $theirs) {
+            $ids = collect($rows)->pluck('id');
 
-it('still lets a view-all role open any customer by URL', function () {
-    ['theirs' => $theirs] = scopedBooks();
+            return $ids->contains($created->id) && ! $ids->contains($theirs->id);
+        }));
 
-    $this->actingAs(userWithRole('cs'))
-        ->get(route('customers.show', $theirs))
-        ->assertOk();
+    $this->actingAs($manager)->get(route('customers.show', $created))->assertOk();
+    $this->actingAs($manager)->get(route('customers.show', $theirs))->assertForbidden();
+});
+
+it('scopes CS to the books of the sales who assigned them (union), nothing else', function () {
+    ['a' => $a, 'b' => $b, 'created' => $created, 'theirs' => $theirs] = scopedBooks();
+
+    // CS assigned to BOTH sales A and B sees both books; a third rep's is invisible.
+    $cs = userWithRole('cs');
+    $a->assignees()->attach($cs->id);
+    $b->assignees()->attach($cs->id);
+    $c = userWithRole('sales');
+    $hidden = Customer::factory()->createdBy($c)->create(['name' => 'C Secret']);
+
+    $this->actingAs($cs)
+        ->get(route('customers.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('customers.data', function ($rows) use ($created, $theirs, $hidden) {
+            $ids = collect($rows)->pluck('id');
+
+            return $ids->contains($created->id)
+                && $ids->contains($theirs->id)
+                && ! $ids->contains($hidden->id);
+        }));
+
+    $this->actingAs($cs)->get(route('customers.show', $theirs))->assertOk();
+    $this->actingAs($cs)->get(route('customers.show', $hidden))->assertForbidden();
 });

@@ -33,7 +33,11 @@ it('shows the money-less roles a purchased-products projection without any price
         'amount' => 750_000,
     ]);
 
-    $this->actingAs(userWithRole($role))
+    // H3: a scoped role reaches the customer only through the hierarchy — assign it
+    // to a sales rep who owns this customer.
+    [$viewer] = supportAssignedToOwnerOf($customer, $role);
+
+    $this->actingAs($viewer)
         ->get(route('customers.show', $customer))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -49,10 +53,13 @@ it('shows the money-less roles a purchased-products projection without any price
 })->with(['cs', 'maintenance']);
 
 it('gives money viewers the full transactions array with amount (not the projection)', function () {
-    $customer = Customer::factory()->create();
+    // A manager sees the customer via view.own (their own book) — the point here is
+    // the money projection, not the hierarchy path.
+    $supervisor = userWithRole('supervisor');
+    $customer = Customer::factory()->create(['assigned_to' => $supervisor->id]);
     Transaction::factory()->forCustomer($customer)->create(['amount' => 500_000]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs($supervisor)
         ->get(route('customers.show', $customer))
         ->assertInertia(fn (Assert $page) => $page
             ->where('transactions.0.amount', '500000.00')
@@ -93,7 +100,10 @@ it('lets the money-less roles see call logs authored by other agents', function 
         'subject' => 'Telepon follow-up',
     ]);
 
-    $this->actingAs(userWithRole($role))
+    // H3: reach the customer (and thus its call log) through the hierarchy.
+    [$viewer] = supportAssignedToOwnerOf($customer, $role);
+
+    $this->actingAs($viewer)
         ->get(route('customers.show', $customer))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -130,7 +140,8 @@ it('lets cs create and update customers', function () {
 it('keeps maintenance read-only on customers', function () {
     $reseller = Reseller::factory()->create();
     $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
-    $maintenance = userWithRole('maintenance');
+    // H3: maintenance reaches the customer via assignment to its owning sales.
+    [$maintenance] = supportAssignedToOwnerOf($customer, 'maintenance');
 
     // Can view the 360 page...
     $this->actingAs($maintenance)

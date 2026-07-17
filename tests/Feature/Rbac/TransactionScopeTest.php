@@ -121,9 +121,10 @@ it('scopes the customer dropdown on the create form to the sales user\'s book', 
 // ---------------------------------------------------------------------------
 
 it('omits amount and totalSpend entirely for a user without a money permission', function () {
-    $maintenance = userWithRole('maintenance'); // view customers, no transaction perms
     $customer = Customer::factory()->create();
     Transaction::factory()->forCustomer($customer)->create(['amount' => 500_000]);
+    // H3: maintenance reaches the customer via assignment to its owning sales.
+    [$maintenance] = supportAssignedToOwnerOf($customer, 'maintenance'); // no transaction perms
 
     // B3: money-less viewers get the `purchasedProducts` projection instead of
     // `transactions` — the amount-carrying array is absent entirely, so there is
@@ -139,10 +140,12 @@ it('omits amount and totalSpend entirely for a user without a money permission',
 });
 
 it('includes amount and totalSpend for a user with a money permission', function () {
-    $customer = Customer::factory()->create();
+    // A manager sees the customer via view.own here; the subject is the money view.
+    $supervisor = userWithRole('supervisor');
+    $customer = Customer::factory()->create(['assigned_to' => $supervisor->id]);
     Transaction::factory()->forCustomer($customer)->create(['amount' => 500_000]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs($supervisor)
         ->get(route('customers.show', $customer))
         ->assertInertia(fn (Assert $page) => $page
             ->where('transactions.0.amount', '500000.00')
@@ -166,9 +169,21 @@ it('shows dashboard revenue only to users with revenue.view', function (string $
             : $page->missing('stats.revenue')->missing('topResellersByRevenue');
     });
 })->with([
-    ['supervisor', true],
+    // H3: the manager is team-scoped now — no transaction.view.all, so the ORG
+    // revenue band (which needs it) is gated off. Team-revenue aggregate is a
+    // follow-up. No system role surfaces org revenue any more.
+    ['supervisor', false],
     ['cs', false],   // B3 removed revenue.view from cs (money hidden)
     ['admin', false], // B4 stripped all data/money access from admin
     ['sales', false],
     ['maintenance', false],
 ]);
+
+it('shows dashboard revenue to a global viewer holding revenue.view', function () {
+    Transaction::factory()->create(['amount' => 1_000_000]);
+
+    $this->actingAs(userWithGlobalView())
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('stats.revenue')->has('topResellersByRevenue'));
+});

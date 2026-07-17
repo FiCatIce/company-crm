@@ -42,7 +42,7 @@ it('exposes customer summary stats independent of the search filter', function (
     ]);
     // customer[2]: no transactions.
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index', ['search' => 'zzz-no-match']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -114,7 +114,7 @@ it('exposes transaction summary stats with an active/expired warranty split', fu
         'purchased_at' => now()->subYear(),
     ]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('transactions.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page

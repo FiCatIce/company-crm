@@ -29,10 +29,16 @@ class DashboardController extends Controller
         $canSeeAggregate = $user->can(PermissionName::DashboardStatsAggregate->value);
         $canViewAllCustomers = $user->can(PermissionName::CustomerViewAll->value);
         $canViewOwnCustomers = $user->can(PermissionName::CustomerViewOwn->value);
-        // A "scoped" viewer sees only their own book (Sales: view.own without
-        // view.all). Org-wide totals are GLOBAL data they must not read, so they
-        // get the personal "Ringkasan Saya" band only — never the aggregate band.
-        $isScopedViewer = $canViewOwnCustomers && ! $canViewAllCustomers;
+        // A "scoped" viewer sees only a SLICE of the book, never the whole org —
+        // Sales (own), Manager (team), or CS/maintenance (assigned sales' books).
+        // Org-wide totals are global data they must not read, so a scoped viewer
+        // gets the personal "Ringkasan Saya" band only — never the aggregate band.
+        // (The band's numbers now follow their hierarchy via Customer::visibleTo.)
+        $isScopedViewer = ! $canViewAllCustomers && (
+            $canViewOwnCustomers
+            || $user->can(PermissionName::CustomerViewTeam->value)
+            || $user->can(PermissionName::CustomerViewAssigned->value)
+        );
         $canSeeOrgStats = $canSeeAggregate && ! $isScopedViewer;
 
         // Each aggregate is gated by the permission for its data domain: transaction
@@ -211,22 +217,12 @@ class DashboardController extends Controller
         $userId = (int) $user->id;
         $threshold = now()->startOfDay()->addDays(30);
 
-        // "My" customers = the ones I ENTERED or currently OWN (created_by OR
-        // assigned_to = me) — the ownership rule (D1-B), the same one
-        // Customer::scopeVisibleTo uses for its own-branch, so the personal band
-        // matches the /customers page instead of quietly reading 0 for customers a
-        // rep created but was never "assigned". This is ownership, NOT role
-        // visibility: a manager's personal band is still only their own book, never
-        // the whole org. The nested group keeps the OR from escaping whereHas.
-        $ownedByMe = fn ($query) => $query->where(
-            fn ($inner) => $inner->where('created_by', $userId)->orWhere('assigned_to', $userId)
-        );
-
-        // Reuses the expiringSoon rule (active warranty ending within 30 days),
-        // scoped to the transactions of customers this user owns.
-        // unscoped-ok: personal band — scoped to the caller's own book (created_by/assigned_to).
+        // "My" customers now follow the viewer's HIERARCHY visibility (H3): the own
+        // book for Sales, the whole team for a Manager, the assigning sales' books
+        // for CS/maintenance — the very same Customer::visibleTo the /customers page
+        // uses, so the personal band always matches the list the viewer can open.
         $myExpiringWarranties = Transaction::query()
-            ->whereHas('customer', $ownedByMe)
+            ->visibleTo($user)
             ->with('product:id,warranty_months')
             ->get(['id', 'customer_id', 'product_id', 'purchased_at'])
             ->filter(fn (Transaction $transaction) => $transaction->product->warranty_months > 0
@@ -235,7 +231,7 @@ class DashboardController extends Controller
             ->count();
 
         return [
-            'myCustomers' => Customer::query()->where($ownedByMe)->count(),
+            'myCustomers' => Customer::query()->visibleTo($user)->count(),
             'myInteractionsToday' => Interaction::where('user_id', $userId)
                 ->whereDate('occurred_at', today())
                 ->count(),

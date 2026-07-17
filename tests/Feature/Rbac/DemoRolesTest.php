@@ -14,6 +14,8 @@ it('provisions example sales and maintenance staff with their presets', function
         ->and($sales->can(PermissionName::CustomerViewOwn->value))->toBeTrue()
         ->and($sales->can(PermissionName::CustomerViewAll->value))->toBeFalse()
         ->and($maintenance->hasRole('maintenance'))->toBeTrue()
-        ->and($maintenance->can(PermissionName::CustomerViewAll->value))->toBeTrue()
+        // H3: maintenance is scoped to assigning sales' books, no longer global.
+        ->and($maintenance->can(PermissionName::CustomerViewAll->value))->toBeFalse()
+        ->and($maintenance->can(PermissionName::CustomerViewAssigned->value))->toBeTrue()
         ->and($maintenance->can(PermissionName::TransactionViewAll->value))->toBeFalse();
 });

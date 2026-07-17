@@ -34,8 +34,14 @@ const allNavItems: NavItem[] = [
         title: 'Customers',
         href: '/customers',
         icon: Users,
-        // Scope variants: full-list roles hold `.all`, Sales holds `.own`.
-        permission: ['customer.view.all', 'customer.view.own'],
+        // Scope variants (any one reveals it): view.all (global), view.team
+        // (manager roll-up), view.own (Sales), view.assigned (CS/maintenance).
+        permission: [
+            'customer.view.all',
+            'customer.view.team',
+            'customer.view.own',
+            'customer.view.assigned',
+        ],
     },
     {
         title: 'Products',

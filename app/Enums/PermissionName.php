@@ -17,6 +17,11 @@ enum PermissionName: string
     // Customer
     case CustomerViewAll = 'customer.view.all';
     case CustomerViewOwn = 'customer.view.own';
+    // Hierarchy roll-up scopes (H3): team = every customer owned by a member of
+    // the viewer's team(s) (a manager); assigned = every customer owned by a sales
+    // who assigned this viewer (CS/maintenance). Both resolve via HierarchyResolver.
+    case CustomerViewTeam = 'customer.view.team';
+    case CustomerViewAssigned = 'customer.view.assigned';
     case CustomerViewProducts = 'customer.view.products';
     case CustomerCreate = 'customer.create';
     case CustomerUpdateAll = 'customer.update.all';
@@ -92,7 +97,8 @@ enum PermissionName: string
     public function group(): string
     {
         return match ($this) {
-            self::CustomerViewAll, self::CustomerViewOwn, self::CustomerViewProducts,
+            self::CustomerViewAll, self::CustomerViewOwn, self::CustomerViewTeam,
+            self::CustomerViewAssigned, self::CustomerViewProducts,
             self::CustomerCreate, self::CustomerUpdateAll, self::CustomerUpdateOwn,
             self::CustomerDelete, self::CustomerReassign => 'Customer',
             self::TransactionViewAll, self::TransactionViewOwn, self::TransactionCreate,
@@ -136,6 +142,8 @@ enum PermissionName: string
         return match ($this) {
             self::CustomerViewAll => 'Lihat semua customer',
             self::CustomerViewOwn => 'Lihat customer sendiri',
+            self::CustomerViewTeam => 'Lihat customer tim',
+            self::CustomerViewAssigned => 'Lihat customer dari sales yang di-assign',
             self::CustomerViewProducts => 'Lihat produk yang dibeli',
             self::CustomerCreate => 'Tambah customer',
             self::CustomerUpdateAll => 'Edit semua customer',

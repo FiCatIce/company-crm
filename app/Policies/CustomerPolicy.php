@@ -5,12 +5,20 @@ namespace App\Policies;
 use App\Enums\PermissionName as P;
 use App\Models\Customer;
 use App\Models\User;
+use App\Support\HierarchyResolver;
 
 class CustomerPolicy extends ResourcePolicy
 {
     protected function viewPermissions(): array
     {
-        return [P::CustomerViewAll->value, P::CustomerViewOwn->value];
+        // Any view tier grants list access; the concrete-record check below scopes
+        // it to the customers actually reachable via the hierarchy (H3).
+        return [
+            P::CustomerViewAll->value,
+            P::CustomerViewTeam->value,
+            P::CustomerViewOwn->value,
+            P::CustomerViewAssigned->value,
+        ];
     }
 
     protected function createPermission(): string
@@ -29,9 +37,11 @@ class CustomerPolicy extends ResourcePolicy
     }
 
     /**
-     * Viewing a specific customer is scope-checked (DESIGN_RBAC.md §4.2b): an
-     * own-scoped user may only reach a customer they created or own. Without this
-     * a Sales user could open /customers/{someone-elses-id} directly by URL.
+     * Viewing a specific customer is scope-checked (DESIGN_RBAC.md §4.2b +
+     * DESIGN_HIERARCHY.md H3): a scoped viewer may only reach a customer within
+     * their hierarchy — own book (Sales), team (Manager), or an assigning sales'
+     * book (CS/maintenance). Without this a scoped user could open
+     * /customers/{someone-elses-id} directly by URL.
      */
     public function view(User $user, ?Customer $customer = null): bool
     {
@@ -39,11 +49,12 @@ class CustomerPolicy extends ResourcePolicy
             return true;
         }
 
-        if ($user->can(P::CustomerViewOwn->value)) {
-            return $customer !== null && $this->owns($user, $customer);
+        // Class-level check (no record) — list access if they hold any view tier.
+        if ($customer === null) {
+            return $this->hasAny($user, $this->viewPermissions());
         }
 
-        return false;
+        return HierarchyResolver::canSeeCustomer($user, $customer);
     }
 
     /**

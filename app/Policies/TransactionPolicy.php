@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\PermissionName as P;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\HierarchyResolver;
 
 class TransactionPolicy extends ResourcePolicy
 {
@@ -50,8 +51,10 @@ class TransactionPolicy extends ResourcePolicy
 
     /**
      * Whether the transaction is within the user's visibility scope. Mirrors
-     * Transaction::scopeVisibleTo. A null transaction (class-level check) resolves
-     * to true only for view-all users — own-scoped users need a concrete record.
+     * Transaction::scopeVisibleTo, which derives from customer visibility — so the
+     * scoped tier follows the full hierarchy (own/team/assigned) via
+     * HierarchyResolver (H3). A null transaction (class-level check) resolves to
+     * true only for view-all users — scoped users need a concrete record.
      */
     private function sees(User $user, ?Transaction $transaction): bool
     {
@@ -62,8 +65,7 @@ class TransactionPolicy extends ResourcePolicy
         if ($user->can(P::TransactionViewOwn->value)) {
             $customer = $transaction?->customer;
 
-            return $customer !== null
-                && ($customer->created_by === $user->id || $customer->assigned_to === $user->id);
+            return $customer !== null && HierarchyResolver::canSeeCustomer($user, $customer);
         }
 
         return false;

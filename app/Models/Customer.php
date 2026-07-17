@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\CustomerSource;
 use App\Enums\CustomerStatus;
 use App\Enums\PermissionName;
+use App\Support\HierarchyResolver;
 use App\Support\PhoneNormalizer;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -91,14 +92,21 @@ class Customer extends Model
     }
 
     /**
-     * Constrain a query to the customers $user may see (DESIGN_RBAC.md §4.2a):
-     *   - customer.view.all → everything (managers/CS/maintenance/admin today)
-     *   - customer.view.own → created_by OR assigned_to = $user (Sales; D1-B)
-     *   - otherwise → nothing
+     * Constrain a query to the customers $user may see (DESIGN_RBAC.md §4.2a +
+     * DESIGN_HIERARCHY.md H3):
+     *   - customer.view.all → everything (a truly global role; unchanged)
+     *   - otherwise → the UNION of the hierarchy tiers the user holds:
+     *       · view.team     → every customer owned by a member of their team(s)
+     *       · view.own      → created_by OR assigned_to = $user (Sales; D1-B)
+     *       · view.assigned → every customer owned by a sales who assigned them
+     *     resolved to owner user-ids by HierarchyResolver.
+     *   - no tier → nothing
      *
-     * The single source of truth for "which customers can this user reach" —
-     * every customer read path funnels through here (index, search, and, via the
-     * policy, show).
+     * The single source of truth for "which customers can this user reach" — every
+     * customer read path funnels through here (index, search, and, via the policy,
+     * show). Transaction/Interaction visibility delegate to it, so the roll-up
+     * propagates to money and call-log for free. Sales behaviour is unchanged: a
+     * view.own-only user resolves to [self], i.e. exactly created_by/assigned_to = me.
      *
      * @param  Builder<Customer>  $query
      * @return Builder<Customer>
@@ -109,14 +117,17 @@ class Customer extends Model
             return $query;
         }
 
-        if ($user->can(PermissionName::CustomerViewOwn->value)) {
-            return $query->where(function (Builder $scoped) use ($user) {
-                $scoped->where('created_by', $user->id)
-                    ->orWhere('assigned_to', $user->id);
-            });
+        $ownerIds = HierarchyResolver::visibleOwnerIds($user);
+
+        if ($ownerIds === []) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query->whereRaw('1 = 0');
+        // Nested group so the OR never escapes to broaden a caller's outer AND.
+        return $query->where(function (Builder $scoped) use ($ownerIds) {
+            $scoped->whereIn('created_by', $ownerIds)
+                ->orWhereIn('assigned_to', $ownerIds);
+        });
     }
 
     /**

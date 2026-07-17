@@ -212,7 +212,7 @@ it('filters the index by search term', function () {
     Customer::factory()->create(['name' => 'Zebra Unique']);
     Customer::factory()->create(['name' => 'Common Name']);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index', ['search' => 'Zebra']))
         ->assertInertia(fn (Assert $page) => $page
             ->component('Customers/Index')
@@ -226,7 +226,7 @@ it('filters the index by reseller', function () {
     Customer::factory()->count(2)->create(['reseller_id' => $resellerA->id]);
     Customer::factory()->create(['reseller_id' => $resellerB->id]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index', ['reseller' => $resellerA->id]))
         ->assertInertia(fn (Assert $page) => $page->has('customers.data', 2));
 });
@@ -234,7 +234,7 @@ it('filters the index by reseller', function () {
 it('paginates the index at 10 per page', function () {
     Customer::factory()->count(15)->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 10)
@@ -321,7 +321,7 @@ it('filters the index by status', function () {
     Customer::factory()->create(['name' => 'A Lead', 'status' => CustomerStatus::Lead]);
     Customer::factory()->create(['name' => 'An Active', 'status' => CustomerStatus::Active]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index', ['status' => CustomerStatus::Lead->value]))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 1)
@@ -333,7 +333,7 @@ it('filters the index by status', function () {
 it('ignores an unknown status filter value', function () {
     Customer::factory()->count(3)->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index', ['status' => 'bogus']))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 3)
@@ -442,7 +442,7 @@ it('exposes the owner on each index row', function () {
     $owner = User::factory()->create(['name' => 'Agen X']);
     Customer::factory()->create(['assigned_to' => $owner->id, 'name' => 'Owned Cust']);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('customers.data.0.owner.name', 'Agen X'));
@@ -461,7 +461,7 @@ it('filters the index by owner=me', function () {
 });
 
 it('filters the index by unassigned owner', function () {
-    $agent = userWithRole('supervisor');
+    $agent = userWithGlobalView();
     Customer::factory()->create(['assigned_to' => $agent->id]);
     Customer::factory()->count(2)->create(['assigned_to' => null]);
 
@@ -471,7 +471,7 @@ it('filters the index by unassigned owner', function () {
 });
 
 it('filters the index by a specific owner id and combines with status', function () {
-    $agentA = userWithRole('supervisor');
+    $agentA = userWithGlobalView();
     $agentB = User::factory()->create();
     Customer::factory()->create(['assigned_to' => $agentB->id, 'status' => CustomerStatus::Lead]);
     Customer::factory()->create(['assigned_to' => $agentB->id, 'status' => CustomerStatus::Active]);
@@ -488,7 +488,7 @@ it('filters the index by a specific owner id and combines with status', function
 it('ignores an unknown owner filter value', function () {
     Customer::factory()->count(3)->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.index', ['owner' => 'not-a-scope']))
         ->assertInertia(fn (Assert $page) => $page
             ->has('customers.data', 3)
@@ -537,7 +537,7 @@ it('forbids a roleless user from reassigning the owner', function () {
 it('keeps access org-wide regardless of assignment', function () {
     $ownerAgent = User::factory()->create();
     $customer = Customer::factory()->create(['assigned_to' => $ownerAgent->id]);
-    $nonOwner = userWithRole('cs');
+    [$nonOwner] = supportAssignedToOwnerOf($customer, 'cs');
 
     // A non-owner with a CRM role can still view the 360 page...
     $this->actingAs($nonOwner)

@@ -116,19 +116,28 @@ final class RolePresets
     private static function fullDomainAccess(): array
     {
         return [
-            P::CustomerViewAll, P::CustomerViewProducts, P::CustomerCreate,
+            // H3 (DESIGN_HIERARCHY.md): the manager is now TEAM-scoped, not global —
+            // view.team rolls up to every customer owned by a member of their team.
+            // Transaction/Interaction views become `.own`, which delegate to the
+            // (now team-scoped) Customer::visibleTo, so money + call-log roll up to
+            // the team too. NOTE: write perms (update.all/delete/reassign, txn
+            // create/update/delete) stay global this batch — write-scope tightening
+            // is a follow-up. RevenueView stays for a future team-revenue aggregate;
+            // the org revenue dashboard band needs transaction.view.all, which the
+            // manager no longer holds, so no global money surfaces.
+            // view.own alongside view.team: a manager always sees their OWN book
+            // (safety net when they lead no team yet), plus their whole team.
+            P::CustomerViewTeam, P::CustomerViewOwn, P::CustomerViewProducts, P::CustomerCreate,
             P::CustomerUpdateAll, P::CustomerReassign, P::CustomerDelete,
-            P::TransactionViewAll, P::TransactionCreate, P::TransactionUpdate,
+            P::TransactionViewOwn, P::TransactionCreate, P::TransactionUpdate,
             P::TransactionDelete, P::RevenueView,
             P::ProductView, P::ProductCreate, P::ProductUpdate, P::ProductDelete,
             P::ResellerView, P::ResellerCreate, P::ResellerUpdate, P::ResellerDelete,
-            P::InteractionViewAll, P::InteractionCreate, P::InteractionUpdate,
+            P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate,
             P::InteractionDelete, P::InteractionManageAll,
             P::DashboardView, P::DashboardStatsAggregate,
-            // H2 (DESIGN_HIERARCHY.md DH4): the manager may CREATE team members —
-            // limited to its assignable_types (sales/cs/maintenance) and never a
-            // user-administrator. It holds NO permission.assign, so it can never
-            // reach the unrestricted admin user UI nor set a user's permissions.
+            // H2 (DH4): may CREATE team members (limited to assignable_types, never a
+            // user-administrator; no permission.assign → no unrestricted admin UI).
             P::UserCreate,
         ];
     }
@@ -163,11 +172,15 @@ final class RolePresets
     private static function customerService(): array
     {
         return [
-            P::CustomerViewAll, P::CustomerViewProducts, P::CustomerCreate,
+            // H3: CS is now scoped — view.own (customers it entered itself, since CS
+            // may create) UNION view.assigned (customers of every sales who assigned
+            // it). InteractionViewOwn delegates to that same scope, so the call log
+            // it sees follows its customers. Write perms stay as-is this batch.
+            P::CustomerViewOwn, P::CustomerViewAssigned, P::CustomerViewProducts, P::CustomerCreate,
             P::CustomerUpdateAll, P::CustomerReassign,
             P::ProductView, P::ProductCreate, P::ProductUpdate,
             P::ResellerView, P::ResellerCreate, P::ResellerUpdate,
-            P::InteractionViewAll, P::InteractionCreate, P::InteractionUpdate,
+            P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate,
             P::InteractionDelete,
             P::DashboardView, P::DashboardStatsAggregate,
         ];
@@ -203,9 +216,12 @@ final class RolePresets
     private static function maintenance(): array
     {
         return [
-            P::CustomerViewAll, P::CustomerViewProducts,
+            // H3: maintenance is scoped to the assigning sales' books (view.assigned).
+            // Read-only (no create/update), so no view.own — it never owns customers.
+            // InteractionViewOwn delegates to that scope for the call log.
+            P::CustomerViewAssigned, P::CustomerViewProducts,
             P::ProductView,
-            P::InteractionViewAll, P::InteractionCreate, P::InteractionUpdate, P::InteractionDelete,
+            P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate, P::InteractionDelete,
             P::DashboardView, P::DashboardStatsAggregate,
         ];
     }

@@ -25,7 +25,8 @@ it('re-provisions a user that has a role but no direct permissions', function ()
 
     expect($user->getDirectPermissions()->pluck('name')->sort()->values()->all())
         ->toBe(collect(RolePresets::permissions(RoleName::Supervisor))->sort()->values()->all())
-        ->and($user->can(PermissionName::CustomerViewAll->value))->toBeTrue();
+        // H3: the manager preset is team-scoped now, not global.
+        ->and($user->can(PermissionName::CustomerViewTeam->value))->toBeTrue();
 });
 
 it('leaves a user without any role untouched', function () {

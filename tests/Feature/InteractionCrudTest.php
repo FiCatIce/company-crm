@@ -11,7 +11,7 @@ beforeEach(fn () => $this->seed(RoleSeeder::class));
 
 it('logs a manual interaction with source and author set server-side', function () {
     $agent = userWithRole('cs');
-    $customer = Customer::factory()->create();
+    $customer = Customer::factory()->create(['created_by' => $agent->id]);
 
     $this->actingAs($agent)
         ->post(route('interactions.store', $customer), [
@@ -34,7 +34,7 @@ it('logs a manual interaction with source and author set server-side', function 
 
 it('defaults occurred_at to now when omitted', function () {
     $agent = userWithRole('cs');
-    $customer = Customer::factory()->create();
+    $customer = Customer::factory()->create(['created_by' => $agent->id]);
 
     $this->actingAs($agent)
         ->post(route('interactions.store', $customer), [
@@ -48,7 +48,7 @@ it('defaults occurred_at to now when omitted', function () {
 
 it('requires a direction when the interaction is a call', function () {
     $agent = userWithRole('cs');
-    $customer = Customer::factory()->create();
+    $customer = Customer::factory()->create(['created_by' => $agent->id]);
 
     $this->actingAs($agent)
         ->from(route('customers.show', $customer))

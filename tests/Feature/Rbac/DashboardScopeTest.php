@@ -41,26 +41,37 @@ it('scopes the dashboard call feed to a sales user\'s own customers', function (
             ->where('recentCalls.0.customer.id', $mine->id));
 });
 
-it('shows managers the whole org call feed', function () {
-    $salesB = userWithRole('sales');
-    $a = Customer::factory()->create();
-    $b = Customer::factory()->createdBy($salesB)->create();
+it('rolls a manager\'s call feed up to their team, not other teams', function () {
+    $salesA = userWithRole('sales');
+    $manager = managerOverTeamOf($salesA);
+    $mine = Customer::factory()->createdBy($salesA)->create();
+    $offTeam = Customer::factory()->createdBy(userWithRole('sales'))->create();
 
-    Interaction::factory()->forCustomer($a)->create(['type' => InteractionType::Call]);
-    Interaction::factory()->forCustomer($b)->create(['type' => InteractionType::Call]);
+    Interaction::factory()->forCustomer($mine)->create(['type' => InteractionType::Call]);
+    Interaction::factory()->forCustomer($offTeam)->create(['type' => InteractionType::Call]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs($manager)
         ->get(route('dashboard'))
-        ->assertInertia(fn (Assert $page) => $page->has('recentCalls', 2));
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('recentCalls', 1)                         // only the team's call
+            ->where('recentCalls.0.customer.id', $mine->id));
 });
 
-it('still gives cs the full org call feed (interaction.view.all)', function () {
-    $customer = Customer::factory()->create();
-    Interaction::factory()->forCustomer($customer)->create(['type' => InteractionType::Call]);
+it('scopes cs\'s call feed to the sales who assigned them', function () {
+    $sales = userWithRole('sales');
+    $seen = Customer::factory()->createdBy($sales)->create();
+    $cs = userWithRole('cs');
+    $sales->assignees()->attach($cs->id);
+    $offCustomer = Customer::factory()->create(); // owned by nobody cs is assigned to
 
-    $this->actingAs(userWithRole('cs'))
+    Interaction::factory()->forCustomer($seen)->create(['type' => InteractionType::Call]);
+    Interaction::factory()->forCustomer($offCustomer)->create(['type' => InteractionType::Call]);
+
+    $this->actingAs($cs)
         ->get(route('dashboard'))
-        ->assertInertia(fn (Assert $page) => $page->has('recentCalls', 1));
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('recentCalls', 1)
+            ->where('recentCalls.0.customer.id', $seen->id));
 });
 
 // ---------------------------------------------------------------------------
@@ -91,11 +102,13 @@ it('hides the org-wide detail widgets from a sales user but keeps their call fee
             ->missing('topResellersByRevenue'));
 });
 
-it('gives the manager every widget including revenue', function () {
+it('gives a global viewer every widget including revenue', function () {
+    // Post-H3 the org aggregate band + revenue serve a GLOBAL viewer (view.all),
+    // not the now-team-scoped manager.
     $customer = Customer::factory()->create();
     Transaction::factory()->forCustomer($customer)->create(['amount' => 250_000]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('recentTransactions')
@@ -130,17 +143,20 @@ it('counts a sales rep\'s created-by customers in the personal band even when un
         ->assertInertia(fn (Assert $page) => $page->where('me.myCustomers', 4));
 });
 
-it('keeps a manager\'s personal band to their own book, not the whole org', function () {
-    $manager = userWithRole('supervisor');
+it('rolls a manager\'s personal band up to their whole team, never the org', function () {
+    $salesA = userWithRole('sales');
+    $manager = managerOverTeamOf($salesA);
 
-    Customer::factory()->count(5)->create();                        // org customers, not theirs
-    Customer::factory()->count(2)->createdBy($manager)->create();   // their own book
+    Customer::factory()->count(5)->create();                       // off-team, invisible
+    Customer::factory()->count(2)->createdBy($salesA)->create();   // a team member's book
+    Customer::factory()->createdBy($manager)->create();            // the manager's own
 
     $this->actingAs($manager)
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('me.myCustomers', 2)     // personal band = own only (ownership, not visibility)
-            ->where('stats.customers', 7));  // org aggregate still counts all 7
+            // Team roll-up: 2 (sales A) + 1 (own) = 3; the 5 off-team stay invisible.
+            ->where('me.myCustomers', 3)
+            ->missing('stats'));            // scoped viewer → NO org aggregate band
 });
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\PermissionName;
 use App\Enums\RoleName;
+use App\Models\Customer;
+use App\Models\Team;
 use App\Models\User;
 use App\Support\RolePresets;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,4 +67,56 @@ function userWithRole(string $role): User
     RolePresets::assign($user, RoleName::from($role));
 
     return $user;
+}
+
+/**
+ * A user who sees the WHOLE org — for tests exercising org-wide mechanics (CRUD
+ * lists, dashboard aggregates, stats) rather than hierarchy scoping. Post-H3 no
+ * system role sees everything, so we synthesise the pre-H3 global manager by
+ * granting the global view permissions on top of the supervisor preset.
+ */
+function userWithGlobalView(): User
+{
+    $user = userWithRole('supervisor');
+    $user->givePermissionTo([
+        PermissionName::CustomerViewAll->value,
+        PermissionName::TransactionViewAll->value,
+        PermissionName::InteractionViewAll->value,
+    ]);
+
+    return $user;
+}
+
+/**
+ * A CS/maintenance user assigned to a fresh Sales rep who OWNS $customer — so a
+ * hierarchy (assignment-scoped) role can actually see the customer under test.
+ * Returns [supportUser, salesOwner].
+ *
+ * @return array{0: User, 1: User}
+ */
+function supportAssignedToOwnerOf(Customer $customer, string $role = 'cs'): array
+{
+    $sales = userWithRole('sales');
+    $customer->forceFill(['created_by' => $sales->id])->save();
+
+    $support = userWithRole($role);
+    $sales->assignees()->attach($support->id);
+
+    return [$support, $sales];
+}
+
+/**
+ * A supervisor (manager) leading a team that contains $sales — so a team roll-up
+ * viewer can see that sales rep's customers.
+ */
+function managerOverTeamOf(User $sales): User
+{
+    $manager = userWithRole('supervisor');
+    $team = Team::factory()->create();
+    $team->members()->attach([
+        $manager->id => ['role_in_team' => 'manager'],
+        $sales->id => ['role_in_team' => 'sales'],
+    ]);
+
+    return $manager;
 }

@@ -20,7 +20,7 @@ function navVisibleFor(string $role): array
 {
     $contract = [
         'Dashboard' => ['dashboard.view'],
-        'Customers' => ['customer.view.all', 'customer.view.own'],
+        'Customers' => ['customer.view.all', 'customer.view.team', 'customer.view.own', 'customer.view.assigned'],
         'Products' => ['product.view'],
         'Resellers' => ['reseller.view'],
         'Transactions' => ['transaction.view.all', 'transaction.view.own'],

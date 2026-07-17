@@ -107,7 +107,7 @@ test('the dashboard page is wired to the full data contract', function () {
     $this->seed(RoleSeeder::class);
     $this->withoutVite();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -145,7 +145,7 @@ test('the dashboard renders calmly with zero data', function () {
 
     // A fresh install: KPIs read 0, the warranty split is all zeros, and every
     // list is empty — the page must still render (calm, not broken).
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
