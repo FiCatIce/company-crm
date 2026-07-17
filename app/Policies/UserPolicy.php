@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\PermissionName as P;
 use App\Models\User;
+use App\Support\CapabilityResolver;
 
 /**
  * Authorization for the admin user-management area (DESIGN_RBAC.md §3.5). Gates
@@ -23,9 +24,25 @@ class UserPolicy
         return $user->can(P::UserView->value);
     }
 
+    /**
+     * The UNRESTRICTED admin user-management area (existing /users create UI): may
+     * create a user of ANY role. Gated on permission.assign — the grant-anything
+     * power — so a DELEGATED creator (a manager holding user.create but not
+     * permission.assign) can never reach it. Their path is createType() instead.
+     */
     public function create(User $user): bool
     {
-        return $user->can(P::UserCreate->value);
+        return $user->can(P::UserCreate->value) && $user->can(P::PermissionAssign->value);
+    }
+
+    /**
+     * Delegated creation of a specific role TYPE (DH4): a manager creating a
+     * whitelisted team member. Type-scoped + escalation-guarded (a delegate can
+     * never mint a user-administrator) via CapabilityResolver.
+     */
+    public function createType(User $user, string $type): bool
+    {
+        return CapabilityResolver::canCreateUserType($user, $type);
     }
 
     public function update(User $user, ?User $target = null): bool

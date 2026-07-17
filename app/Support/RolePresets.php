@@ -125,6 +125,11 @@ final class RolePresets
             P::InteractionViewAll, P::InteractionCreate, P::InteractionUpdate,
             P::InteractionDelete, P::InteractionManageAll,
             P::DashboardView, P::DashboardStatsAggregate,
+            // H2 (DESIGN_HIERARCHY.md DH4): the manager may CREATE team members —
+            // limited to its assignable_types (sales/cs/maintenance) and never a
+            // user-administrator. It holds NO permission.assign, so it can never
+            // reach the unrestricted admin user UI nor set a user's permissions.
+            P::UserCreate,
         ];
     }
 
@@ -183,6 +188,9 @@ final class RolePresets
             P::ResellerView,
             P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate, P::InteractionDelete,
             P::DashboardView, P::DashboardStatsAggregate,
+            // H2 (DESIGN_HIERARCHY.md DH5): sales may ASSIGN existing CS/maintenance
+            // to itself (not create users) — limited to its assignable_types.
+            P::UserAssign,
         ];
     }
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\CapabilityResolver;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -142,5 +143,23 @@ class User extends Authenticatable implements PasskeyUser
     {
         return $this->belongsToMany(User::class, 'sales_assignee', 'assignee_user_id', 'sales_user_id')
             ->withTimestamps();
+    }
+
+    /**
+     * Delegated capability (DH4): may this user CREATE a user of role $type? Thin
+     * wrapper over CapabilityResolver — reusable by policy + (later) UI gating.
+     */
+    public function canCreateUserType(string $type): bool
+    {
+        return CapabilityResolver::canCreateUserType($this, $type);
+    }
+
+    /**
+     * Delegated capability (DH5): may this user ASSIGN an existing $type user
+     * (CS/maintenance) to themselves?
+     */
+    public function canAssign(string $type): bool
+    {
+        return CapabilityResolver::canAssign($this, $type);
     }
 }

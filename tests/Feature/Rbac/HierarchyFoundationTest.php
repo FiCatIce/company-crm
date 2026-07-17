@@ -117,15 +117,13 @@ it('seeds dormant capability defaults and the new permissions', function () {
         ->and(Permission::where('name', PermissionName::TeamView->value)->exists())->toBeTrue();
 });
 
-it('keeps the new permissions out of every role preset (still dormant)', function () {
+it('keeps team.view dormant across every role (menu lands in H6)', function () {
+    // team.view still belongs to no preset — the "Tim Saya" menu is a later batch.
+    // (user.assign is activated for sales in H2 — see CapabilityEnforcementTest.)
     $this->seed(RoleSeeder::class);
 
-    $sales = userWithRole('sales');
-    $supervisor = userWithRole('supervisor');
-
-    foreach ([$sales, $supervisor] as $user) {
-        expect($user->can(PermissionName::TeamView->value))->toBeFalse()
-            ->and($user->can(PermissionName::UserAssign->value))->toBeFalse();
+    foreach (['admin', 'supervisor', 'sales', 'cs', 'maintenance'] as $role) {
+        expect(userWithRole($role)->can(PermissionName::TeamView->value))->toBeFalse();
     }
 });
 

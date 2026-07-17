@@ -8,6 +8,7 @@ use App\Enums\RoleName;
 use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
 use App\Models\AuditLog;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\RolePresets;
 use Illuminate\Http\RedirectResponse;
@@ -15,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Permission\Models\Role;
 
 /**
  * Admin role builder (extends the B5 user-management surface). Create, edit,
@@ -83,7 +83,20 @@ class RoleController extends Controller
     {
         $data = $request->validated();
 
-        $role = Role::create(['name' => $data['name'], 'guard_name' => 'web']);
+        // DH4 capability config: which user types this role may create/assign.
+        // Dormant until a member actually holds user.create/user.assign — the
+        // capability check reads it then. Absent input stays null.
+        /** @var list<string>|null $assignableTypes */
+        $assignableTypes = $data['assignable_types'] ?? null;
+
+        // Built via new+forceFill (not Role::create) so the concrete App\Models\Role
+        // type — which carries the assignable_types cast — is what we hold.
+        $role = new Role;
+        $role->forceFill([
+            'name' => $data['name'],
+            'guard_name' => 'web',
+            'assignable_types' => $assignableTypes,
+        ])->save();
         $role->syncPermissions($data['permissions']);
 
         AuditLog::record($request->user(), null, 'role.created', [
@@ -107,6 +120,8 @@ class RoleController extends Controller
                 'is_system' => $this->isSystem($role->name),
                 'is_locked' => $this->isLocked($role->name),
                 'permissions' => RolePresets::effectivePermissions($role),
+                // DH4 capability config (surfaced for the H4 toggle UI).
+                'assignable_types' => $role->assignable_types ?? [],
             ],
             'permissionGroups' => $this->permissionCatalog(),
         ]);
@@ -144,6 +159,15 @@ class RoleController extends Controller
         // drives inheritance; for an edited system role it "detaches" the role from
         // its code preset so the admin's choice sticks (RolePresets::effectivePermissions).
         $role->syncPermissions($after);
+
+        // DH4 capability config (only when submitted, so a permission-only edit
+        // doesn't wipe it). Which user types this role may create/assign.
+        if ($request->has('assignable_types')) {
+            /** @var list<string>|null $assignableTypes */
+            $assignableTypes = $data['assignable_types'] ?? null;
+            $role->assignable_types = $assignableTypes;
+            $role->save();
+        }
 
         // Re-stamp system-role members' direct permissions so the change — additions
         // AND removals — takes effect immediately, replacing the preset they were

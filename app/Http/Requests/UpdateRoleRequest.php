@@ -37,6 +37,10 @@ class UpdateRoleRequest extends FormRequest
             'name' => ['required', 'string', 'max:50', Rule::notIn($reservedSlugs), Rule::unique('roles', 'name')->ignore($roleId)],
             'permissions' => ['required', 'array', 'min:1'],
             'permissions.*' => [Rule::in(PermissionName::values())],
+            // DH4 capability config (optional): the user types this role may
+            // create/assign. Each must be a real role and never `admin`.
+            'assignable_types' => ['sometimes', 'array'],
+            'assignable_types.*' => ['string', Rule::notIn([RoleName::Admin->value]), Rule::exists('roles', 'name')],
         ];
     }
 }

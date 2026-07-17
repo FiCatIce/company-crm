@@ -27,6 +27,11 @@ class StoreRoleRequest extends FormRequest
             // Server never trusts the client's list blindly — each must be real.
             'permissions' => ['required', 'array', 'min:1'],
             'permissions.*' => [Rule::in(PermissionName::values())],
+            // DH4 capability config (optional): the user types this role may
+            // create/assign. Each must be a real role and never `admin` — the
+            // unrestricted role is never delegable.
+            'assignable_types' => ['sometimes', 'array'],
+            'assignable_types.*' => ['string', Rule::notIn([RoleName::Admin->value]), Rule::exists('roles', 'name')],
         ];
     }
 }
