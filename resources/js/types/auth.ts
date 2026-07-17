@@ -10,10 +10,18 @@ export type User = {
     [key: string]: unknown;
 };
 
+/** Derived capability flags no single permission expresses (UI gating only). */
+export type AuthCapabilities = {
+    /** May use the delegated team-members area — a manager, never the admin. */
+    manageTeamMembers: boolean;
+};
+
 export type Auth = {
     user: User;
     /** Effective permission names for the current user (UI gating only). */
     permissions: string[];
+    /** Derived capabilities — see AuthCapabilities. Server-enforced by policy. */
+    can: AuthCapabilities;
 };
 
 /* @chisel-passkeys */

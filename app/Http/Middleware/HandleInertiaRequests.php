@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -45,6 +46,12 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $request->user()
                     ? $request->user()->getAllPermissions()->pluck('name')->values()->all()
                     : [],
+                // Derived capabilities that no single permission expresses — a
+                // manager (delegable types) vs the admin (none). UI-gating only;
+                // the policy of the same name enforces it server-side.
+                'can' => [
+                    'manageTeamMembers' => $request->user()?->can('manageTeamMembers', User::class) ?? false,
+                ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [

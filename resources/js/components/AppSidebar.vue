@@ -6,6 +6,7 @@ import {
     Package,
     Receipt,
     ShieldCheck,
+    UserCheck,
     UserCog,
     Users,
 } from '@lucide/vue';
@@ -62,6 +63,15 @@ const allNavItems: NavItem[] = [
         permission: ['transaction.view.all', 'transaction.view.own'],
     },
     {
+        title: 'Anggota Tim',
+        href: '/team/members',
+        icon: UserCheck,
+        // Delegated-creation area: shown to a manager (has creatable types), never
+        // the admin (whose path is Users). No single permission expresses that, so
+        // it gates on the derived capability rather than a permission string.
+        capability: 'manageTeamMembers',
+    },
+    {
         title: 'Roles',
         href: '/roles',
         icon: ShieldCheck,
@@ -82,8 +92,15 @@ const page = usePage();
 // this is UI only.
 const mainNavItems = computed(() => {
     const held = page.props.auth?.permissions ?? [];
+    const can = page.props.auth?.can;
 
     return allNavItems.filter((item) => {
+        // A derived-capability gate (e.g. team-members) wins when present — no
+        // single permission expresses it.
+        if (item.capability) {
+            return can?.[item.capability] ?? false;
+        }
+
         if (!item.permission) {
             return true;
         }

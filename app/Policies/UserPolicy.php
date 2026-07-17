@@ -45,6 +45,45 @@ class UserPolicy
         return CapabilityResolver::canCreateUserType($user, $type);
     }
 
+    /**
+     * May the actor use the delegated team-members area at all (H4)? True iff they
+     * have at least one delegable type — a manager, never the admin (whose /users
+     * UI is the create path, so its delegated whitelist is empty). Sales, holding
+     * only user.assign, never reaches it.
+     */
+    public function manageTeamMembers(User $user): bool
+    {
+        return CapabilityResolver::creatableTypes($user) !== [];
+    }
+
+    /**
+     * May the actor manage THIS specific team member (reset password now; the
+     * offboarding/deactivate lifecycle lands in H7)? The target must be a
+     * delegable type WITHIN the actor's reach — provisioned by them or a member of
+     * their team — and never the actor themselves. This bounds a manager to their
+     * own book: they can never touch a peer manager, an admin, or an unrelated rep.
+     */
+    public function manageTeamMember(User $user, ?User $target = null): bool
+    {
+        if ($target === null || $user->id === $target->id) {
+            return false;
+        }
+
+        $targetRole = $target->getRoleNames()->first();
+        if (! is_string($targetRole)
+            || ! in_array($targetRole, CapabilityResolver::assignableTypes($user), true)) {
+            return false;
+        }
+
+        if ($target->created_by_user === $user->id) {
+            return true;
+        }
+
+        $team = $user->team();
+
+        return $team !== null && $target->teams()->whereKey($team->id)->exists();
+    }
+
     public function update(User $user, ?User $target = null): bool
     {
         return $user->can(P::UserUpdate->value);

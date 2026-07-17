@@ -64,6 +64,31 @@ final class CapabilityResolver
     }
 
     /**
+     * The concrete user types $actor may create via DELEGATION (the team-member
+     * form dropdown, H4). Its whitelist filtered to types that actually pass
+     * canCreateUserType — so an escalation-guarded slug never reaches the dropdown.
+     *
+     * The unrestricted admin returns [] here on purpose: admin creates users
+     * through the full /users UI, not the delegated team form, so a role with no
+     * assignable_types whitelist (admin's default) has nothing to delegate. This is
+     * exactly what separates a manager (non-empty) from an admin (empty) for the
+     * team-area gate.
+     *
+     * @return list<string>
+     */
+    public static function creatableTypes(User $actor): array
+    {
+        if (! $actor->can(P::UserCreate->value)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            self::assignableTypes($actor),
+            fn (string $type): bool => self::canCreateUserType($actor, $type),
+        ));
+    }
+
+    /**
      * May $actor CREATE a user of role $type? Requires user.create, and either
      * unrestricted user-administration (admin) or $type in the actor's whitelist —
      * but NEVER a role that itself wields user-administration power (escalation).

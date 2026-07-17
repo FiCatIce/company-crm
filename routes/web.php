@@ -6,6 +6,7 @@ use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ResellerController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,14 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin user management (RBAC B5) — gated per-action by UserPolicy.
     Route::resource('users', UserController::class)->except(['show']);
+
+    // Delegated team-member management (hierarchy H4) — a manager's scoped area,
+    // gated by UserPolicy::manageTeamMembers/manageTeamMember. Distinct from the
+    // admin /users UI above: create whitelisted members + reset their passwords only.
+    Route::get('team/members', [TeamMemberController::class, 'index'])->name('team.members.index');
+    Route::get('team/members/create', [TeamMemberController::class, 'create'])->name('team.members.create');
+    Route::post('team/members', [TeamMemberController::class, 'store'])->name('team.members.store');
+    Route::put('team/members/{member}/password', [TeamMemberController::class, 'resetPassword'])->name('team.members.password');
 
     // Admin role builder — create/edit/delete custom roles + their permission
     // templates. Gated by role.manage inside the controller; system roles locked.

@@ -110,6 +110,18 @@ export type UserRow = {
     can_delete: boolean;
 };
 
+// Delegated team-member management (hierarchy H4). A manager's scoped view of the
+// members they created / lead — type + join date, and whether they may reset it.
+export type TeamMemberRow = {
+    id: number;
+    name: string;
+    email: string;
+    extension: string | null;
+    type: RoleOption | null;
+    created_at: string | null;
+    can_reset: boolean;
+};
+
 // Admin role builder. `is_system` roles are locked (preset defined in code).
 export type RoleRow = {
     id: number;
