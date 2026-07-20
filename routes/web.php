@@ -35,6 +35,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin user management (RBAC B5) — gated per-action by UserPolicy.
     Route::resource('users', UserController::class)->except(['show']);
+    // Account lifecycle (hierarchy H7b) — access on/off, data untouched.
+    Route::put('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
 
     // "Tim Saya" (hierarchy H6) — read-only hierarchy overview, shape per viewer.
     Route::get('team', [TeamController::class, 'index'])->name('team.index');
@@ -46,6 +48,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('team/members/create', [TeamMemberController::class, 'create'])->name('team.members.create');
     Route::post('team/members', [TeamMemberController::class, 'store'])->name('team.members.store');
     Route::put('team/members/{member}/password', [TeamMemberController::class, 'resetPassword'])->name('team.members.password');
+    Route::put('team/members/{member}/status', [TeamMemberController::class, 'updateStatus'])->name('team.members.status');
 
     // Support assignment (hierarchy H5) — a sales user wires CS/maintenance to
     // their own book. Always self-scoped: no route names another sales.

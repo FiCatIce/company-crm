@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Concerns\ProvidesPermissionCatalog;
 use App\Enums\RoleName;
 use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateAccountStatusRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\AccountStatus;
 use App\Support\RolePresets;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -46,7 +48,9 @@ class UserController extends Controller
                 'extension' => $user->extension,
                 'role' => $this->roleView($user),
                 'is_self' => $user->id === $actor->id,
+                'is_active' => $user->is_active,
                 'can_delete' => $actor->can('delete', $user),
+                'can_set_status' => $actor->can('setStatus', $user),
             ]);
 
         return Inertia::render('Users/Index', [
@@ -173,6 +177,29 @@ class UserController extends Controller
 
         return redirect()->route('users.index')
             ->with('success', 'User berhasil diperbarui.');
+    }
+
+    /**
+     * Activate/deactivate any account (H7b) — the admin's org-wide counterpart to
+     * the manager's team-scoped switch. Never oneself (policy) and never the last
+     * remaining ACTIVE admin (guard below), so the system can't be locked out.
+     * Nothing about the user's data changes; see AccountStatus.
+     */
+    public function updateStatus(UpdateAccountStatusRequest $request, User $user): RedirectResponse
+    {
+        $this->authorize('setStatus', $user);
+
+        $active = $request->boolean('is_active');
+
+        if (! $active && AccountStatus::isLastAdmin($user)) {
+            return back()->with('error', 'Tidak dapat menonaktifkan admin terakhir.');
+        }
+
+        AccountStatus::set($request->user(), $user, $active);
+
+        return back()->with('success', $active
+            ? "{$user->name} berhasil diaktifkan kembali."
+            : "{$user->name} dinonaktifkan. Data dan penugasannya tetap utuh.");
     }
 
     public function destroy(Request $request, User $user): RedirectResponse

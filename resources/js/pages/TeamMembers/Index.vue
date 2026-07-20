@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
-import { Check, KeyRound, Plus, Users } from '@lucide/vue';
+import { Check, KeyRound, Plus, UserCheck, UserX, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import TeamMemberController from '@/actions/App/Http/Controllers/TeamMemberController';
 import InputError from '@/components/InputError.vue';
@@ -174,15 +174,26 @@ const formatDate = (iso: string | null) =>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span
-                                        v-if="m.type"
-                                        class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
-                                        :class="typeBadge(m.type.value)"
-                                        >{{ m.type.label }}</span
+                                    <div
+                                        class="flex flex-wrap items-center gap-1.5"
                                     >
-                                    <span v-else class="text-muted-foreground"
-                                        >—</span
-                                    >
+                                        <span
+                                            v-if="m.type"
+                                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
+                                            :class="typeBadge(m.type.value)"
+                                            >{{ m.type.label }}</span
+                                        >
+                                        <span
+                                            v-else
+                                            class="text-muted-foreground"
+                                            >—</span
+                                        >
+                                        <span
+                                            v-if="!m.is_active"
+                                            class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                                            >Nonaktif</span
+                                        >
+                                    </div>
                                 </td>
                                 <td
                                     class="px-6 py-4 text-muted-foreground tabular-nums"
@@ -296,8 +307,131 @@ const formatDate = (iso: string | null) =>
                                                 </Form>
                                             </DialogContent>
                                         </Dialog>
+                                        <Dialog v-if="m.can_set_status">
+                                            <DialogTrigger as-child>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    :class="
+                                                        m.is_active
+                                                            ? 'text-muted-foreground'
+                                                            : 'text-emerald-700'
+                                                    "
+                                                >
+                                                    <component
+                                                        :is="
+                                                            m.is_active
+                                                                ? UserX
+                                                                : UserCheck
+                                                        "
+                                                    />
+                                                    {{
+                                                        m.is_active
+                                                            ? 'Nonaktifkan'
+                                                            : 'Aktifkan'
+                                                    }}
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <Form
+                                                    v-bind="
+                                                        TeamMemberController.updateStatus.form(
+                                                            m.id,
+                                                        )
+                                                    "
+                                                    :options="{
+                                                        preserveScroll: true,
+                                                    }"
+                                                    class="space-y-6"
+                                                    v-slot="{ processing }"
+                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="is_active"
+                                                        :value="
+                                                            m.is_active ? 0 : 1
+                                                        "
+                                                    />
+                                                    <DialogHeader
+                                                        class="space-y-2"
+                                                    >
+                                                        <DialogTitle>
+                                                            {{
+                                                                m.is_active
+                                                                    ? 'Nonaktifkan akun?'
+                                                                    : 'Aktifkan kembali akun?'
+                                                            }}
+                                                        </DialogTitle>
+                                                        <DialogDescription
+                                                            v-if="m.is_active"
+                                                        >
+                                                            <strong>{{
+                                                                m.name
+                                                            }}</strong>
+                                                            tidak akan bisa
+                                                            login lagi dan
+                                                            sesinya langsung
+                                                            berakhir.
+                                                            <strong
+                                                                >Customer dan
+                                                                penugasannya
+                                                                tetap
+                                                                utuh</strong
+                                                            >
+                                                            — alihkan secara
+                                                            terpisah bila perlu.
+                                                            Bisa diaktifkan lagi
+                                                            kapan saja.
+                                                        </DialogDescription>
+                                                        <DialogDescription
+                                                            v-else
+                                                        >
+                                                            <strong>{{
+                                                                m.name
+                                                            }}</strong>
+                                                            bisa login lagi dan
+                                                            kembali mengakses
+                                                            customer serta
+                                                            penugasan yang masih
+                                                            melekat padanya.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+
+                                                    <DialogFooter class="gap-2">
+                                                        <DialogClose as-child>
+                                                            <Button
+                                                                variant="secondary"
+                                                                type="button"
+                                                            >
+                                                                Batal
+                                                            </Button>
+                                                        </DialogClose>
+                                                        <Button
+                                                            type="submit"
+                                                            :variant="
+                                                                m.is_active
+                                                                    ? 'destructive'
+                                                                    : 'default'
+                                                            "
+                                                            :disabled="
+                                                                processing
+                                                            "
+                                                        >
+                                                            {{
+                                                                m.is_active
+                                                                    ? 'Nonaktifkan'
+                                                                    : 'Aktifkan'
+                                                            }}
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </Form>
+                                            </DialogContent>
+                                        </Dialog>
                                         <span
-                                            v-else
+                                            v-if="
+                                                !m.can_reset &&
+                                                !m.can_set_status
+                                            "
                                             class="text-xs text-muted-foreground"
                                             >—</span
                                         >

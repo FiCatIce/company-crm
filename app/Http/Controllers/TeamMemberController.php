@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ResetTeamMemberPasswordRequest;
 use App\Http\Requests\StoreTeamMemberRequest;
+use App\Http\Requests\UpdateAccountStatusRequest;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\AccountStatus;
 use App\Support\CapabilityResolver;
 use App\Support\DelegatedUserCreator;
 use App\Support\TeamRoleLabels;
@@ -45,7 +47,9 @@ class TeamMemberController extends Controller
                 'extension' => $member->extension,
                 'type' => $this->typeView($member),
                 'created_at' => $member->created_at?->toIso8601String(),
+                'is_active' => $member->is_active,
                 'can_reset' => $actor->can('manageTeamMember', $member),
+                'can_set_status' => $actor->can('setStatus', $member),
             ]);
 
         return Inertia::render('TeamMembers/Index', [
@@ -91,6 +95,29 @@ class TeamMemberController extends Controller
 
         return redirect()->route('team.members.index')
             ->with('success', "Password {$member->name} berhasil direset.");
+    }
+
+    /**
+     * Activate/deactivate a member (H7b). Access is revoked; the member's customers
+     * and support assignments are deliberately left in place — reactivation restores
+     * the account whole, and handing the book over is the separate H7c transfer.
+     */
+    public function updateStatus(UpdateAccountStatusRequest $request, User $member): RedirectResponse
+    {
+        $this->authorize('setStatus', $member);
+
+        $active = $request->boolean('is_active');
+
+        // Friendly flash rather than a 403 page; AccountStatus re-checks it anyway.
+        if (! $active && AccountStatus::isLastAdmin($member)) {
+            return back()->with('error', 'Tidak dapat menonaktifkan admin terakhir.');
+        }
+
+        AccountStatus::set($request->user(), $member, $active);
+
+        return back()->with('success', $active
+            ? "{$member->name} berhasil diaktifkan kembali."
+            : "{$member->name} dinonaktifkan. Data pelanggan dan penugasannya tetap utuh.");
     }
 
     /**

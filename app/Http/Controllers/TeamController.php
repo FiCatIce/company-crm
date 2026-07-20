@@ -96,6 +96,10 @@ class TeamController extends Controller
                     'name' => $rep->name,
                     'email' => $rep->email,
                     'type' => $this->typeView($rep),
+                    // H7b: a deactivated rep keeps their book (deactivation is
+                    // reversible), so the overview must SAY so — otherwise those
+                    // customers quietly go untended behind a normal-looking row.
+                    'is_active' => $rep->is_active,
                     'customers_count' => $this->bookSize($manager, $rep),
                     'assignees' => $this->agentRows($rep->assignees),
                 ])
@@ -131,6 +135,7 @@ class TeamController extends Controller
                 'name' => $agent->name,
                 'email' => $agent->email,
                 'type' => $this->typeView($agent),
+                'is_active' => $agent->is_active,
             ])
             ->all());
     }

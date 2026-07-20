@@ -7,6 +7,7 @@ use App\Support\CapabilityResolver;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -26,6 +27,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $name
  * @property string $email
  * @property string|null $extension
+ * @property bool $is_active
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -53,7 +55,23 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            // H7b: deliberately absent from #[Fillable] — the account switch is set
+            // server-side through AccountStatus only, never by a request payload.
+            'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Only accounts that may still sign in (H7b). Deactivation revokes ACCESS, not
+     * data: a deactivated user keeps their customers and assignment rows, so this
+     * scope belongs on "who can we hand work to", never on ownership queries.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
     }
 
     /**

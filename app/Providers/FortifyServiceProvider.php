@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -13,6 +15,8 @@ use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\Passkeys;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -41,6 +45,37 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+        $this->configureAccountStatusGuard();
+    }
+
+    /**
+     * Deactivated accounts cannot sign in (hierarchy H7b). There are TWO independent
+     * login paths and both must be sealed:
+     *
+     *  1. Password login — this callback replaces the default guard->attempt(). It is
+     *     also what RedirectIfTwoFactorAuthenticatable uses to validate credentials,
+     *     so an inactive user with 2FA enabled never even reaches the challenge.
+     *  2. Passkeys — PasskeyLoginController calls $guard->login() directly, bypassing
+     *     the Fortify pipeline entirely, so it needs its own authorize hook.
+     *
+     * Both fail CLOSED and deliberately return the generic "invalid credentials"
+     * failure rather than announcing that the account is disabled.
+     */
+    private function configureAccountStatusGuard(): void
+    {
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $user = User::where(Fortify::username(), $request->input(Fortify::username()))->first();
+
+            if ($user === null
+                || ! $user->is_active
+                || ! Hash::check((string) $request->input('password'), $user->password)) {
+                return null;
+            }
+
+            return $user;
+        });
+
+        Passkeys::authorizeLoginUsing(fn (Request $request, PasskeyUser $user): bool => $user instanceof User && $user->is_active);
     }
 
     /**

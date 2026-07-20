@@ -68,8 +68,26 @@ class UserPolicy
     }
 
     /**
-     * May the actor manage THIS specific team member (reset password now; the
-     * offboarding/deactivate lifecycle lands in H7)? The target must be a
+     * May the actor activate/deactivate THIS account (H7b)? Two disjoint paths:
+     * a MANAGER over their own book (manageTeamMember — same reach as the password
+     * reset), or an ADMIN through /users (user.update, the permission that already
+     * grants full edit rights on any user, so this adds no new power). Never
+     * oneself, on either path — the lockout guard, mirroring delete()/D2. The
+     * last-ACTIVE-admin case is enforced separately in AccountStatus.
+     */
+    public function setStatus(User $user, ?User $target = null): bool
+    {
+        if ($target === null || $user->id === $target->id) {
+            return false;
+        }
+
+        return $this->manageTeamMember($user, $target)
+            || $user->can(P::UserUpdate->value);
+    }
+
+    /**
+     * May the actor manage THIS specific team member (reset password, and since
+     * H7b the activate/deactivate switch)? The target must be a
      * delegable type WITHIN the actor's reach — provisioned by them or a member of
      * their team — and never the actor themselves. This bounds a manager to their
      * own book: they can never touch a peer manager, an admin, or an unrelated rep.

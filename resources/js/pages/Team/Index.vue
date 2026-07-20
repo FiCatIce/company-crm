@@ -133,6 +133,12 @@ const agentsHeading = computed(() => {
                                 </div>
                             </div>
                             <span
+                                v-if="!rep.is_active"
+                                class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                                title="Akun dinonaktifkan — customer di bawah ini tetap miliknya sampai dialihkan."
+                                >Nonaktif</span
+                            >
+                            <span
                                 v-if="rep.type"
                                 class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
                                 :class="typeBadge(rep.type.value)"
@@ -161,6 +167,11 @@ const agentsHeading = computed(() => {
                                     {{ a.name }}
                                     <span v-if="a.type" class="ml-1 opacity-70"
                                         >· {{ a.type.label }}</span
+                                    >
+                                    <span
+                                        v-if="!a.is_active"
+                                        class="ml-1 opacity-70"
+                                        >· nonaktif</span
                                     >
                                 </span>
                             </template>
@@ -225,6 +236,12 @@ const agentsHeading = computed(() => {
                                 {{ a.email }}
                             </div>
                         </div>
+                        <span
+                            v-if="!a.is_active"
+                            class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                            title="Akun dinonaktifkan — penugasannya tetap utuh."
+                            >Nonaktif</span
+                        >
                         <span
                             v-if="a.type"
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"

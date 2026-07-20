@@ -146,14 +146,25 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span
-                                        v-if="u.role"
-                                        class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                                        >{{ u.role.label }}</span
+                                    <div
+                                        class="flex flex-wrap items-center gap-1.5"
                                     >
-                                    <span v-else class="text-muted-foreground"
-                                        >—</span
-                                    >
+                                        <span
+                                            v-if="u.role"
+                                            class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
+                                            >{{ u.role.label }}</span
+                                        >
+                                        <span
+                                            v-else
+                                            class="text-muted-foreground"
+                                            >—</span
+                                        >
+                                        <span
+                                            v-if="!u.is_active"
+                                            class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                                            >Nonaktif</span
+                                        >
+                                    </div>
                                 </td>
                                 <td
                                     class="px-6 py-4 text-muted-foreground tabular-nums"
@@ -177,6 +188,115 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
                                                 >Edit</Link
                                             >
                                         </Button>
+
+                                        <Dialog v-if="u.can_set_status">
+                                            <DialogTrigger as-child>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    :class="
+                                                        u.is_active
+                                                            ? 'text-muted-foreground'
+                                                            : 'text-emerald-700'
+                                                    "
+                                                >
+                                                    {{
+                                                        u.is_active
+                                                            ? 'Nonaktifkan'
+                                                            : 'Aktifkan'
+                                                    }}
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <Form
+                                                    v-bind="
+                                                        UserController.updateStatus.form(
+                                                            u.id,
+                                                        )
+                                                    "
+                                                    :options="{
+                                                        preserveScroll: true,
+                                                    }"
+                                                    class="space-y-6"
+                                                    v-slot="{ processing }"
+                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="is_active"
+                                                        :value="
+                                                            u.is_active ? 0 : 1
+                                                        "
+                                                    />
+                                                    <DialogHeader
+                                                        class="space-y-3"
+                                                    >
+                                                        <DialogTitle>{{
+                                                            u.is_active
+                                                                ? 'Nonaktifkan akun?'
+                                                                : 'Aktifkan kembali akun?'
+                                                        }}</DialogTitle>
+                                                        <DialogDescription
+                                                            v-if="u.is_active"
+                                                        >
+                                                            <strong>{{
+                                                                u.name
+                                                            }}</strong>
+                                                            tidak akan bisa
+                                                            login lagi dan
+                                                            sesinya langsung
+                                                            berakhir.
+                                                            <strong
+                                                                >Data dan
+                                                                penugasannya
+                                                                tetap
+                                                                utuh</strong
+                                                            >, dan akun bisa
+                                                            diaktifkan kembali
+                                                            kapan saja.
+                                                        </DialogDescription>
+                                                        <DialogDescription
+                                                            v-else
+                                                        >
+                                                            <strong>{{
+                                                                u.name
+                                                            }}</strong>
+                                                            bisa login lagi
+                                                            dengan akses yang
+                                                            sama seperti
+                                                            sebelumnya.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+
+                                                    <DialogFooter class="gap-2">
+                                                        <DialogClose as-child>
+                                                            <Button
+                                                                variant="secondary"
+                                                                type="button"
+                                                            >
+                                                                Batal
+                                                            </Button>
+                                                        </DialogClose>
+                                                        <Button
+                                                            type="submit"
+                                                            :variant="
+                                                                u.is_active
+                                                                    ? 'destructive'
+                                                                    : 'default'
+                                                            "
+                                                            :disabled="
+                                                                processing
+                                                            "
+                                                        >
+                                                            {{
+                                                                u.is_active
+                                                                    ? 'Nonaktifkan'
+                                                                    : 'Aktifkan'
+                                                            }}
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </Form>
+                                            </DialogContent>
+                                        </Dialog>
 
                                         <Dialog v-if="u.can_delete">
                                             <DialogTrigger as-child>

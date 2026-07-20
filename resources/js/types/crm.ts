@@ -107,7 +107,10 @@ export type UserRow = {
     extension: string | null;
     role: RoleOption | null;
     is_self: boolean;
+    // H7b account lifecycle: access on/off. Inactive keeps all their data.
+    is_active: boolean;
     can_delete: boolean;
+    can_set_status: boolean;
 };
 
 // Delegated team-member management (hierarchy H4). A manager's scoped view of the
@@ -119,7 +122,9 @@ export type TeamMemberRow = {
     extension: string | null;
     type: RoleOption | null;
     created_at: string | null;
+    is_active: boolean;
     can_reset: boolean;
+    can_set_status: boolean;
 };
 
 // Support assignment (hierarchy H5, DH5). A sales user's CS/Maintenance agents —
@@ -141,11 +146,14 @@ export type SupportCandidateRow = {
 };
 
 // "Tim Saya" overview (hierarchy H6) — read-only, shape depends on the viewer.
+// is_active (H7b): a deactivated member keeps their book, so the overview flags
+// them — otherwise their customers go untended behind a normal-looking row.
 export type TeamAgentRow = {
     id: number;
     name: string;
     email: string;
     type: RoleOption | null;
+    is_active: boolean;
 };
 
 // A rep as the manager sees them: book size + who supports them.

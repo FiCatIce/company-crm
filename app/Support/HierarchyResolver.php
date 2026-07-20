@@ -87,8 +87,13 @@ final class HierarchyResolver
             return [];
         }
 
+        // H7b: only ACTIVE accounts are offered. Existing assignments to a
+        // deactivated agent are deliberately left alone (deactivation is reversible
+        // and lossless) — but handing them NEW work is a fresh act, and this list is
+        // exactly "who can we hand work to".
         return array_values(array_map('intval', User::query()
             ->whereIn('id', $memberIds)
+            ->active()
             ->whereHas('roles', fn (Builder $role) => $role->whereIn('name', $types))
             ->pluck('id')
             ->all()));
