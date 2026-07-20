@@ -114,7 +114,7 @@ it('gives a global viewer every widget including revenue', function () {
             ->has('recentTransactions')
             ->has('expiringSoon')
             ->has('topResellers')
-            ->has('stats.revenue')
+            ->has('revenue.total')
             ->has('topResellersByRevenue')
             ->has('recentCalls'));
 });
@@ -182,6 +182,6 @@ it('never shows revenue to a user holding revenue.view but no transaction view',
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('stats')                    // still an aggregate viewer...
-            ->missing('stats.revenue')        // ...but revenue is gated off
+            ->missing('revenue')        // ...but revenue is gated off
             ->missing('topResellersByRevenue'));
 });

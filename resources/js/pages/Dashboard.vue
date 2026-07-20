@@ -65,9 +65,17 @@ const props = defineProps<{
         transactionsThisMonth?: number;
         activeWarranties?: number;
         activeResellers?: number;
-        revenue?: number;
-        revenueThisMonth?: number;
-        revenueLastMonth?: number;
+    };
+    // Revenue band (H7d) — its own prop, NOT part of `stats`, because a scoped
+    // viewer (manager/rep) gets no `stats` yet must still see their own money.
+    // Absent entirely for anyone without the money gate (CS/maintenance/admin).
+    // The figure is already bounded by Transaction::visibleTo; `scope` only picks
+    // the heading.
+    revenue?: {
+        total: number;
+        thisMonth: number;
+        lastMonth: number;
+        scope: 'org' | 'team' | 'own';
     };
     // Trend (transaction data) and warranty donut are each gated on their domain
     // permission, so both are optional.
@@ -133,9 +141,33 @@ const customerCard = computed(() => {
     };
 });
 
-// Revenue widgets are present only for users with revenue.view (the backend
-// omits the props otherwise).
-const hasRevenue = computed(() => props.stats?.revenue !== undefined);
+// Revenue widgets are present only for users the backend gave a money band to.
+const hasRevenue = computed(() => props.revenue !== undefined);
+
+// The band is titled by the scope it actually covers, so a manager is never left
+// wondering whether "Pendapatan" means their team or the whole company.
+const revenueLabels = computed(() => {
+    switch (props.revenue?.scope) {
+        case 'team':
+            return {
+                total: 'Pendapatan Tim',
+                month: 'Pendapatan Tim Bulan Ini',
+                description: 'dari seluruh transaksi tim Anda',
+            };
+        case 'own':
+            return {
+                total: 'Pendapatan Saya',
+                month: 'Pendapatan Saya Bulan Ini',
+                description: 'dari customer yang Anda tangani',
+            };
+        default:
+            return {
+                total: 'Total Pendapatan',
+                month: 'Pendapatan Bulan Ini',
+                description: 'seluruh organisasi',
+            };
+    }
+});
 
 // The org-wide KPI band shows only when the viewer receives at least one
 // aggregate (absent entirely for a scoped Sales viewer).
@@ -151,8 +183,8 @@ const hasRecentCalls = computed(() => props.recentCalls !== undefined);
 
 // Month-over-month revenue movement, shown as the "this month" card's subtext.
 const revenueDelta = computed(() => {
-    const current = props.stats?.revenueThisMonth ?? 0;
-    const previous = props.stats?.revenueLastMonth ?? 0;
+    const current = props.revenue?.thisMonth ?? 0;
+    const previous = props.revenue?.lastMonth ?? 0;
 
     if (previous <= 0) {
         return current > 0
@@ -282,24 +314,31 @@ const revenueDelta = computed(() => {
 
             <!-- Band 1b — revenue (only for users who may see money) -->
             <div v-if="hasRevenue" class="grid gap-6 lg:grid-cols-3">
-                <div class="flex flex-col gap-4">
+                <!-- Without the org reseller breakdown (manager / rep) the two money
+                     cards sit side by side instead of leaving an empty column. -->
+                <div
+                    class="flex flex-col gap-4"
+                    :class="
+                        topResellersByRevenue
+                            ? ''
+                            : 'lg:col-span-3 lg:flex-row lg:*:flex-1'
+                    "
+                >
                     <StatCard
-                        label="Total Pendapatan"
-                        :value="formatIdr(stats?.revenue ?? 0)"
+                        :label="revenueLabels.total"
+                        :value="formatIdr(revenue?.total ?? 0)"
                         :icon="Wallet"
-                        description="akumulasi semua transaksi"
+                        :description="revenueLabels.description"
                     />
                     <StatCard
-                        label="Pendapatan Bulan Ini"
-                        :value="formatIdr(stats?.revenueThisMonth ?? 0)"
+                        :label="revenueLabels.month"
+                        :value="formatIdr(revenue?.thisMonth ?? 0)"
                         :icon="TrendingUp"
                         :description="revenueDelta"
                     />
                 </div>
-                <div class="lg:col-span-2">
-                    <RevenueByResellerCard
-                        :items="topResellersByRevenue ?? []"
-                    />
+                <div v-if="topResellersByRevenue" class="lg:col-span-2">
+                    <RevenueByResellerCard :items="topResellersByRevenue" />
                 </div>
             </div>
 

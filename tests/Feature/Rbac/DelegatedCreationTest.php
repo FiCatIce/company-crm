@@ -108,7 +108,9 @@ it('creates a whitelisted member with the team + created_by trail and preset per
         // Exactly the sales preset — a delegate never sets permissions.
         ->and($member->can(P::CustomerViewOwn->value))->toBeTrue()
         ->and($member->can(P::CustomerViewAll->value))->toBeFalse()
-        ->and($member->can(P::RevenueView->value))->toBeFalse();
+        // H7d: sales holds a SCOPED revenue.view, so org-wide transaction access is
+        // the honest "no org money" marker here.
+        ->and($member->can(P::TransactionViewAll->value))->toBeFalse();
 
     $this->assertDatabaseHas('audit_logs', [
         'actor_id' => $manager->id,

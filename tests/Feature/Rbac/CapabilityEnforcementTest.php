@@ -64,7 +64,9 @@ it('applies the role preset, not manager-chosen permissions, to a delegated user
     // Exactly the sales preset — a delegate never sets permissions.
     expect($sales->can(P::CustomerViewOwn->value))->toBeTrue()
         ->and($sales->can(P::CustomerViewAll->value))->toBeFalse()
-        ->and($sales->can(P::RevenueView->value))->toBeFalse();
+        // H7d gave sales a SCOPED revenue.view, so org-wide transaction access is
+        // now the honest "no org money" marker here.
+        ->and($sales->can(P::TransactionViewAll->value))->toBeFalse();
 });
 
 // --- Delegated creation: escalation blocked ----------------------------------

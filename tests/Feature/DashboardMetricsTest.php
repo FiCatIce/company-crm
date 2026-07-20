@@ -215,9 +215,9 @@ it('sums revenue all-time and per month, ignoring null amounts', function () {
     $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('stats.revenue', 3500000)           // 1M + 500k + 2M (null skipped)
-            ->where('stats.revenueThisMonth', 1500000)
-            ->where('stats.revenueLastMonth', 2000000));
+            ->where('revenue.total', 3500000)           // 1M + 500k + 2M (null skipped)
+            ->where('revenue.thisMonth', 1500000)
+            ->where('revenue.lastMonth', 2000000));
 });
 
 it('ranks the top resellers by revenue, excluding those with none', function () {

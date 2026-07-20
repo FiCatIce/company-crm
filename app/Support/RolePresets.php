@@ -202,6 +202,13 @@ final class RolePresets
         return [
             P::CustomerViewOwn, P::CustomerViewProducts, P::CustomerCreate, P::CustomerUpdateOwn,
             P::TransactionViewOwn, P::TransactionCreate, P::TransactionUpdate,
+            // H7d: a rep already reads `amount` on every row of /transactions they
+            // can open (canSeeAmount = any transaction view tier), so the dashboard
+            // total of exactly those rows discloses nothing new — it just stops the
+            // money band being blank for the one person who owns the book. Scoped by
+            // Transaction::visibleTo to their own customers; the ORG-wide reseller
+            // revenue breakdown still needs transaction.view.all, which they lack.
+            P::RevenueView,
             P::ProductView,
             P::ResellerView,
             P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate, P::InteractionDelete,

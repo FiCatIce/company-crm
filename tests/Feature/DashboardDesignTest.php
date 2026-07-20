@@ -73,7 +73,7 @@ test('the dashboard has a revenue band wired to the revenue props', function () 
     expect(dashSource('pages/Dashboard.vue'))
         ->toContain('Total Pendapatan')
         ->toContain('RevenueByResellerCard')
-        ->toContain('stats?.revenue'); // optional — the band is permission-gated
+        ->toContain('revenue?.total'); // optional — the band is permission-gated
 });
 
 test('the revenue-by-reseller card formats IDR with a proportional bar', function () {
@@ -154,8 +154,8 @@ test('the dashboard renders calmly with zero data', function () {
             ->where('stats.transactions', 0)
             ->where('stats.customersThisMonth', 0)
             ->where('stats.activeWarranties', 0)
-            ->where('stats.revenue', 0)
-            ->where('stats.revenueThisMonth', 0)
+            ->where('revenue.total', 0)
+            ->where('revenue.thisMonth', 0)
             ->has('topResellersByRevenue', 0)
             ->where('warrantyBreakdown.active', 0)
             ->where('warrantyBreakdown.expired', 0)

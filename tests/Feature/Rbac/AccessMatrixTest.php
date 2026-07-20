@@ -45,7 +45,7 @@ it('keeps admin free of every data/money permission (B4 lockdown)', function () 
         ->and($admin->can(P::InteractionViewAll->value))->toBeTrue();
 });
 
-it('scopes sales to own (never .all) and denies it money aggregates', function () {
+it('scopes sales to own (never .all) and denies it ORG money', function () {
     $sales = userWithRole('sales');
 
     expect($sales->can(P::CustomerViewOwn->value))->toBeTrue()
@@ -54,7 +54,12 @@ it('scopes sales to own (never .all) and denies it money aggregates', function (
         ->and($sales->can(P::TransactionViewAll->value))->toBeFalse()
         ->and($sales->can(P::InteractionViewOwn->value))->toBeTrue()
         ->and($sales->can(P::InteractionViewAll->value))->toBeFalse()
-        ->and($sales->can(P::RevenueView->value))->toBeFalse()
+        // H7d: sales DOES hold revenue.view, but it only ever sums the rows it can
+        // already open (Transaction::visibleTo = its own book) — the amounts it
+        // reads per row in /transactions today. Org money stays out of reach
+        // because that needs transaction.view.all, asserted false above, which is
+        // also what gates the per-reseller org revenue breakdown.
+        ->and($sales->can(P::RevenueView->value))->toBeTrue()
         ->and($sales->can(P::CustomerDelete->value))->toBeFalse();
 });
 

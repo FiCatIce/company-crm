@@ -156,28 +156,38 @@ it('includes amount and totalSpend for a user with a money permission', function
 // Dashboard revenue gating
 // ---------------------------------------------------------------------------
 
-it('shows dashboard revenue only to users with revenue.view', function (string $role, bool $canSeeRevenue) {
-    Transaction::factory()->create(['amount' => 1_000_000]);
+/**
+ * H7d split these two apart, so they are asserted separately now:
+ *
+ *   $hasMoneyBand — the SCOPED revenue band (revenue.view + any transaction view
+ *                   tier). Its figure is Transaction::visibleTo, so a manager gets
+ *                   their team and a rep gets their own book — never the org.
+ *   $hasOrgResellerRevenue — the per-reseller breakdown, which spans every team and
+ *                   therefore still demands transaction.view.all. No system role
+ *                   holds that, so it stays off for all of them.
+ */
+it('gates the dashboard money band per tier, and org reseller revenue globally',
+    function (string $role, bool $hasMoneyBand, bool $hasOrgResellerRevenue) {
+        Transaction::factory()->create(['amount' => 1_000_000]);
 
-    $assertion = $this->actingAs(userWithRole($role))
-        ->get(route('dashboard'))
-        ->assertOk();
-
-    $assertion->assertInertia(function (Assert $page) use ($canSeeRevenue) {
-        $canSeeRevenue
-            ? $page->has('stats.revenue')->has('topResellersByRevenue')
-            : $page->missing('stats.revenue')->missing('topResellersByRevenue');
-    });
-})->with([
-    // H3: the manager is team-scoped now — no transaction.view.all, so the ORG
-    // revenue band (which needs it) is gated off. Team-revenue aggregate is a
-    // follow-up. No system role surfaces org revenue any more.
-    ['supervisor', false],
-    ['cs', false],   // B3 removed revenue.view from cs (money hidden)
-    ['admin', false], // B4 stripped all data/money access from admin
-    ['sales', false],
-    ['maintenance', false],
-]);
+        $this->actingAs(userWithRole($role))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(function (Assert $page) use ($hasMoneyBand, $hasOrgResellerRevenue) {
+                $hasMoneyBand ? $page->has('revenue.total') : $page->missing('revenue');
+                $hasOrgResellerRevenue
+                    ? $page->has('topResellersByRevenue')
+                    : $page->missing('topResellersByRevenue');
+            });
+    })->with([
+        // H7d: supervisor + sales now get a SCOPED band (team / own) where H3 had
+        // left them blank. Neither gets the org reseller breakdown.
+        ['supervisor', true, false],
+        ['sales', true, false],
+        ['cs', false, false],          // B3 removed money from cs entirely
+        ['maintenance', false, false], // read-only, no transaction tier
+        ['admin', false, false],       // B4 stripped all data/money access
+    ]);
 
 it('shows dashboard revenue to a global viewer holding revenue.view', function () {
     Transaction::factory()->create(['amount' => 1_000_000]);
@@ -185,5 +195,5 @@ it('shows dashboard revenue to a global viewer holding revenue.view', function (
     $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('stats.revenue')->has('topResellersByRevenue'));
+        ->assertInertia(fn (Assert $page) => $page->has('revenue.total')->has('topResellersByRevenue'));
 });

@@ -48,11 +48,25 @@ class DashboardController extends Controller
         // reseller count needs reseller.view; money needs revenue.view.
         $canViewAllTransactions = $user->can(PermissionName::TransactionViewAll->value);
         $canViewResellers = $user->can(PermissionName::ResellerView->value);
-        // Revenue is ORG-WIDE money. Require revenue.view AND org-wide transaction
-        // access, so a dangling revenue.view (granted without any transaction view)
-        // can never surface money on its own — closes a latent gap even though no
-        // current preset produces that combination.
+        // Revenue (H7d). The band is SCOPED, not org-wide: the figure is the SUM of
+        // the transactions this viewer may actually see (Transaction::visibleTo), so
+        // it can never exceed their entitlement — org-wide for a global role, the
+        // team book for a manager, their own book for a rep. Before H7d it needed
+        // transaction.view.all, which H3 took away from managers, so a manager saw
+        // NO money band at all despite reading amounts per row in /transactions.
+        //
+        // Requiring a transaction view TIER alongside revenue.view keeps the old
+        // guarantee that a dangling revenue.view cannot surface money on its own,
+        // and it is the same rule that gates the per-row amount elsewhere
+        // (ProvidesModelAbilities::canSeeAmount) — so the total and the rows it sums
+        // are gated identically. CS/maintenance hold neither tier: money stays
+        // OMITTED for them even though H3/H5 widened which customers they can see.
         $canSeeRevenue = $user->can(PermissionName::RevenueView->value)
+            && ($user->can(PermissionName::TransactionViewAll->value)
+                || $user->can(PermissionName::TransactionViewOwn->value));
+        // Reseller money stays ORG-WIDE — a per-reseller breakdown spans every team,
+        // so it keeps the strict global gate rather than following the scoped band.
+        $canSeeOrgResellerRevenue = $user->can(PermissionName::RevenueView->value)
             && $user->can(PermissionName::TransactionViewAll->value);
         // The call feed IS scoped per-viewer (Interaction::visibleTo), so anyone
         // who may see any calls gets it — Sales just sees their own customers'.
@@ -99,10 +113,6 @@ class DashboardController extends Controller
                 $stats['activeResellers'] = Reseller::has('customers')->orHas('transactions')->count();
             }
 
-            if ($canSeeRevenue) {
-                $stats = [...$stats, ...$this->revenueStats()];
-            }
-
             $props['stats'] = $stats;
 
             // Warranty donut mirrors the warranty aggregate; monthly transaction
@@ -129,7 +139,15 @@ class DashboardController extends Controller
             $props['recentCalls'] = $this->recentCalls($user);
         }
 
+        // Revenue band — its OWN prop, deliberately not inside `stats`: `stats` is
+        // the org-wide aggregate band that a scoped viewer never receives, and a
+        // manager/rep must still get their (scoped) money. Absent entirely — key
+        // missing, not null or 0 — for anyone without the money gate.
         if ($canSeeRevenue) {
+            $props['revenue'] = $this->revenueStats($user);
+        }
+
+        if ($canSeeOrgResellerRevenue) {
             $props['topResellersByRevenue'] = $this->topResellersByRevenue();
         }
 
@@ -177,21 +195,39 @@ class DashboardController extends Controller
     }
 
     /**
-     * Revenue totals via DB SUM (nulls are ignored by SQL SUM — no PHP scan).
-     * All-time plus this/last month so the UI can show a month-over-month delta.
+     * Revenue totals for THIS viewer (H7d) via DB SUM (nulls are ignored by SQL SUM
+     * — no PHP scan). All-time plus this/last month so the UI can show a
+     * month-over-month delta.
      *
-     * @return array{revenue: float, revenueThisMonth: float, revenueLastMonth: float}
+     * Every figure runs through Transaction::visibleTo, the SAME scope /transactions
+     * uses, so the headline total is by construction the sum of the rows the viewer
+     * can open — the mismatch class that produced the old "dashboard says 0 but the
+     * list shows 5" bug cannot arise here.
+     *
+     * `scope` is a label for the UI heading only; the number is already bounded by
+     * the scope itself, never by this string.
+     *
+     * @return array{total: float, thisMonth: float, lastMonth: float, scope: 'org'|'team'|'own'}
      */
-    private function revenueStats(): array
+    private function revenueStats(User $user): array
     {
         $thisMonthStart = now()->startOfMonth()->toDateString();
         $lastMonthStart = now()->subMonthNoOverflow()->startOfMonth()->toDateString();
         $lastMonthEnd = now()->startOfMonth()->subDay()->toDateString();
 
+        $scope = match (true) {
+            $user->can(PermissionName::TransactionViewAll->value) => 'org',
+            $user->can(PermissionName::CustomerViewTeam->value) => 'team',
+            default => 'own',
+        };
+
         return [
-            'revenue' => (float) Transaction::sum('amount'),
-            'revenueThisMonth' => (float) Transaction::where('purchased_at', '>=', $thisMonthStart)->sum('amount'),
-            'revenueLastMonth' => (float) Transaction::whereBetween('purchased_at', [$lastMonthStart, $lastMonthEnd])->sum('amount'),
+            'total' => (float) Transaction::query()->visibleTo($user)->sum('amount'),
+            'thisMonth' => (float) Transaction::query()->visibleTo($user)
+                ->where('purchased_at', '>=', $thisMonthStart)->sum('amount'),
+            'lastMonth' => (float) Transaction::query()->visibleTo($user)
+                ->whereBetween('purchased_at', [$lastMonthStart, $lastMonthEnd])->sum('amount'),
+            'scope' => $scope,
         ];
     }
 
