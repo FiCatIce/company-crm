@@ -8,6 +8,7 @@ import {
     ShieldCheck,
     TrendingUp,
     UserCheck,
+    UserCog,
     Users,
     Wallet,
 } from '@lucide/vue';
@@ -25,7 +26,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { formatIdr } from '@/lib/format';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
-import type { MyInteractionRow, RecentCallRow } from '@/types/crm';
+import type { MyInteractionRow, RecentCallRow, TeamSummary } from '@/types/crm';
 
 type TrendPoint = { month: string; label: string; count: number };
 
@@ -85,11 +86,52 @@ const props = defineProps<{
         myExpiringWarranties: number;
         myRecentInteractions: MyInteractionRow[];
     };
+    // Hierarchy band (H6) — the PEOPLE around the viewer. Absent for a viewer
+    // without team.view (admin). The customer figure is NOT duplicated here: it is
+    // `me.myCustomers`, whose MEANING shifts per tier, so we relabel it instead.
+    team?: TeamSummary;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
 ];
+
+// Narrowed views of the union, so the template never touches a field the current
+// variant lacks.
+const managerTeam = computed(() =>
+    props.team?.kind === 'manager' ? props.team : null,
+);
+const salesTeam = computed(() =>
+    props.team?.kind === 'sales' ? props.team : null,
+);
+const supportTeam = computed(() =>
+    props.team?.kind === 'support' ? props.team : null,
+);
+
+// `me.myCustomers` IS the hierarchy-scoped Customer::visibleTo count — the very
+// number /customers lists — but what it MEANS differs per tier: a rep's own book,
+// a manager's whole team, the books a support agent was assigned to. One number,
+// one source, relabelled — never a second card showing the same figure.
+const customerCard = computed(() => {
+    if (managerTeam.value) {
+        return {
+            label: 'Customer Tim',
+            description: 'seluruh customer tim Anda',
+        };
+    }
+
+    if (supportTeam.value) {
+        return {
+            label: 'Customer Dapat Diakses',
+            description: 'dari sales yang menugaskan Anda',
+        };
+    }
+
+    return {
+        label: 'Customer Saya',
+        description: 'yang Anda input atau tangani',
+    };
+});
 
 // Revenue widgets are present only for users with revenue.view (the backend
 // omits the props otherwise).
@@ -150,10 +192,10 @@ const revenueDelta = computed(() => {
                 </h2>
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <StatCard
-                        label="Customer Saya"
+                        :label="customerCard.label"
                         :value="me.myCustomers"
                         :icon="UserCheck"
-                        description="yang Anda input atau tangani"
+                        :description="customerCard.description"
                     />
                     <StatCard
                         label="Interaksi Saya Hari Ini"
@@ -166,6 +208,36 @@ const revenueDelta = computed(() => {
                         :value="me.myExpiringWarranties"
                         :icon="ShieldAlert"
                         description="customer Anda, ≤ 30 hari"
+                    />
+
+                    <!-- Hierarchy band (H6) — the people around the viewer. -->
+                    <StatCard
+                        v-if="managerTeam"
+                        label="Sales di Tim"
+                        :value="managerTeam?.repCount ?? 0"
+                        :icon="Users"
+                        description="anggota tim Anda"
+                    />
+                    <StatCard
+                        v-if="managerTeam"
+                        label="CS & Maintenance"
+                        :value="managerTeam?.supportCount ?? 0"
+                        :icon="UserCog"
+                        description="support di tim Anda"
+                    />
+                    <StatCard
+                        v-if="salesTeam"
+                        label="Support Saya"
+                        :value="salesTeam?.supportCount ?? 0"
+                        :icon="UserCog"
+                        description="CS/Maintenance yang Anda tugaskan"
+                    />
+                    <StatCard
+                        v-if="supportTeam"
+                        label="Sales yang Dilayani"
+                        :value="supportTeam?.repCount ?? 0"
+                        :icon="Users"
+                        description="yang menugaskan Anda"
                     />
                 </div>
                 <MyInteractionsCard :items="me.myRecentInteractions" />

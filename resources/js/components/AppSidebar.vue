@@ -9,6 +9,7 @@ import {
     UserCheck,
     UserCog,
     Users,
+    UsersRound,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -61,6 +62,14 @@ const allNavItems: NavItem[] = [
         href: '/transactions',
         icon: Receipt,
         permission: ['transaction.view.all', 'transaction.view.own'],
+    },
+    {
+        title: 'Tim Saya',
+        href: '/team',
+        icon: UsersRound,
+        // Read-only hierarchy overview — every role that HAS a team position holds
+        // team.view (manager, sales, cs, maintenance); admin has no team, so no menu.
+        permission: 'team.view',
     },
     {
         title: 'Anggota Tim',

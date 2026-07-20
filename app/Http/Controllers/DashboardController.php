@@ -11,6 +11,7 @@ use App\Models\Interaction;
 use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\HierarchyResolver;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -61,6 +62,18 @@ class DashboardController extends Controller
         $props = [
             'me' => $this->personalStats($user),
         ];
+
+        // Hierarchy band (H6) — the PEOPLE side of the viewer's position. Absent
+        // for anyone without team.view (admin). The customer figure deliberately
+        // lives in `me.myCustomers` alone: for every role that is already the
+        // hierarchy-scoped Customer::visibleTo count (own / team roll-up /
+        // assigned), so repeating it here would print the same number twice under
+        // two labels. One number, one source — the Vue relabels it per team.kind.
+        $team = $this->teamStats($user);
+
+        if ($team !== null) {
+            $props['team'] = $team;
+        }
 
         // Org-wide aggregate band — composed per permission, omitted entirely for a
         // scoped (own-only) viewer. `customers` is the base aggregate; the rest are
@@ -238,6 +251,57 @@ class DashboardController extends Controller
             'myExpiringWarranties' => $myExpiringWarranties,
             'myRecentInteractions' => $this->myRecentInteractions($userId),
         ];
+    }
+
+    /**
+     * The viewer's place in the hierarchy, counted from the SAME sources the
+     * /team page renders (H6), so the two can never disagree:
+     *
+     *   manager → reps + support agents in their team
+     *   sales   → support agents assigned to them
+     *   support → reps who assigned them
+     *
+     * The variant is chosen by CAPABILITY, not role name (so a custom role holding
+     * user.assign counts as a rep). Returns null for a viewer without team.view —
+     * admin, which has no team — so the band is omitted rather than rendered empty.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function teamStats(User $user): ?array
+    {
+        if (! $user->can(PermissionName::TeamView->value)) {
+            return null;
+        }
+
+        if ($user->can(PermissionName::CustomerViewTeam->value)) {
+            $memberIds = array_values(array_diff(
+                HierarchyResolver::teamMemberIds($user),
+                [(int) $user->id],
+            ));
+
+            $members = User::query()->whereIn('id', $memberIds)->get();
+
+            $reps = $members->filter(fn (User $member): bool => $member->can(PermissionName::UserAssign->value));
+
+            return [
+                'kind' => 'manager',
+                'repCount' => $reps->count(),
+                'supportCount' => $members->filter(
+                    fn (User $member): bool => ! $member->can(PermissionName::UserAssign->value)
+                        && $member->can(PermissionName::CustomerViewAssigned->value)
+                )->count(),
+            ];
+        }
+
+        if ($user->can(PermissionName::UserAssign->value)) {
+            return ['kind' => 'sales', 'supportCount' => $user->assignees()->count()];
+        }
+
+        if ($user->can(PermissionName::CustomerViewAssigned->value)) {
+            return ['kind' => 'support', 'repCount' => $user->assignedSalesFor()->count()];
+        }
+
+        return null;
     }
 
     /**

@@ -24,6 +24,9 @@ function navVisibleFor(string $role): array
         'Products' => ['product.view'],
         'Resellers' => ['reseller.view'],
         'Transactions' => ['transaction.view.all', 'transaction.view.own'],
+        // H6: the read-only hierarchy overview — every role WITH a team position
+        // holds team.view; admin (no team) does not.
+        'Tim Saya' => ['team.view'],
         // H5: the support-assignment area — user.assign is held by sales alone.
         'Support Saya' => ['user.assign'],
         'Roles' => ['role.manage'],
@@ -42,19 +45,19 @@ it('shows admin only Dashboard, Roles and Users (no data nav)', function () {
     expect(navVisibleFor('admin'))->toBe(['Dashboard', 'Roles', 'Users']);
 });
 
-it('shows sales the data nav plus support assignment, but hides Users and Roles', function () {
+it('shows sales the data nav plus team + support assignment, but hides Users and Roles', function () {
     expect(navVisibleFor('sales'))
-        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions', 'Support Saya']);
+        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions', 'Tim Saya', 'Support Saya']);
 });
 
 it('hides Users and Roles from the manager (no user/role meta perms)', function () {
     expect(navVisibleFor('supervisor'))
-        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions']);
+        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions', 'Tim Saya']);
 });
 
-it('shows cs customers but no Transactions, Users or Roles', function () {
+it('shows cs customers and team but no Transactions, Users or Roles', function () {
     expect(navVisibleFor('cs'))
-        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers']);
+        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Tim Saya']);
 });
 
 it('shares the effective permission list to the frontend for nav gating', function () {

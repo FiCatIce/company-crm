@@ -139,6 +139,9 @@ final class RolePresets
             // H2 (DH4): may CREATE team members (limited to assignable_types, never a
             // user-administrator; no permission.assign → no unrestricted admin UI).
             P::UserCreate,
+            // H6: the "Tim Saya" overview — the manager variant lists their team's
+            // reps and who supports each of them.
+            P::TeamView,
         ];
     }
 
@@ -183,6 +186,8 @@ final class RolePresets
             P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate,
             P::InteractionDelete,
             P::DashboardView, P::DashboardStatsAggregate,
+            // H6: "Tim Saya" — the support variant lists the reps they serve.
+            P::TeamView,
         ];
     }
 
@@ -204,6 +209,8 @@ final class RolePresets
             // H2 (DESIGN_HIERARCHY.md DH5): sales may ASSIGN existing CS/maintenance
             // to itself (not create users) — limited to its assignable_types.
             P::UserAssign,
+            // H6: "Tim Saya" — the sales variant lists the support helping them.
+            P::TeamView,
         ];
     }
 
@@ -223,6 +230,8 @@ final class RolePresets
             P::ProductView,
             P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate, P::InteractionDelete,
             P::DashboardView, P::DashboardStatsAggregate,
+            // H6: "Tim Saya" — the support variant lists the reps they serve.
+            P::TeamView,
         ];
     }
 }

@@ -111,20 +111,23 @@ it('seeds dormant capability defaults and the new permissions', function () {
     expect($supervisor?->assignable_types)->toBe(['sales', 'cs', 'maintenance'])
         ->and($sales?->assignable_types)->toBe(['cs', 'maintenance']);
 
-    // The new permissions exist (seeded) but are dormant — attached to no preset,
-    // so no role/user actually holds them yet.
+    // The permissions H1 introduced exist (seeded). Both were dormant then; they
+    // were activated later — user.assign for sales in H2, team.view in H6.
     expect(Permission::where('name', PermissionName::UserAssign->value)->exists())->toBeTrue()
         ->and(Permission::where('name', PermissionName::TeamView->value)->exists())->toBeTrue();
 });
 
-it('keeps team.view dormant across every role (menu lands in H6)', function () {
-    // team.view still belongs to no preset — the "Tim Saya" menu is a later batch.
-    // (user.assign is activated for sales in H2 — see CapabilityEnforcementTest.)
+it('grants team.view to every role with a team position, never to admin (H6)', function () {
+    // H6 activated the once-dormant team.view: the "Tim Saya" overview is for
+    // roles that HAVE a position in the hierarchy. Admin has no team, so it must
+    // never hold it — that half is the security-relevant one.
     $this->seed(RoleSeeder::class);
 
-    foreach (['admin', 'supervisor', 'sales', 'cs', 'maintenance'] as $role) {
-        expect(userWithRole($role)->can(PermissionName::TeamView->value))->toBeFalse();
+    foreach (['supervisor', 'sales', 'cs', 'maintenance'] as $role) {
+        expect(userWithRole($role)->can(PermissionName::TeamView->value))->toBeTrue();
     }
+
+    expect(userWithRole('admin')->can(PermissionName::TeamView->value))->toBeFalse();
 });
 
 // --- Idempotency --------------------------------------------------------------

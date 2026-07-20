@@ -140,6 +140,27 @@ export type SupportCandidateRow = {
     type: RoleOption | null;
 };
 
+// "Tim Saya" overview (hierarchy H6) — read-only, shape depends on the viewer.
+export type TeamAgentRow = {
+    id: number;
+    name: string;
+    email: string;
+    type: RoleOption | null;
+};
+
+// A rep as the manager sees them: book size + who supports them.
+export type TeamRepRow = TeamAgentRow & {
+    customers_count: number;
+    assignees: TeamAgentRow[];
+};
+
+// Dashboard hierarchy band. The customer figure is NOT here — it lives in
+// `me.myCustomers` (the same Customer::visibleTo count), relabelled per kind.
+export type TeamSummary =
+    | { kind: 'manager'; repCount: number; supportCount: number }
+    | { kind: 'sales'; supportCount: number }
+    | { kind: 'support'; repCount: number };
+
 // Admin role builder. `is_system` roles are locked (preset defined in code).
 export type RoleRow = {
     id: number;

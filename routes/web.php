@@ -7,6 +7,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ResellerController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupportAssignmentController;
+use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -34,6 +35,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin user management (RBAC B5) — gated per-action by UserPolicy.
     Route::resource('users', UserController::class)->except(['show']);
+
+    // "Tim Saya" (hierarchy H6) — read-only hierarchy overview, shape per viewer.
+    Route::get('team', [TeamController::class, 'index'])->name('team.index');
 
     // Delegated team-member management (hierarchy H4) — a manager's scoped area,
     // gated by UserPolicy::manageTeamMembers/manageTeamMember. Distinct from the
