@@ -24,6 +24,8 @@ function navVisibleFor(string $role): array
         'Products' => ['product.view'],
         'Resellers' => ['reseller.view'],
         'Transactions' => ['transaction.view.all', 'transaction.view.own'],
+        // H5: the support-assignment area — user.assign is held by sales alone.
+        'Support Saya' => ['user.assign'],
         'Roles' => ['role.manage'],
         'Users' => ['user.view'],
     ];
@@ -40,9 +42,9 @@ it('shows admin only Dashboard, Roles and Users (no data nav)', function () {
     expect(navVisibleFor('admin'))->toBe(['Dashboard', 'Roles', 'Users']);
 });
 
-it('shows sales the data nav but hides Users and Roles', function () {
+it('shows sales the data nav plus support assignment, but hides Users and Roles', function () {
     expect(navVisibleFor('sales'))
-        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions']);
+        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions', 'Support Saya']);
 });
 
 it('hides Users and Roles from the manager (no user/role meta perms)', function () {

@@ -46,6 +46,17 @@ class UserPolicy
     }
 
     /**
+     * May the actor use the support-assignment area (H5)? True iff they have at
+     * least one assignable support type — a sales user (user.assign + whitelist).
+     * The assignment itself is always SELF-scoped: no endpoint accepts a "which
+     * sales" id, so a rep can only ever wire support to their own book.
+     */
+    public function manageAssignments(User $user): bool
+    {
+        return CapabilityResolver::assignableCandidateTypes($user) !== [];
+    }
+
+    /**
      * May the actor use the delegated team-members area at all (H4)? True iff they
      * have at least one delegable type — a manager, never the admin (whose /users
      * UI is the create path, so its delegated whitelist is empty). Sales, holding

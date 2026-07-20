@@ -6,6 +6,7 @@ use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ResellerController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SupportAssignmentController;
 use App\Http\Controllers\TeamMemberController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -41,6 +42,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('team/members/create', [TeamMemberController::class, 'create'])->name('team.members.create');
     Route::post('team/members', [TeamMemberController::class, 'store'])->name('team.members.store');
     Route::put('team/members/{member}/password', [TeamMemberController::class, 'resetPassword'])->name('team.members.password');
+
+    // Support assignment (hierarchy H5) — a sales user wires CS/maintenance to
+    // their own book. Always self-scoped: no route names another sales.
+    Route::get('team/assignments', [SupportAssignmentController::class, 'index'])->name('team.assignments.index');
+    Route::post('team/assignments', [SupportAssignmentController::class, 'store'])->name('team.assignments.store');
+    Route::delete('team/assignments/{assignee}', [SupportAssignmentController::class, 'destroy'])->name('team.assignments.destroy');
 
     // Admin role builder — create/edit/delete custom roles + their permission
     // templates. Gated by role.manage inside the controller; system roles locked.

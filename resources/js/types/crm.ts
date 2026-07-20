@@ -122,6 +122,24 @@ export type TeamMemberRow = {
     can_reset: boolean;
 };
 
+// Support assignment (hierarchy H5, DH5). A sales user's CS/Maintenance agents —
+// the pivot is read live by the customer scope, so this list IS who can see their book.
+export type SupportAssigneeRow = {
+    id: number;
+    name: string;
+    email: string;
+    type: RoleOption | null;
+    assigned_at: string | null;
+};
+
+// A same-team agent the sales user may still assign (not yet wired to them).
+export type SupportCandidateRow = {
+    id: number;
+    name: string;
+    email: string;
+    type: RoleOption | null;
+};
+
 // Admin role builder. `is_system` roles are locked (preset defined in code).
 export type RoleRow = {
     id: number;

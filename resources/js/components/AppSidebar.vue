@@ -72,6 +72,14 @@ const allNavItems: NavItem[] = [
         capability: 'manageTeamMembers',
     },
     {
+        title: 'Support Saya',
+        href: '/team/assignments',
+        icon: UserCog,
+        // Held only by sales (never admin/manager), so a plain permission gate is
+        // unambiguous here — unlike the team-members area's shared user.create.
+        permission: 'user.assign',
+    },
+    {
         title: 'Roles',
         href: '/roles',
         icon: ShieldCheck,

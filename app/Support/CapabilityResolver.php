@@ -113,6 +113,25 @@ final class CapabilityResolver
     }
 
     /**
+     * The user types $actor may ASSIGN to themselves as support (the H5 candidate
+     * pool's type filter). Its whitelist filtered to types that pass canAssign, so
+     * an admin-power slug never reaches the picker.
+     *
+     * @return list<string>
+     */
+    public static function assignableCandidateTypes(User $actor): array
+    {
+        if (! $actor->can(P::UserAssign->value)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            self::assignableTypes($actor),
+            fn (string $type): bool => self::canAssign($actor, $type),
+        ));
+    }
+
+    /**
      * May $actor ASSIGN an existing user of role $type to themselves (support
      * assignment, DH5)? Requires user.assign and $type in the whitelist; never an
      * admin-power role.
