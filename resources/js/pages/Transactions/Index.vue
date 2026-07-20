@@ -39,6 +39,9 @@ type TransactionRow = {
     warranty_expires_at: string | null;
     is_under_warranty: boolean;
     amount: string | null;
+    // Per-row verdict (H7) — the transaction policy is scope-checked per record.
+    can_edit: boolean;
+    can_delete: boolean;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
@@ -257,7 +260,7 @@ const initial = (name: string | null) =>
                                         class="flex items-center justify-end gap-1"
                                     >
                                         <Button
-                                            v-if="can.update"
+                                            v-if="t.can_edit"
                                             as-child
                                             variant="ghost"
                                             size="sm"
@@ -272,7 +275,7 @@ const initial = (name: string | null) =>
                                             >
                                         </Button>
 
-                                        <Dialog v-if="can.delete">
+                                        <Dialog v-if="t.can_delete">
                                             <DialogTrigger as-child>
                                                 <Button
                                                     variant="ghost"

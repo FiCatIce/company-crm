@@ -29,7 +29,7 @@ class ResellerController extends Controller
         return Inertia::render('Resellers/Index', [
             'tree' => $this->buildTree($resellers, null),
             'stats' => $this->stats(),
-            'can' => $this->abilities($request, new Reseller),
+            'can' => $this->abilities($request, Reseller::class),
         ]);
     }
 

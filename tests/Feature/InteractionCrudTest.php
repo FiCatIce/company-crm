@@ -102,10 +102,18 @@ it('forbids cs from managing another agent\'s interaction', function () {
         ->assertForbidden();
 });
 
-it('lets a supervisor manage anyone\'s manual interaction', function () {
+it('lets a supervisor manage anyone\'s manual interaction inside their team', function () {
+    // H7: interaction.manage.all is bounded by sight, so the moderated entry must
+    // sit on a customer within the manager's team (cross-team is now blocked —
+    // see WriteScopeTest). The author is still somebody ELSE.
+    $rep = userWithRole('sales');
+    $customer = Customer::factory()->create();
+    $customer->forceFill(['created_by' => $rep->id])->save();
+    $supervisor = managerOverTeamOf($rep);
+
     $author = userWithRole('cs');
-    $supervisor = userWithRole('supervisor');
     $interaction = Interaction::factory()->create([
+        'customer_id' => $customer->id,
         'user_id' => $author->id,
         'source' => InteractionSource::Manual,
     ]);

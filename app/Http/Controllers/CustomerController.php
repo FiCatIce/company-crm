@@ -78,6 +78,11 @@ class CustomerController extends Controller
                 'owner' => $customer->owner
                     ? ['id' => $customer->owner->id, 'name' => $customer->owner->name]
                     : null,
+                // PER-ROW (H7): ownership/hierarchy policies answer differently for
+                // every record, so the row carries its own verdict. The page-level
+                // `can` below is the class-level capability, not a row verdict.
+                'can_edit' => $request->user()->can('update', $customer),
+                'can_delete' => $request->user()->can('delete', $customer),
             ]);
 
         return Inertia::render('Customers/Index', [
@@ -92,7 +97,7 @@ class CustomerController extends Controller
                 'status' => $status?->value,
                 'owner' => $owner,
             ],
-            'can' => $this->abilities($request, new Customer),
+            'can' => $this->abilities($request, Customer::class),
         ]);
     }
 

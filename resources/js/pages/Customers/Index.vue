@@ -33,6 +33,10 @@ type CustomerRow = {
     status: string;
     status_label: string;
     owner: { id: number; name: string } | null;
+    // Per-row verdict (H7): ownership/hierarchy policies differ per record, so the
+    // page-level `can` is class-level capability only — never a row's answer.
+    can_edit: boolean;
+    can_delete: boolean;
 };
 
 type PaginationLink = { url: string | null; label: string; active: boolean };
@@ -317,7 +321,7 @@ const selectClasses =
                                         class="flex items-center justify-end gap-1"
                                     >
                                         <Button
-                                            v-if="can.update"
+                                            v-if="c.can_edit"
                                             as-child
                                             variant="ghost"
                                             size="sm"
@@ -332,7 +336,7 @@ const selectClasses =
                                             >
                                         </Button>
 
-                                        <Dialog v-if="can.delete">
+                                        <Dialog v-if="c.can_delete">
                                             <DialogTrigger as-child>
                                                 <Button
                                                     variant="ghost"

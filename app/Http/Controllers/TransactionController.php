@@ -43,7 +43,7 @@ class TransactionController extends Controller
             ->latest('id')
             ->paginate(10)
             ->withQueryString()
-            ->through(function (Transaction $transaction) use ($canSeeAmount) {
+            ->through(function (Transaction $transaction) use ($canSeeAmount, $request) {
                 $row = [
                     'id' => $transaction->id,
                     'customer' => $transaction->customer?->name,
@@ -53,6 +53,11 @@ class TransactionController extends Controller
                     'warranty_months' => $transaction->product?->warranty_months,
                     'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
                     'is_under_warranty' => $transaction->is_under_warranty,
+                    // PER-ROW (H7): the transaction policy is scope-checked, so the
+                    // verdict differs per record — the page-level `can` is only the
+                    // class-level capability.
+                    'can_edit' => $request->user()->can('update', $transaction),
+                    'can_delete' => $request->user()->can('delete', $transaction),
                 ];
 
                 // OMIT amount entirely (never send null) when the viewer lacks a
@@ -68,7 +73,7 @@ class TransactionController extends Controller
             'transactions' => $transactions,
             'stats' => $this->stats($request),
             'filters' => ['search' => $search],
-            'can' => $this->abilities($request, new Transaction),
+            'can' => $this->abilities($request, Transaction::class),
         ]);
     }
 

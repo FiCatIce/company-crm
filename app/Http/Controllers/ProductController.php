@@ -37,7 +37,7 @@ class ProductController extends Controller
             'products' => $products,
             'stats' => $this->stats(),
             'filters' => ['search' => $search],
-            'can' => $this->abilities($request, new Product),
+            'can' => $this->abilities($request, Product::class),
         ]);
     }
 

@@ -124,7 +124,7 @@ it('forbids users without a role from storing', function () {
 it('shows the edit page with the customer loaded', function () {
     $customer = Customer::factory()->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->get(route('customers.edit', $customer))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -137,7 +137,7 @@ it('updates a customer and redirects with a success flash', function () {
     $customer = Customer::factory()->create();
     $newReseller = Reseller::factory()->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->put(route('customers.update', $customer), [
             'reseller_id' => $newReseller->id,
             'name' => 'Nama Baru',
@@ -158,7 +158,7 @@ it('updates a customer and redirects with a success flash', function () {
 it('validates when updating', function () {
     $customer = Customer::factory()->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->from(route('customers.edit', $customer))
         ->put(route('customers.update', $customer), [
             'reseller_id' => $customer->reseller_id,
@@ -171,15 +171,19 @@ it('validates when updating', function () {
 // Delete (authorization matrix)
 // ---------------------------------------------------------------------------
 
-it('lets admins and supervisors delete a customer', function (string $role) {
+it('lets a manager delete a customer inside their own team', function () {
+    // H7: the delete permission is bounded by visibility, so the manager must
+    // actually lead the team that owns the customer.
+    $rep = userWithRole('sales');
     $customer = Customer::factory()->create();
+    $customer->forceFill(['created_by' => $rep->id])->save();
 
-    $this->actingAs(userWithRole($role))
+    $this->actingAs(managerOverTeamOf($rep))
         ->delete(route('customers.destroy', $customer))
         ->assertRedirect(route('customers.index'));
 
     $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
-})->with(['supervisor']);
+});
 
 it('forbids cs from deleting a customer', function () {
     $customer = Customer::factory()->create();
@@ -195,7 +199,7 @@ it('blocks deleting a customer that still has transactions', function () {
     $customer = Customer::factory()->create();
     Transaction::factory()->forCustomer($customer)->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->from(route('customers.index'))
         ->delete(route('customers.destroy', $customer))
         ->assertRedirect(route('customers.index'))
@@ -301,7 +305,7 @@ it('updates the lifecycle status and source', function () {
         'source' => null,
     ]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->put(route('customers.update', $customer), [
             'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
@@ -347,7 +351,7 @@ it('ignores an unknown status filter value', function () {
 it('quick-changes the status via the status endpoint', function () {
     $customer = Customer::factory()->create(['status' => CustomerStatus::Lead]);
 
-    $this->actingAs(userWithRole('cs'))
+    $this->actingAs(userWithGlobalView())
         ->from(route('customers.show', $customer))
         ->patch(route('customers.status', $customer), ['status' => CustomerStatus::Churned->value])
         ->assertRedirect(route('customers.show', $customer))
@@ -359,7 +363,7 @@ it('quick-changes the status via the status endpoint', function () {
 it('validates the status on quick-change', function () {
     $customer = Customer::factory()->create(['status' => CustomerStatus::Active]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->from(route('customers.show', $customer))
         ->patch(route('customers.status', $customer), ['status' => 'nope'])
         ->assertSessionHasErrors('status');
@@ -378,14 +382,16 @@ it('forbids a roleless user from quick-changing status', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Assignment / owner (attribution + filter only — NOT an access gate)
+// Assignment / owner — an ACCESS GATE since B1/H3 (Customer::scopeVisibleTo
+// matches created_by OR assigned_to), so H7 bounds the recipient to the actor's
+// hierarchy. A global-view actor is unrestricted; see WriteScopeTest for the bound.
 // ---------------------------------------------------------------------------
 
 it('stores the assigned owner', function () {
     $reseller = Reseller::factory()->create();
     $agent = User::factory()->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Punya Agen',
@@ -427,7 +433,7 @@ it('updates and clears the assigned owner', function () {
     $agent = User::factory()->create();
     $customer = Customer::factory()->create(['assigned_to' => $agent->id]);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->put(route('customers.update', $customer), [
             'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
@@ -499,7 +505,7 @@ it('quick-reassigns and clears the owner via the owner endpoint', function () {
     $agent = User::factory()->create();
     $customer = Customer::factory()->create(['assigned_to' => null]);
 
-    $this->actingAs(userWithRole('cs'))
+    $this->actingAs(userWithGlobalView())
         ->from(route('customers.show', $customer))
         ->patch(route('customers.owner', $customer), ['assigned_to' => $agent->id])
         ->assertRedirect(route('customers.show', $customer))
@@ -507,7 +513,7 @@ it('quick-reassigns and clears the owner via the owner endpoint', function () {
 
     expect($customer->fresh()->assigned_to)->toBe($agent->id);
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->patch(route('customers.owner', $customer), ['assigned_to' => null])
         ->assertSessionHas('success');
 
@@ -517,7 +523,7 @@ it('quick-reassigns and clears the owner via the owner endpoint', function () {
 it('validates the owner on quick-reassign', function () {
     $customer = Customer::factory()->create();
 
-    $this->actingAs(userWithRole('supervisor'))
+    $this->actingAs(userWithGlobalView())
         ->from(route('customers.show', $customer))
         ->patch(route('customers.owner', $customer), ['assigned_to' => 999999])
         ->assertSessionHasErrors('assigned_to');

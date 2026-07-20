@@ -58,20 +58,52 @@ class CustomerPolicy extends ResourcePolicy
     }
 
     /**
-     * Updating a specific customer is scope-checked the same way — otherwise
-     * `customer.update.own` would let a Sales user write to any customer by id.
+     * WRITE FOLLOWS SIGHT (batch H7). A user may only modify a customer they can
+     * SEE: `.all` is bounded by the viewer's hierarchy visibility, `.own` narrows
+     * further to their own book. Before H7 `customer.update.all` was unbounded, so
+     * a manager could edit another TEAM's customer and a CS agent could edit the
+     * book of a rep who never assigned them — a write IDOR behind a read-tight
+     * scope (H3 closed reads only).
+     *
+     * Deriving the bound from visibility (rather than adding update.team /
+     * update.assigned tiers) keeps the invariant in ONE place: any future view
+     * tier is automatically write-bounded too, with no new permission to forget.
+     * A truly global role still writes org-wide — it holds customer.view.all, so
+     * canSeeCustomer is always true for it.
+     *
+     * A null customer is the CLASS-level check ("may they edit customers at all?")
+     * used for menu/button capability — never for a concrete row.
      */
     public function update(User $user, ?Customer $customer = null): bool
     {
-        if ($user->can(P::CustomerUpdateAll->value)) {
+        if (! $this->hasAny($user, $this->updatePermissions())) {
+            return false;
+        }
+
+        if ($customer === null) {
             return true;
         }
 
-        if ($user->can(P::CustomerUpdateOwn->value)) {
-            return $customer !== null && $this->owns($user, $customer);
+        if (! HierarchyResolver::canSeeCustomer($user, $customer)) {
+            return false;
         }
 
-        return false;
+        return $user->can(P::CustomerUpdateAll->value) || $this->owns($user, $customer);
+    }
+
+    /**
+     * Deleting follows the same rule (H7): the permission alone is not enough —
+     * the record must be within the actor's visibility. Previously inherited from
+     * ResourcePolicy, which checks the permission only, so any customer.delete
+     * holder could destroy ANY customer by id.
+     */
+    public function delete(User $user, ?Customer $customer = null): bool
+    {
+        if (! $user->can($this->deletePermission())) {
+            return false;
+        }
+
+        return $customer === null || HierarchyResolver::canSeeCustomer($user, $customer);
     }
 
     /**

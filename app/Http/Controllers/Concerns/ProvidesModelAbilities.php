@@ -21,20 +21,29 @@ trait ProvidesModelAbilities
     }
 
     /**
-     * Role-based abilities for the given model, surfaced to the UI. The abilities
-     * are row-independent (the policies gate on role, not ownership), so a blank
-     * instance is sufficient for the update/delete checks.
+     * CLASS-LEVEL abilities for a resource, surfaced to the UI — "may this user
+     * create/edit/delete this kind of record at all", never "may they touch THIS
+     * row". Row-level permission is per-record and belongs on the row itself
+     * (can_edit / can_delete), because ownership- and hierarchy-scoped policies
+     * answer differently for every record.
      *
+     * Passing the CLASS (not a blank instance) is what makes that honest: a blank
+     * `new Customer` has no owner, so a scoped policy answered "false" for it and
+     * the UI hid Edit/Delete on every row — even the user's own. Laravel resolves
+     * a class-name check by calling the policy with a null model, which those
+     * policies treat as the class-level question.
+     *
+     * @param  class-string<Model>  $modelClass
      * @return array<string, bool>
      */
-    protected function abilities(Request $request, Model $model): array
+    protected function abilities(Request $request, string $modelClass): array
     {
         $user = $request->user();
 
         return [
-            'create' => $user->can('create', $model::class),
-            'update' => $user->can('update', $model),
-            'delete' => $user->can('delete', $model),
+            'create' => $user->can('create', $modelClass),
+            'update' => $user->can('update', $modelClass),
+            'delete' => $user->can('delete', $modelClass),
         ];
     }
 }

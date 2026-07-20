@@ -117,8 +117,12 @@ it('lets the money-less roles see call logs authored by other agents', function 
 
 it('lets cs create and update customers', function () {
     $reseller = Reseller::factory()->create();
+    // The SAME agent throughout: each userWithRole() call mints a new user, and
+    // post-H7 a CS agent may only edit customers it can see — its own entries
+    // included. Two different agents would (correctly) fail the second write.
+    $cs = userWithRole('cs');
 
-    $this->actingAs(userWithRole('cs'))
+    $this->actingAs($cs)
         ->post(route('customers.store'), [
             'reseller_id' => $reseller->id,
             'name' => 'Pelanggan CS',
@@ -127,7 +131,7 @@ it('lets cs create and update customers', function () {
 
     $customer = Customer::where('name', 'Pelanggan CS')->sole();
 
-    $this->actingAs(userWithRole('cs'))
+    $this->actingAs($cs)
         ->put(route('customers.update', $customer), [
             'reseller_id' => $reseller->id,
             'name' => 'Pelanggan CS (diperbarui)',
