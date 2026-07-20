@@ -137,7 +137,10 @@ class TransactionController extends Controller
                 'product_id' => $transaction->product_id,
                 'reseller_id' => $transaction->reseller_id,
                 'purchased_at' => $transaction->purchased_at->toDateString(),
-                'amount' => $transaction->amount,
+                // Money obeys the same OMIT rule here as everywhere else (§4.3) —
+                // this was the one surface that leaned on "everyone who can edit can
+                // also view", which the role builder can falsify.
+                ...($this->canSeeAmount($request->user()) ? ['amount' => $transaction->amount] : []),
             ],
             ...$this->formOptions($request),
         ]);

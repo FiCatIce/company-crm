@@ -114,9 +114,17 @@ final class UserOffboarding
      * would silently break that, whereas a teamless successor can simply be joined
      * to the team as part of the transfer.
      *
+     * H7e adds the ACTOR bound: the teamless escape hatch above is what lets a team
+     * with no second same-role member still be offboarded, but judged against the
+     * LEAVER alone it also let a manager name any unaffiliated same-role user in the
+     * org — pulling them into the manager's team and, since they then share a team
+     * and hold a delegable type, handing the manager password-reset/deactivate
+     * authority over someone they could not touch a moment earlier. Recruiting an
+     * outsider is an unrestricted (admin) act; a delegate stays inside their team.
+     *
      * @return Collection<int, User>
      */
-    public static function eligibleSuccessors(User $user): Collection
+    public static function eligibleSuccessors(User $user, ?User $actor = null): Collection
     {
         $role = $user->getRoleNames()->first();
 
@@ -130,13 +138,17 @@ final class UserOffboarding
             ->active()
             ->whereKeyNot($user->id)
             ->whereHas('roles', fn (Builder $r) => $r->where('name', $role))
-            ->where(function (Builder $reach) use ($teamIds): void {
+            ->where(function (Builder $reach) use ($teamIds, $actor): void {
                 // Already on the leaver's team…
                 if ($teamIds !== []) {
                     $reach->whereHas('teams', fn (Builder $t) => $t->whereIn('teams.id', $teamIds));
                 }
-                // …or on no team at all (joined to it by the transfer below).
-                $reach->orWhereDoesntHave('teams');
+
+                // …or on no team at all (joined to it by the transfer below) — but
+                // only an unrestricted actor may reach outside the team like that.
+                if ($actor === null || CapabilityResolver::isUnrestricted($actor)) {
+                    $reach->orWhereDoesntHave('teams');
+                }
             })
             ->orderBy('name')
             ->get();
@@ -160,7 +172,7 @@ final class UserOffboarding
             throw new AuthorizationException('Pengganti tidak boleh orang yang sama.');
         }
 
-        if (! self::eligibleSuccessors($user)->contains('id', $successor->id)) {
+        if (! self::eligibleSuccessors($user, $actor)->contains('id', $successor->id)) {
             throw new AuthorizationException('Pengganti tidak memenuhi syarat.');
         }
 

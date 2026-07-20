@@ -10,12 +10,14 @@ use App\Enums\InteractionType;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreCustomerRequest;
+use App\Http\Requests\UpdateCustomerOwnerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\HierarchyResolver;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -169,7 +171,17 @@ class CustomerController extends Controller
             return [];
         }
 
-        $users = User::orderBy('name')->get(['id', 'name'])->all();
+        // Bounded to the SAME hierarchy the assigned_to rule enforces, so the picker
+        // can only ever offer choices that will validate — an org-wide list both
+        // disclosed every colleague's name across teams and invited a 422. A global
+        // (customer.view.all) role still gets everyone.
+        $actor = $request->user();
+        $users = $actor->can(PermissionName::CustomerViewAll->value)
+            ? User::orderBy('name')->get(['id', 'name'])->all()
+            : User::whereIn('id', array_unique([
+                (int) $actor->id,
+                ...HierarchyResolver::teamMemberIds($actor),
+            ]))->orderBy('name')->get(['id', 'name'])->all();
 
         return array_map(
             fn (User $user) => ['value' => (string) $user->id, 'label' => $user->name],
@@ -227,7 +239,15 @@ class CustomerController extends Controller
             }
         }
 
-        $timeline = $customer->interactions()
+        // Through Interaction::visibleTo, not the raw relation: the relation would
+        // serve the full call log (including free-text bodies) off a customer the
+        // viewer can open, with the interaction permission never consulted. The two
+        // sets coincide under every shipped preset, but the role builder can mint a
+        // role with customer view and no interaction view — which saw nothing on the
+        // dashboard and everything here.
+        $timeline = Interaction::query()
+            ->visibleTo($request->user())
+            ->where('customer_id', $customer->id)
             ->with('user:id,name')
             ->latest('occurred_at')
             ->latest('id')
@@ -392,17 +412,19 @@ class CustomerController extends Controller
 
     /**
      * Quick owner reassignment from the Customer 360 header (assigned_to only).
-     * Assignment is attribution/filtering — it never gates access.
+     *
+     * Assignment IS an access gate — since B1/H3 Customer::scopeVisibleTo matches
+     * created_by OR assigned_to, so handing a customer over grants the recipient
+     * sight of it. The recipient bound therefore lives in the shared
+     * CustomerValidationRules trait (via UpdateCustomerOwnerRequest), identical to
+     * the full customer form; this route used to hand-roll a bare exists:users,id
+     * and let a reassigner push a customer to any user in the org.
      */
-    public function updateOwner(Request $request, Customer $customer): RedirectResponse
+    public function updateOwner(UpdateCustomerOwnerRequest $request, Customer $customer): RedirectResponse
     {
         $this->authorize('update', $customer);
 
-        $validated = $request->validate([
-            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')],
-        ]);
-
-        $customer->update(['assigned_to' => $validated['assigned_to'] ?? null]);
+        $customer->update(['assigned_to' => $request->validated()['assigned_to'] ?? null]);
 
         return back()->with('success', 'Owner customer diperbarui.');
     }

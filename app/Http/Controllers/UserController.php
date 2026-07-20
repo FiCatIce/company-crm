@@ -41,6 +41,9 @@ class UserController extends Controller
 
         $actor = $request->user();
 
+        // unscoped-ok: THE admin user-management directory — org-wide by design,
+        // gated by user.view, which only the admin role holds. A manager's scoped
+        // counterpart is TeamMemberController (bounded to their own book).
         $users = User::query()
             ->with('roles:id,name')
             ->orderBy('name')
@@ -154,7 +157,25 @@ class UserController extends Controller
             $newRole = $data['role'];
 
             if ($oldRole !== $newRole) {
+                // The role change is a lifecycle path like delete/deactivate/offboard,
+                // and was the only one without the lockout guard: demoting the sole
+                // administrator left nobody able to grant the power back.
+                if (AccountStatus::isLastAdmin($user)) {
+                    return back()->with('error', 'Tidak dapat mengubah peran administrator terakhir.');
+                }
+
                 $user->syncRoles([$newRole]);
+
+                // Re-stamp the preset, mirroring store(). Without this a promotion
+                // only changed the LABEL: system roles keep role_has_permissions
+                // empty by design, so the user kept their old abilities and gained
+                // none of the new role's — which is also what let a powerless
+                // stand-in satisfy a role-counting lockout guard.
+                $roleModel = Role::where('name', $newRole)->with('permissions')->first();
+                if ($roleModel !== null) {
+                    $user->syncPermissions(RolePresets::effectivePermissions($roleModel));
+                }
+
                 $changes['role'] = ['from' => $oldRole, 'to' => $newRole];
             }
         }
@@ -227,6 +248,8 @@ class UserController extends Controller
     {
         $this->authorize('offboard', $user);
 
+        // unscoped-ok: successor_id is pinned to UserOffboarding::eligibleSuccessors
+        // by OffboardUserRequest (Rule::in), and re-checked inside the service.
         $successor = User::query()->whereKey($request->validated()['successor_id'])->firstOrFail();
 
         UserOffboarding::offboard($request->user(), $user, $successor);
@@ -240,8 +263,12 @@ class UserController extends Controller
         // Policy already forbids deleting oneself; this adds the last-admin guard.
         $this->authorize('delete', $user);
 
-        if ($this->isLastAdmin($user)) {
-            return back()->with('error', 'Tidak dapat menghapus admin terakhir.');
+        // ONE lockout guard for every lifecycle path (see AccountStatus::isLastAdmin).
+        // This used to count admin-ROLE members including deactivated ones, so the
+        // last user who could actually log in and administer could be deleted while
+        // a deactivated or powerless account made the count look safe.
+        if (AccountStatus::isLastAdmin($user)) {
+            return back()->with('error', 'Tidak dapat menghapus administrator terakhir.');
         }
 
         // H7c: never delete someone out from under their work. Deleting a rep who
@@ -335,12 +362,7 @@ class UserController extends Controller
         return $map;
     }
 
-    /**
-     * Whether deleting this user would remove the last remaining admin.
-     */
-    private function isLastAdmin(User $user): bool
-    {
-        return $user->hasRole(RoleName::Admin->value)
-            && User::role(RoleName::Admin->value)->count() <= 1;
-    }
+    // The local isLastAdmin() was removed in H7e: it counted admin-ROLE members
+    // (including deactivated and powerless ones) and disagreed with the version in
+    // AccountStatus. One guard, one definition — see AccountStatus::isLastAdmin.
 }

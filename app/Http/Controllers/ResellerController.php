@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\ProvidesModelAbilities;
 use App\Http\Requests\StoreResellerRequest;
 use App\Http\Requests\UpdateResellerRequest;
@@ -21,8 +22,14 @@ class ResellerController extends Controller
     {
         $this->authorize('viewAny', Reseller::class);
 
+        // customers_count is an ORG-WIDE figure reached by traversing INTO customers
+        // from an unscoped root, so it needs the same gate the dashboard puts on the
+        // identical number (topResellers → customer.view.all). Without it a rep
+        // learned how many customers every reseller holds, across every team.
+        $canSeeCounts = $request->user()->can(PermissionName::CustomerViewAll->value);
+
         $resellers = Reseller::query()
-            ->withCount('customers')
+            ->when($canSeeCounts, fn ($query) => $query->withCount('customers'))
             ->orderBy('name')
             ->get(['id', 'parent_id', 'name']);
 
@@ -120,7 +127,11 @@ class ResellerController extends Controller
                 'id' => $reseller->id,
                 'name' => $reseller->name,
                 'parent_id' => $reseller->parent_id,
-                'customers_count' => $reseller->customers_count,
+                // Absent (not zero) when the viewer lacks customer.view.all — a 0
+                // would read as "this reseller has no customers", which is a lie.
+                ...($reseller->customers_count !== null
+                    ? ['customers_count' => $reseller->customers_count]
+                    : []),
                 'children' => $this->buildTree($resellers, $reseller->id),
             ])
             ->values()

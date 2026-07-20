@@ -35,7 +35,7 @@ class OffboardUserRequest extends FormRequest
         $target = $this->route('member') ?? $this->route('user');
 
         $eligible = $target instanceof User
-            ? UserOffboarding::eligibleSuccessors($target)->pluck('id')->all()
+            ? UserOffboarding::eligibleSuccessors($target, $this->user())->pluck('id')->all()
             : [];
 
         return [

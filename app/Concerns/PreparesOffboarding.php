@@ -30,7 +30,10 @@ trait PreparesOffboarding
                 'is_active' => $target->is_active,
             ],
             'holdings' => UserOffboarding::holdings($target),
-            'successors' => UserOffboarding::eligibleSuccessors($target)
+            // Bounded by the ACTOR too, so the picker never shows a successor the
+            // request would then reject — and never discloses unaffiliated staff to
+            // a delegate.
+            'successors' => UserOffboarding::eligibleSuccessors($target, request()->user())
                 ->map(fn (User $u): array => [
                     'id' => $u->id,
                     'name' => $u->name,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PermissionName;
 use App\Enums\RoleName;
 use App\Models\AuditLog;
 use App\Models\Customer;
@@ -7,7 +8,6 @@ use App\Models\Team;
 use App\Models\User;
 use App\Support\AccountStatus;
 use App\Support\HierarchyResolver;
-use App\Support\RolePresets;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Support\Str;
 use Laravel\Passkeys\Passkey;
@@ -232,7 +232,7 @@ it('never lets a user deactivate themselves', function () {
     expect($admin->fresh()->is_active)->toBeTrue();
 });
 
-it('counts only ACTIVE admins in the last-admin guard', function () {
+it('counts only ACTIVE administrators in the lockout guard', function () {
     $admin = userWithRole('admin');
     $spare = userWithRole('admin');
 
@@ -241,26 +241,63 @@ it('counts only ACTIVE admins in the last-admin guard', function () {
     $spare->forceFill(['is_active' => false])->save();
 
     // With the spare already switched off, the remaining one is the LAST ACTIVE
-    // admin — counting rows alone would have missed this and allowed a lockout.
+    // administrator — counting rows alone would have missed this and allowed a
+    // lockout by switching them off one at a time.
     expect(AccountStatus::isLastAdmin($admin))->toBeTrue();
 });
 
-it('blocks the route when the target is the only active admin', function () {
-    // One admin who acts, one who is the sole OTHER admin — deactivate the actor's
-    // peers first so the target is provably last, then attempt it via the route.
-    $target = userWithRole('admin');
-    $actor = userWithRole('admin');
+it('measures admin POWER, not the role label', function () {
+    // H7e: system roles keep role_has_permissions empty, so a user holding the
+    // `admin` ROLE without its permissions can administer nothing. A guard that
+    // counted role members would treat this powerless stand-in as a second admin
+    // and let the real one be removed — locking everyone out of /users and /roles.
+    $admin = userWithRole('admin');
+    $standIn = User::factory()->create();
+    $standIn->syncRoles([RoleName::Admin->value]); // role only, no permissions
 
-    // $actor must keep admin powers to reach the route, so grant them without the
-    // admin ROLE — the guard counts admin-role holders, and $target is the only one.
-    $actor->syncRoles([]);
-    $actor->syncPermissions(RolePresets::permissions(RoleName::Admin));
+    expect($standIn->can(PermissionName::PermissionAssign->value))->toBeFalse()
+        ->and(AccountStatus::isLastAdmin($admin))->toBeTrue();
+});
+
+it('blocks the route when the target is the only active administrator', function () {
+    $target = userWithRole('admin');
+
+    // An actor who may edit users but holds no grant power — enough to reach the
+    // route, not enough to replace the administrator they are switching off.
+    $actor = userWithRole('supervisor');
+    $actor->givePermissionTo(PermissionName::UserUpdate->value);
 
     $this->actingAs($actor)
         ->put("/users/{$target->id}/status", ['is_active' => false])
         ->assertSessionHas('error');
 
     expect($target->fresh()->is_active)->toBeTrue();
+});
+
+it('blocks demoting the last administrator, and re-stamps the preset on a role change', function () {
+    // The role change was the only lifecycle path without the lockout guard, and it
+    // changed the LABEL without the abilities — the two defects that combined into
+    // the lockout.
+    $admin = userWithRole('admin');
+    $actor = userWithRole('admin');
+
+    $this->actingAs($actor)->put("/users/{$admin->id}", [
+        'name' => $admin->name, 'email' => $admin->email, 'role' => 'sales',
+    ])->assertRedirect();
+
+    expect($admin->fresh()->hasRole('sales'))->toBeTrue()
+        ->and($admin->fresh()->can(PermissionName::CustomerViewOwn->value))->toBeTrue()
+        ->and($admin->fresh()->can(PermissionName::PermissionAssign->value))->toBeFalse();
+
+    // $actor is now the last administrator — nobody may demote them.
+    $other = userWithRole('supervisor');
+    $other->givePermissionTo([PermissionName::UserUpdate->value, PermissionName::RoleAssign->value]);
+
+    $this->actingAs($other)->put("/users/{$actor->id}", [
+        'name' => $actor->name, 'email' => $actor->email, 'role' => 'sales',
+    ])->assertSessionHas('error');
+
+    expect($actor->fresh()->hasRole(RoleName::Admin->value))->toBeTrue();
 });
 
 // --- Downstream effects -------------------------------------------------------

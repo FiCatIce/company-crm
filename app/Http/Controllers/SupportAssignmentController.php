@@ -94,6 +94,9 @@ class SupportAssignmentController extends Controller
         /** @var list<int> $ids */
         $ids = $request->validated()['assignee_ids'];
 
+        // unscoped-ok: every id is pinned to the actor's TEAM pool by
+        // StoreSupportAssignmentRequest (Rule::in supportCandidateIds), and
+        // SupportAssignments::assign re-checks type + team as the backstop.
         foreach (User::query()->whereIn('id', $ids)->get() as $agent) {
             // Re-checks the type + audits (H2 service) — the security backstop.
             SupportAssignments::assign($sales, $agent);

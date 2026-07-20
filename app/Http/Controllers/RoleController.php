@@ -174,6 +174,9 @@ class RoleController extends Controller
         // provisioned with. (Membership follows the role row, so the post-rename
         // name still resolves them.)
         if ($pushToMembers) {
+            // unscoped-ok: editing a role is an org-wide administrative act by
+            // definition — it must reach EVERY holder of that role, whatever team.
+            // Gated by role.manage (admin only) with the admin role itself locked.
             User::role($role->name)->get()
                 ->each(fn (User $member) => $member->syncPermissions($after));
         }

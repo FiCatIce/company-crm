@@ -198,17 +198,40 @@ it('refuses a deactivated successor', function () {
         ->assertSessionHasErrors('successor_id');
 });
 
-it('accepts a teamless successor and joins them to the team', function () {
+it('lets an ADMIN name a teamless successor and joins them to the team', function () {
+    // The escape hatch that keeps a team with no second same-role member
+    // offboardable at all — recruiting an outsider is an unrestricted act.
+    [, $leaver, , $team] = offboardFixture();
+    $teamless = userWithRole('sales');
+    $admin = userWithRole('admin');
+
+    expect(UserOffboarding::eligibleSuccessors($leaver, $admin)->pluck('id')->all())
+        ->toContain($teamless->id);
+
+    $this->actingAs($admin)
+        ->post("/users/{$leaver->id}/offboard", ['successor_id' => $teamless->id])
+        ->assertRedirect();
+
+    expect($team->fresh()->members()->pluck('users.id')->all())->toContain($teamless->id);
+});
+
+it('refuses a manager naming a teamless outsider as successor', function () {
+    // H7e: judged against the leaver alone, this let a manager pull any unaffiliated
+    // same-role user into their team — and, since the newcomer then shared their team
+    // and held a delegable type, gain reset/deactivate authority over someone they
+    // could not touch a moment earlier. A delegate stays inside their own team.
     [$manager, $leaver, , $team] = offboardFixture();
     $teamless = userWithRole('sales');
 
-    expect(UserOffboarding::eligibleSuccessors($leaver)->pluck('id')->all())
-        ->toContain($teamless->id);
+    expect(UserOffboarding::eligibleSuccessors($leaver, $manager)->pluck('id')->all())
+        ->not->toContain($teamless->id);
 
     $this->actingAs($manager)
-        ->post("/team/members/{$leaver->id}/offboard", ['successor_id' => $teamless->id]);
+        ->post("/team/members/{$leaver->id}/offboard", ['successor_id' => $teamless->id])
+        ->assertSessionHasErrors('successor_id');
 
-    expect($team->fresh()->members()->pluck('users.id')->all())->toContain($teamless->id);
+    expect($leaver->fresh()->is_active)->toBeTrue()
+        ->and($team->fresh()->members()->pluck('users.id')->all())->not->toContain($teamless->id);
 });
 
 it('never offers the leaver themselves as a successor', function () {

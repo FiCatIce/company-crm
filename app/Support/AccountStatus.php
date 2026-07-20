@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Enums\RoleName;
+use App\Enums\PermissionName;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -54,14 +54,34 @@ final class AccountStatus
     }
 
     /**
-     * Whether deactivating this user would leave the system with no ACTIVE admin —
-     * the lockout guard, the status-side twin of UserController's delete guard.
-     * Counts active admins only, so admin A cannot be deactivated after admin B
-     * already was.
+     * Whether removing this user's access would leave nobody able to administer the
+     * system — the ONE lockout guard, shared by deactivate, delete, offboard and the
+     * role change.
+     *
+     * It counts the POWER, not the label. Holding the `admin` ROLE is not the same
+     * as holding admin power: permissions live on the user (model_has_permissions)
+     * and `role_has_permissions` is intentionally empty for system roles, so a user
+     * promoted to `admin` through the edit screen carries the role name and none of
+     * its abilities. A guard that counted role members could therefore be satisfied
+     * by a powerless stand-in while the real administrator was removed — locking
+     * everyone out of /users and /roles with no way back through the UI.
+     *
+     * `permission.assign` is the right measure: it is the grant-anything power, the
+     * one thing needed to restore any other. Inactive holders don't count — they
+     * cannot log in (H7b), so they cannot administer anything.
      */
     public static function isLastAdmin(User $user): bool
     {
-        return $user->hasRole(RoleName::Admin->value)
-            && User::role(RoleName::Admin->value)->where('is_active', true)->count() <= 1;
+        $power = PermissionName::PermissionAssign->value;
+
+        if (! $user->can($power)) {
+            return false;
+        }
+
+        return User::query()
+            ->permission($power)
+            ->where('is_active', true)
+            ->whereKeyNot($user->id)
+            ->doesntExist();
     }
 }

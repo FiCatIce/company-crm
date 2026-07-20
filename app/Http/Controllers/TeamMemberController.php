@@ -148,6 +148,8 @@ class TeamMemberController extends Controller
     {
         $this->authorize('offboard', $member);
 
+        // unscoped-ok: successor_id is pinned to UserOffboarding::eligibleSuccessors
+        // by OffboardUserRequest (Rule::in), and re-checked inside the service.
         $successor = User::query()->whereKey($request->validated()['successor_id'])->firstOrFail();
 
         UserOffboarding::offboard($request->user(), $member, $successor);
