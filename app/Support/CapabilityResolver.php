@@ -37,6 +37,26 @@ final class CapabilityResolver
     ];
 
     /**
+     * Permissions that WIDEN data reach beyond the holder's own book. A delegate may
+     * never mint or assign someone who holds one of these that they lack themselves
+     * — otherwise a manager could mint org-wide readers at will and every bit of
+     * cross-team isolation built in H1–H7 would be bypassable through delegation.
+     *
+     * Only genuinely BROADENING tiers belong here. `customer.view.assigned` does NOT:
+     * it is a different axis, not a wider one (a CS sees the books of the reps who
+     * assigned them, which is narrower than a team roll-up), and treating it as
+     * "more" would block a manager from creating CS/maintenance at all — the H4 flow.
+     * `revenue.view` does not either: since H7d it is scoped by the holder's own
+     * transaction tier, so it widens nothing on its own.
+     *
+     * @var list<P>
+     */
+    public const DATA_POWERS = [
+        P::CustomerViewAll, P::CustomerViewTeam,
+        P::TransactionViewAll, P::InteractionViewAll,
+    ];
+
+    /**
      * Whether $actor is at least as powerful as $target — i.e. $target holds no
      * administrative power that $actor lacks.
      *
@@ -135,7 +155,15 @@ final class CapabilityResolver
             return true;
         }
 
-        return in_array($type, self::assignableTypes($actor), true);
+        if (! in_array($type, self::assignableTypes($actor), true)) {
+            return false;
+        }
+
+        // Finding #5: the whitelist alone was not enough. An admin could place a
+        // custom role holding customer.view.all into a manager's assignable_types,
+        // and the manager could then mint org-wide readers — bypassing every bit of
+        // cross-team isolation from H1–H7 through the delegation path.
+        return ! self::exceedsDataReach($actor, $type);
     }
 
     /**
@@ -172,7 +200,13 @@ final class CapabilityResolver
             return false;
         }
 
-        return in_array($type, self::assignableTypes($actor), true);
+        if (! in_array($type, self::assignableTypes($actor), true)) {
+            return false;
+        }
+
+        // Same data-reach bound as creation (#5): pulling in a support agent whose
+        // role sees more than the rep does would widen reach by the back door.
+        return ! self::exceedsDataReach($actor, $type);
     }
 
     /**
@@ -183,6 +217,63 @@ final class CapabilityResolver
     public static function isUnrestricted(User $actor): bool
     {
         return $actor->can(P::PermissionAssign->value);
+    }
+
+    /**
+     * The powers role $slug carries that $grantorPermissions does not — the single
+     * "you may not hand out what you do not hold" computation, in BOTH dimensions.
+     *
+     * Shared by the runtime guard (delegated create/assign) and the role builder's
+     * validation, so the configuration screen refuses the same combinations the
+     * runtime would, instead of letting an admin save a whitelist that silently
+     * never works.
+     *
+     * @param  list<string>  $grantorPermissions
+     * @return list<string> the offending permission names, empty when within reach
+     */
+    public static function excessPowersFor(array $grantorPermissions, string $slug): array
+    {
+        $role = Role::where('name', $slug)->with('permissions')->first();
+
+        if (! $role instanceof Role) {
+            return [];
+        }
+
+        $effective = RolePresets::effectivePermissions($role);
+        $excess = [];
+
+        foreach ([...self::ADMIN_POWERS, ...self::DATA_POWERS] as $power) {
+            if (in_array($power->value, $effective, true)
+                && ! in_array($power->value, $grantorPermissions, true)) {
+                $excess[] = $power->value;
+            }
+        }
+
+        return array_values(array_unique($excess));
+    }
+
+    /**
+     * Whether role $slug reaches further into the DATA than $actor does — the
+     * finding-#5 guard. Mirrors the finding-#1 rule (outranks) on the other axis:
+     * you may not create or assign someone who can see more than you can.
+     */
+    private static function exceedsDataReach(User $actor, string $slug): bool
+    {
+        $role = Role::where('name', $slug)->with('permissions')->first();
+
+        if (! $role instanceof Role) {
+            return false;
+        }
+
+        $effective = RolePresets::effectivePermissions($role);
+
+        foreach (self::DATA_POWERS as $power) {
+            if (in_array($power->value, $effective, true) && ! $actor->can($power->value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

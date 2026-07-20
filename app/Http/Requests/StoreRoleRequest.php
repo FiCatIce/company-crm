@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Concerns\AssignableTypeRules;
 use App\Enums\PermissionName;
 use App\Enums\RoleName;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Rule;
 
 class StoreRoleRequest extends FormRequest
 {
+    use AssignableTypeRules;
+
     public function authorize(): bool
     {
         return $this->user()?->can(PermissionName::RoleManage->value) ?? false;
@@ -30,8 +33,7 @@ class StoreRoleRequest extends FormRequest
             // DH4 capability config (optional): the user types this role may
             // create/assign. Each must be a real role and never `admin` — the
             // unrestricted role is never delegable.
-            'assignable_types' => ['sometimes', 'array'],
-            'assignable_types.*' => ['string', Rule::notIn([RoleName::Admin->value]), Rule::exists('roles', 'name')],
+            ...$this->assignableTypeRules(),
         ];
     }
 }

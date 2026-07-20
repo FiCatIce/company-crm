@@ -9,15 +9,20 @@ use Illuminate\Auth\Access\AuthorizationException;
 /**
  * Support assignment (DESIGN_HIERARCHY.md DH5): a Sales user links an EXISTING
  * CS/Maintenance user to themselves (many-to-many, sales_assignee). No user is
- * created here — only linked — and only whitelisted types may be assigned.
+ * created here — only linked.
  *
- * Backend logic + enforcement only; the UI lands in H5.
+ * THE security backstop for the H5 pool decision, in full: an assignment GRANTS the
+ * assignee sight of this rep's entire book, so it is bounded by TYPE (a whitelisted
+ * support role, never an admin-power or wider-data one) AND by TEAM (same team as
+ * the rep). The team half used to live only in StoreSupportAssignmentRequest's
+ * Rule::in, so this class documented itself as a backstop while checking half of
+ * what mattered — safe with one caller, an open cross-team hole the moment a second
+ * one appeared.
  */
 final class SupportAssignments
 {
     /**
-     * Assign an existing $assignee to $sales. Gated by the sales user's assign
-     * capability against the assignee's role type.
+     * Assign an existing $assignee to $sales — bounded by type AND team.
      *
      * @throws AuthorizationException when $sales may not assign $assignee
      */
@@ -27,6 +32,12 @@ final class SupportAssignments
 
         if (! is_string($type) || ! CapabilityResolver::canAssign($sales, $type)) {
             throw new AuthorizationException('Tidak boleh assign user ini.');
+        }
+
+        // The team bound, from the one seam that defines the pool (H5) — so widening
+        // to a shared/central support desk in L4 still only changes that method.
+        if (! in_array((int) $assignee->id, HierarchyResolver::supportCandidateIds($sales, [$type]), true)) {
+            throw new AuthorizationException('Hanya bisa assign support dari tim Anda.');
         }
 
         $sales->assignees()->syncWithoutDetaching([$assignee->id]);

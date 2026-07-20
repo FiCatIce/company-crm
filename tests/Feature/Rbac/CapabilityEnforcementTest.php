@@ -106,15 +106,42 @@ it('blocks a sales user from creating any user', function () {
 
 // --- Assignment (DH5) --------------------------------------------------------
 
-it('lets a sales user assign existing CS/maintenance to themselves', function (string $type) {
+it('lets a sales user assign existing CS/maintenance from their own team', function (string $type) {
+    // Written in H2, before the H5 decision made the pool TEAM-scoped; the service
+    // only checked the role type back then, so a teamless pair passed. Now that the
+    // backstop checks team as well, the fixture reflects how assignment really works.
+    $team = Team::factory()->create();
     $sales = userWithRole('sales');
     $assignee = userWithRole($type);
+    $team->members()->attach([
+        $sales->id => ['role_in_team' => 'sales'],
+        $assignee->id => ['role_in_team' => $type],
+    ]);
 
     SupportAssignments::assign($sales, $assignee);
 
     expect($sales->assignees()->pluck('users.id')->all())->toContain($assignee->id)
         ->and($assignee->assignedSalesFor()->pluck('users.id')->all())->toContain($sales->id);
 })->with(['cs', 'maintenance']);
+
+it('refuses the service a cross-team assignment, without the request layer', function () {
+    // Finding #3: the team bound used to live ONLY in StoreSupportAssignmentRequest,
+    // so calling the service directly — a second caller, a console command, a future
+    // endpoint — reopened the cross-team hole this guard exists to close.
+    $teamA = Team::factory()->create();
+    $teamB = Team::factory()->create();
+
+    $sales = userWithRole('sales');
+    $teamA->members()->attach($sales->id, ['role_in_team' => 'sales']);
+
+    $outsider = userWithRole('cs');
+    $teamB->members()->attach($outsider->id, ['role_in_team' => 'cs']);
+
+    expect(fn () => SupportAssignments::assign($sales, $outsider))
+        ->toThrow(AuthorizationException::class);
+
+    expect($sales->assignees()->count())->toBe(0);
+});
 
 it('blocks a sales user from assigning a non-support type', function (string $type) {
     $sales = userWithRole('sales');
