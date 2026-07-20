@@ -124,9 +124,24 @@ class UserPolicy
         return $team !== null && $target->teams()->whereKey($team->id)->exists();
     }
 
+    /**
+     * Editing a user needs the permission AND that the target does not outrank the
+     * actor. The target used to be accepted and ignored, which made `user.update`
+     * a takeover primitive: its holder could rewrite an administrator's password —
+     * or their EMAIL, then take the account over through the password-reset mail —
+     * and sign in with full rights. Guarding the whole edit rather than just the
+     * password field is what closes the email route too.
+     *
+     * A null target is the CLASS-level question ("may this user edit users at all",
+     * used for UI gating), which has no target to rank against.
+     */
     public function update(User $user, ?User $target = null): bool
     {
-        return $user->can(P::UserUpdate->value);
+        if (! $user->can(P::UserUpdate->value)) {
+            return false;
+        }
+
+        return $target === null || CapabilityResolver::outranks($user, $target);
     }
 
     /**

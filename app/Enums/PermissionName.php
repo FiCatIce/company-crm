@@ -118,6 +118,13 @@ enum PermissionName: string
      * Whether granting this permission opens broad PII, financial, or meta
      * (grant-other-permissions) access — the toggles that warrant an explicit
      * confirmation in the admin UI (DESIGN_RBAC.md §3.5).
+     *
+     * The user-management block is marked WHOLESALE rather than case by case: every
+     * member of CapabilityResolver::ADMIN_POWERS is sensitive, and an invariant test
+     * enforces that. The list used to be patched by hand and had drifted into an
+     * inverted asymmetry — user.delete was flagged while user.update was not, even
+     * though update is the stronger power (it can rewrite an administrator's
+     * credentials and take the account over, where delete merely removes an account).
      */
     public function sensitive(): bool
     {
@@ -126,10 +133,14 @@ enum PermissionName: string
             self::TransactionViewAll,
             self::TransactionViewOwn,
             self::RevenueView,
+            // Every administrative power (ADMIN_POWERS) — grant or user management.
+            self::UserView,
+            self::UserCreate,
+            self::UserUpdate,
+            self::UserDelete,
             self::RoleAssign,
             self::PermissionAssign,
-            self::RoleManage,
-            self::UserDelete => true,
+            self::RoleManage => true,
             default => false,
         };
     }

@@ -289,15 +289,20 @@ it('blocks demoting the last administrator, and re-stamps the preset on a role c
         ->and($admin->fresh()->can(PermissionName::CustomerViewOwn->value))->toBeTrue()
         ->and($admin->fresh()->can(PermissionName::PermissionAssign->value))->toBeFalse();
 
-    // $actor is now the last administrator — nobody may demote them.
+    // $actor is now the last administrator. Nobody may demote them — a lesser actor
+    // is stopped by the privilege guard (they do not outrank an admin), an equal one
+    // by the lockout guard. Assert the OUTCOME, not which layer caught it.
+    expect(AccountStatus::isLastAdmin($actor->fresh()))->toBeTrue();
+
     $other = userWithRole('supervisor');
     $other->givePermissionTo([PermissionName::UserUpdate->value, PermissionName::RoleAssign->value]);
 
     $this->actingAs($other)->put("/users/{$actor->id}", [
         'name' => $actor->name, 'email' => $actor->email, 'role' => 'sales',
-    ])->assertSessionHas('error');
+    ]);
 
-    expect($actor->fresh()->hasRole(RoleName::Admin->value))->toBeTrue();
+    expect($actor->fresh()->hasRole(RoleName::Admin->value))->toBeTrue()
+        ->and($actor->fresh()->can(PermissionName::PermissionAssign->value))->toBeTrue();
 });
 
 // --- Downstream effects -------------------------------------------------------

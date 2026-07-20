@@ -31,10 +31,36 @@ final class CapabilityResolver
      *
      * @var list<P>
      */
-    private const ADMIN_POWERS = [
+    public const ADMIN_POWERS = [
         P::UserView, P::UserCreate, P::UserUpdate, P::UserDelete,
         P::RoleAssign, P::PermissionAssign, P::RoleManage,
     ];
+
+    /**
+     * Whether $actor is at least as powerful as $target — i.e. $target holds no
+     * administrative power that $actor lacks.
+     *
+     * The rule the delegated model already runs on (H2), applied to EDITING rather
+     * than creating: you may never act on someone who outranks you. Without it,
+     * `user.update` alone was a full takeover primitive — its policy accepted a
+     * target and ignored it, so any holder could rewrite the admin's password (or
+     * their email, and then use the password-reset mail flow) and sign in as them.
+     * No shipped preset grants user.update outside admin, but the role builder can
+     * mint one, which makes this a real gap rather than a theoretical one.
+     *
+     * Ties pass: identical power means neither outranks the other, and an actor
+     * always outranks themselves.
+     */
+    public static function outranks(User $actor, User $target): bool
+    {
+        foreach (self::ADMIN_POWERS as $power) {
+            if ($target->can($power->value) && ! $actor->can($power->value)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /**
      * The user types (role slugs) $actor's role may create/assign. Reads the
