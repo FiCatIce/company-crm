@@ -298,6 +298,23 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
                                             </DialogContent>
                                         </Dialog>
 
+                                        <Button
+                                            v-if="u.can_offboard && u.is_active"
+                                            as-child
+                                            variant="ghost"
+                                            size="sm"
+                                            class="text-muted-foreground"
+                                        >
+                                            <Link
+                                                :href="
+                                                    UserController.showOffboard(
+                                                        u.id,
+                                                    )
+                                                "
+                                                >Offboard</Link
+                                            >
+                                        </Button>
+
                                         <Dialog v-if="u.can_delete">
                                             <DialogTrigger as-child>
                                                 <Button

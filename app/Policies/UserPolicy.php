@@ -86,6 +86,17 @@ class UserPolicy
     }
 
     /**
+     * May the actor OFFBOARD this account (H7c) — transfer everything it holds to a
+     * successor and switch it off? Same reach as the status switch: a manager over
+     * their own book, an admin over anyone, never oneself. The successor's own
+     * eligibility is a separate check in UserOffboarding.
+     */
+    public function offboard(User $user, ?User $target = null): bool
+    {
+        return $this->setStatus($user, $target);
+    }
+
+    /**
      * May the actor manage THIS specific team member (reset password, and since
      * H7b the activate/deactivate switch)? The target must be a
      * delegable type WITHIN the actor's reach — provisioned by them or a member of

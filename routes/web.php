@@ -37,6 +37,9 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('users', UserController::class)->except(['show']);
     // Account lifecycle (hierarchy H7b) — access on/off, data untouched.
     Route::put('users/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
+    // Offboarding (hierarchy H7c) — transfer everything to a successor, then off.
+    Route::get('users/{user}/offboard', [UserController::class, 'showOffboard'])->name('users.offboard.form');
+    Route::post('users/{user}/offboard', [UserController::class, 'offboard'])->name('users.offboard');
 
     // "Tim Saya" (hierarchy H6) — read-only hierarchy overview, shape per viewer.
     Route::get('team', [TeamController::class, 'index'])->name('team.index');
@@ -49,6 +52,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('team/members', [TeamMemberController::class, 'store'])->name('team.members.store');
     Route::put('team/members/{member}/password', [TeamMemberController::class, 'resetPassword'])->name('team.members.password');
     Route::put('team/members/{member}/status', [TeamMemberController::class, 'updateStatus'])->name('team.members.status');
+    Route::get('team/members/{member}/offboard', [TeamMemberController::class, 'showOffboard'])->name('team.members.offboard.form');
+    Route::post('team/members/{member}/offboard', [TeamMemberController::class, 'offboard'])->name('team.members.offboard');
 
     // Support assignment (hierarchy H5) — a sales user wires CS/maintenance to
     // their own book. Always self-scoped: no route names another sales.

@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
-import { Check, KeyRound, Plus, UserCheck, UserX, Users } from '@lucide/vue';
+import {
+    Check,
+    KeyRound,
+    Plus,
+    UserCheck,
+    UserMinus,
+    UserX,
+    Users,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import TeamMemberController from '@/actions/App/Http/Controllers/TeamMemberController';
 import InputError from '@/components/InputError.vue';
@@ -427,10 +435,29 @@ const formatDate = (iso: string | null) =>
                                                 </Form>
                                             </DialogContent>
                                         </Dialog>
+                                        <Button
+                                            v-if="m.can_offboard && m.is_active"
+                                            as-child
+                                            variant="ghost"
+                                            size="sm"
+                                            class="text-muted-foreground"
+                                        >
+                                            <Link
+                                                :href="
+                                                    TeamMemberController.showOffboard(
+                                                        m.id,
+                                                    )
+                                                "
+                                            >
+                                                <UserMinus />
+                                                Offboard
+                                            </Link>
+                                        </Button>
                                         <span
                                             v-if="
                                                 !m.can_reset &&
-                                                !m.can_set_status
+                                                !m.can_set_status &&
+                                                !m.can_offboard
                                             "
                                             class="text-xs text-muted-foreground"
                                             >—</span

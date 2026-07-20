@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\PreparesOffboarding;
 use App\Concerns\ProvidesPermissionCatalog;
 use App\Enums\RoleName;
+use App\Http\Requests\OffboardUserRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateAccountStatusRequest;
 use App\Http\Requests\UpdateUserRequest;
@@ -11,6 +13,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\AccountStatus;
 use App\Support\RolePresets;
+use App\Support\UserOffboarding;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +32,7 @@ use Spatie\Permission\Models\Role;
 class UserController extends Controller
 {
     use AuthorizesRequests;
+    use PreparesOffboarding;
     use ProvidesPermissionCatalog;
 
     public function index(Request $request): Response
@@ -51,6 +55,7 @@ class UserController extends Controller
                 'is_active' => $user->is_active,
                 'can_delete' => $actor->can('delete', $user),
                 'can_set_status' => $actor->can('setStatus', $user),
+                'can_offboard' => $actor->can('offboard', $user),
             ]);
 
         return Inertia::render('Users/Index', [
@@ -202,6 +207,34 @@ class UserController extends Controller
             : "{$user->name} dinonaktifkan. Data dan penugasannya tetap utuh.");
     }
 
+    /**
+     * The offboard screen (H7c) — the admin's org-wide entry to the same flow the
+     * manager area uses. A departing MANAGER necessarily lands here, since a manager
+     * may never reach a peer manager.
+     */
+    public function showOffboard(Request $request, User $user): Response
+    {
+        $this->authorize('offboard', $user);
+
+        return Inertia::render('Offboard/Show', $this->offboardPayload(
+            $user,
+            route('users.offboard', $user),
+            route('users.index'),
+        ));
+    }
+
+    public function offboard(OffboardUserRequest $request, User $user): RedirectResponse
+    {
+        $this->authorize('offboard', $user);
+
+        $successor = User::query()->whereKey($request->validated()['successor_id'])->firstOrFail();
+
+        UserOffboarding::offboard($request->user(), $user, $successor);
+
+        return redirect()->route('users.index')
+            ->with('success', "{$user->name} di-offboard. Semua tanggung jawabnya dialihkan ke {$successor->name}.");
+    }
+
     public function destroy(Request $request, User $user): RedirectResponse
     {
         // Policy already forbids deleting oneself; this adds the last-admin guard.
@@ -209,6 +242,15 @@ class UserController extends Controller
 
         if ($this->isLastAdmin($user)) {
             return back()->with('error', 'Tidak dapat menghapus admin terakhir.');
+        }
+
+        // H7c: never delete someone out from under their work. Deleting a rep who
+        // still holds a book would strand those customers (assigned_to nulls) and,
+        // for a manager, vacate the team seat silently — offboard first so the
+        // handover is explicit, named, and audited.
+        $blocking = UserOffboarding::blockingReason($user);
+        if ($blocking !== null) {
+            return back()->with('error', $blocking);
         }
 
         // Capture identity in the diff: target_user_id is null-on-delete, so it is

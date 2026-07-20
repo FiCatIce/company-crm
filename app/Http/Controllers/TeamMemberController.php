@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\PreparesOffboarding;
+use App\Http\Requests\OffboardUserRequest;
 use App\Http\Requests\ResetTeamMemberPasswordRequest;
 use App\Http\Requests\StoreTeamMemberRequest;
 use App\Http\Requests\UpdateAccountStatusRequest;
@@ -11,6 +13,7 @@ use App\Support\AccountStatus;
 use App\Support\CapabilityResolver;
 use App\Support\DelegatedUserCreator;
 use App\Support\TeamRoleLabels;
+use App\Support\UserOffboarding;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -29,6 +32,7 @@ use Inertia\Response;
 class TeamMemberController extends Controller
 {
     use AuthorizesRequests;
+    use PreparesOffboarding;
 
     public function index(Request $request): Response
     {
@@ -50,6 +54,7 @@ class TeamMemberController extends Controller
                 'is_active' => $member->is_active,
                 'can_reset' => $actor->can('manageTeamMember', $member),
                 'can_set_status' => $actor->can('setStatus', $member),
+                'can_offboard' => $actor->can('offboard', $member),
             ]);
 
         return Inertia::render('TeamMembers/Index', [
@@ -118,6 +123,37 @@ class TeamMemberController extends Controller
         return back()->with('success', $active
             ? "{$member->name} berhasil diaktifkan kembali."
             : "{$member->name} dinonaktifkan. Data pelanggan dan penugasannya tetap utuh.");
+    }
+
+    /**
+     * The offboard screen (H7c): what this member still holds, and who may take it
+     * over. Shown BEFORE anything moves — the operator picks a successor with the
+     * consequences in front of them.
+     */
+    public function showOffboard(Request $request, User $member): Response
+    {
+        $this->authorize('offboard', $member);
+
+        return Inertia::render('Offboard/Show', $this->offboardPayload(
+            $member,
+            route('team.members.offboard', $member),
+            route('team.members.index'),
+        ));
+    }
+
+    /**
+     * Transfer everything to the successor, then switch the member off (H7c).
+     */
+    public function offboard(OffboardUserRequest $request, User $member): RedirectResponse
+    {
+        $this->authorize('offboard', $member);
+
+        $successor = User::query()->whereKey($request->validated()['successor_id'])->firstOrFail();
+
+        UserOffboarding::offboard($request->user(), $member, $successor);
+
+        return redirect()->route('team.members.index')
+            ->with('success', "{$member->name} di-offboard. Semua tanggung jawabnya dialihkan ke {$successor->name}.");
     }
 
     /**

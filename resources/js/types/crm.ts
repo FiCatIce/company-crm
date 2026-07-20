@@ -111,6 +111,25 @@ export type UserRow = {
     is_active: boolean;
     can_delete: boolean;
     can_set_status: boolean;
+    can_offboard: boolean;
+};
+
+// Offboarding (hierarchy H7c). One successor takes over everything the leaver
+// holds; created_by is never rewritten, and the team outlives its manager.
+export type OffboardUser = {
+    id: number;
+    name: string;
+    email: string;
+    type: RoleOption | null;
+    is_active?: boolean;
+};
+
+export type OffboardHoldings = {
+    customers: number;
+    assignees: number;
+    reps: number;
+    teams_led: number;
+    teams: number;
 };
 
 // Delegated team-member management (hierarchy H4). A manager's scoped view of the
@@ -125,6 +144,7 @@ export type TeamMemberRow = {
     is_active: boolean;
     can_reset: boolean;
     can_set_status: boolean;
+    can_offboard: boolean;
 };
 
 // Support assignment (hierarchy H5, DH5). A sales user's CS/Maintenance agents —
