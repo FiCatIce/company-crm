@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { Mail, Network, Pencil, Phone, Plus } from '@lucide/vue';
+import { Mail, Pencil, Phone, Plus } from '@lucide/vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerStatusBadge from '@/components/CustomerStatusBadge.vue';
 import OwnerBadge from '@/components/OwnerBadge.vue';
@@ -110,14 +110,6 @@ const selectClasses =
                         >
                             <Mail class="size-4" aria-hidden="true" />{{
                                 customer.email
-                            }}
-                        </span>
-                        <span
-                            v-if="customer.reseller"
-                            class="inline-flex items-center gap-1.5"
-                        >
-                            <Network class="size-4" aria-hidden="true" />{{
-                                customer.reseller.name
                             }}
                         </span>
                         <span class="inline-flex items-center gap-2">

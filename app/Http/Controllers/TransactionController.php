@@ -8,7 +8,6 @@ use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +30,7 @@ class TransactionController extends Controller
             // Row-level scope first, so search operates strictly within what this
             // user may see (Sales → only their own customers' transactions).
             ->visibleTo($request->user())
-            ->with(['customer:id,name', 'product:id,name,warranty_months', 'reseller:id,name'])
+            ->with(['customer:id,name', 'product:id,name,warranty_months'])
             ->when($search !== '', function ($query) use ($search) {
                 // Case-insensitive across drivers (ILIKE on Postgres, lower() on SQLite);
                 // escape LIKE wildcards so a user's % or _ can't broaden the match.
@@ -48,7 +47,6 @@ class TransactionController extends Controller
                     'id' => $transaction->id,
                     'customer' => $transaction->customer?->name,
                     'product' => $transaction->product?->name,
-                    'reseller' => $transaction->reseller?->name,
                     'purchased_at' => $transaction->purchased_at->toDateString(),
                     'warranty_months' => $transaction->product?->warranty_months,
                     'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
@@ -135,7 +133,6 @@ class TransactionController extends Controller
                 'id' => $transaction->id,
                 'customer_id' => $transaction->customer_id,
                 'product_id' => $transaction->product_id,
-                'reseller_id' => $transaction->reseller_id,
                 'purchased_at' => $transaction->purchased_at->toDateString(),
                 // Money obeys the same OMIT rule here as everywhere else (§4.3) —
                 // this was the one surface that leaned on "everyone who can edit can
@@ -167,7 +164,7 @@ class TransactionController extends Controller
     /**
      * Select options shared by the create and edit forms. The customer list is
      * scoped so a Sales user can only pick (and thus transact for) their own
-     * customers; products and resellers are shared reference data.
+     * customers; products are shared reference data.
      *
      * @return array<string, mixed>
      */
@@ -176,7 +173,6 @@ class TransactionController extends Controller
         return [
             'customers' => Customer::visibleTo($request->user())->orderBy('name')->get(['id', 'name']),
             'products' => Product::orderBy('name')->get(['id', 'name']),
-            'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
         ];
     }
 }

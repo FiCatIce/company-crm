@@ -73,19 +73,23 @@ it('gives admin only the customer-count aggregate + call log, never transaction 
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard')
-            // Only the customer-count aggregate + the call log are present...
+            // The aggregate band (customer count + active-sales headcount) + the
+            // call log are present...
             ->has('stats.customers')
+            ->has('stats.activeSales')
             ->has('recentCalls')
             // ...never transaction/warranty numbers (admin holds no transaction/
-            // customer data permission), no trend, no detail widgets, no money.
+            // customer data permission), no trend, no detail widgets, no money, and
+            // no per-Sales widgets (admin has no spanning customer view).
             ->missing('stats.transactions')
             ->missing('warrantyBreakdown')
             ->missing('trend')
             ->missing('recentTransactions')
             ->missing('expiringSoon')
-            ->missing('topResellers')
+            ->missing('topSales')
+            ->missing('salesScope')
             ->missing('stats.revenue')
-            ->missing('topResellersByRevenue'));
+            ->missing('revenueBySales'));
 });
 
 // ---------------------------------------------------------------------------

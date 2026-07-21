@@ -2,7 +2,6 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
     LayoutGrid,
-    Network,
     Package,
     Receipt,
     ShieldCheck,
@@ -50,12 +49,6 @@ const allNavItems: NavItem[] = [
         href: '/products',
         icon: Package,
         permission: 'product.view',
-    },
-    {
-        title: 'Resellers',
-        href: '/resellers',
-        icon: Network,
-        permission: 'reseller.view',
     },
     {
         title: 'Transactions',

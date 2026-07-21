@@ -1,25 +1,35 @@
 <script setup lang="ts">
-import { Network } from '@lucide/vue';
+import { Wallet } from '@lucide/vue';
 import { computed } from 'vue';
 import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
+import { formatIdr } from '@/lib/format';
 
-type TopReseller = {
+type RevenueRow = {
     id: number;
     name: string;
-    customers_count: number;
+    revenue: number;
 };
 
 const props = defineProps<{
-    items: TopReseller[];
+    items: RevenueRow[];
+    // Whose revenue is ranked — 'team' for a manager, 'org' for a global viewer.
+    // The backend has already bounded the numbers; this only labels the card.
+    scope: 'org' | 'team';
 }>();
 
-const maxCount = computed(() =>
-    Math.max(1, ...props.items.map((item) => item.customers_count)),
+const subtitle = computed(() =>
+    props.scope === 'team'
+        ? 'tim Anda · per pendapatan'
+        : 'organisasi · per pendapatan',
 );
 
-// Keep a minimum sliver so a reseller with few customers still reads as a bar.
-const barWidth = (count: number) =>
-    `${Math.max(6, (count / maxCount.value) * 100)}%`;
+const maxRevenue = computed(() =>
+    Math.max(1, ...props.items.map((item) => item.revenue)),
+);
+
+// Keep a minimum sliver so a low-revenue rep still reads as a bar.
+const barWidth = (revenue: number) =>
+    `${Math.max(6, (revenue / maxRevenue.value) * 100)}%`;
 </script>
 
 <template>
@@ -29,16 +39,14 @@ const barWidth = (count: number) =>
         <div
             class="flex items-baseline justify-between gap-4 border-b border-border p-5"
         >
-            <h2 class="text-sm font-semibold text-foreground">
-                Reseller Teratas
-            </h2>
-            <p class="text-xs text-muted-foreground">per customer</p>
+            <h2 class="text-sm font-semibold text-foreground">Sales Teratas</h2>
+            <p class="text-xs text-muted-foreground">{{ subtitle }}</p>
         </div>
 
         <WidgetEmptyState
             v-if="items.length === 0"
-            :icon="Network"
-            message="Belum ada reseller dengan customer."
+            :icon="Wallet"
+            message="Belum ada pendapatan tercatat."
         />
 
         <ul v-else class="divide-y divide-border">
@@ -61,14 +69,14 @@ const barWidth = (count: number) =>
                     >
                         <div
                             class="h-full rounded-full bg-primary"
-                            :style="{ width: barWidth(item.customers_count) }"
+                            :style="{ width: barWidth(item.revenue) }"
                         />
                     </div>
                 </div>
                 <span
                     class="shrink-0 text-sm font-semibold text-foreground tabular-nums"
                 >
-                    {{ item.customers_count }}
+                    {{ formatIdr(item.revenue) }}
                 </span>
             </li>
         </ul>

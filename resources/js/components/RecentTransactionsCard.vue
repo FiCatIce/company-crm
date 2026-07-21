@@ -9,7 +9,6 @@ type RecentRow = {
     id: number;
     customer: string | null;
     product: string | null;
-    reseller: string | null;
     purchased_at: string | null;
     warranty_expires_at: string | null;
     is_under_warranty: boolean;
@@ -65,11 +64,6 @@ const initial = (name: string | null) =>
                         <th
                             class="px-5 py-3 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                         >
-                            Reseller
-                        </th>
-                        <th
-                            class="px-5 py-3 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                        >
                             Tanggal
                         </th>
                         <th
@@ -99,15 +93,6 @@ const initial = (name: string | null) =>
                         </td>
                         <td class="px-5 py-3 text-muted-foreground">
                             {{ row.product ?? '—' }}
-                        </td>
-                        <td class="px-5 py-3">
-                            <span
-                                v-if="row.reseller"
-                                class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                            >
-                                {{ row.reseller }}
-                            </span>
-                            <span v-else class="text-muted-foreground">—</span>
                         </td>
                         <td
                             class="px-5 py-3 text-muted-foreground tabular-nums"

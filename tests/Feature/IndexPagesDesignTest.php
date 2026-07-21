@@ -40,26 +40,6 @@ test('the transactions index adopts the pattern and keeps the warranty badge', f
         ->not->toContain('text-red-600');
 });
 
-test('the resellers index adopts the card pattern and keeps the tree view', function () {
-    expect(pageSource('Resellers/Index.vue'))
-        ->toContain('text-2xl')
-        ->toContain('bg-card')
-        ->toContain('uppercase')
-        ->toContain('ResellerTreeNode'); // recursive tree preserved
-});
-
-test('the reseller tree node matches the pattern styling', function () {
-    $node = file_get_contents(
-        resource_path('js/components/ResellerTreeNode.vue'),
-    );
-
-    expect($node)
-        ->toContain('hover:bg-accent/50') // subtle blue row hover
-        ->toContain('text-destructive') // themed delete action
-        ->not->toContain('hover:bg-muted/50') // old neutral hover
-        ->not->toContain('text-red-600'); // old delete color
-});
-
 test('the index stat card shows a muted icon in a soft rounded container', function () {
     $card = file_get_contents(resource_path('js/components/IndexStatCard.vue'));
 
@@ -75,12 +55,11 @@ test('every index page carries the summary stat card row and a context sub-heade
     foreach ([
         'Customers/Index.vue',
         'Products/Index.vue',
-        'Resellers/Index.vue',
         'Transactions/Index.vue',
     ] as $page) {
         expect(pageSource($page))
             ->toContain('IndexStatCard') // reused summary card component
-            ->toContain('lg:grid-cols-3') // three-up responsive stat row
+            ->toContain('sm:grid-cols-2') // responsive stat row (2-up floor)
             ->toContain('Kelola'); // thin descriptive context sub-header line
     }
 });
@@ -105,15 +84,6 @@ test('the redesigned index pages still render their data contract', function () 
             fn (Assert $p) => $p
                 ->component('Transactions/Index')
                 ->has('transactions.data')
-                ->has('can'),
-        );
-
-    $this->get('/resellers')
-        ->assertOk()
-        ->assertInertia(
-            fn (Assert $p) => $p
-                ->component('Resellers/Index')
-                ->has('tree')
                 ->has('can'),
         );
 });

@@ -50,7 +50,6 @@ export type CustomerDetail = {
     status_label: string;
     source: string | null;
     source_label: string | null;
-    reseller: { id: number; name: string } | null;
     owner: { id: number; name: string } | null;
     created_at: string | null;
 };

@@ -11,13 +11,11 @@ const props = defineProps<{
         id: number;
         customer_id: number;
         product_id: number;
-        reseller_id: number;
         purchased_at: string | null;
         amount: string | null;
     };
     customers: { id: number; name: string }[];
     products: { id: number; name: string }[];
-    resellers: { id: number; name: string }[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -50,7 +48,6 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <TransactionFormFields
                     :customers="customers"
                     :products="products"
-                    :resellers="resellers"
                     :errors="errors"
                     :transaction="transaction"
                 />

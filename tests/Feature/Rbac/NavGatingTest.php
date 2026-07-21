@@ -22,7 +22,7 @@ function navVisibleFor(string $role): array
         'Dashboard' => ['dashboard.view'],
         'Customers' => ['customer.view.all', 'customer.view.team', 'customer.view.own', 'customer.view.assigned'],
         'Products' => ['product.view'],
-        'Resellers' => ['reseller.view'],
+        // L2-B: the Resellers nav item is gone (reseller UI deprecated).
         'Transactions' => ['transaction.view.all', 'transaction.view.own'],
         // H6: the read-only hierarchy overview — every role WITH a team position
         // holds team.view; admin (no team) does not.
@@ -47,17 +47,25 @@ it('shows admin only Dashboard, Roles and Users (no data nav)', function () {
 
 it('shows sales the data nav plus team + support assignment, but hides Users and Roles', function () {
     expect(navVisibleFor('sales'))
-        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions', 'Tim Saya', 'Support Saya']);
+        ->toBe(['Dashboard', 'Customers', 'Products', 'Transactions', 'Tim Saya', 'Support Saya']);
 });
 
 it('hides Users and Roles from the manager (no user/role meta perms)', function () {
     expect(navVisibleFor('supervisor'))
-        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Transactions', 'Tim Saya']);
+        ->toBe(['Dashboard', 'Customers', 'Products', 'Transactions', 'Tim Saya']);
 });
 
 it('shows cs customers and team but no Transactions, Users or Roles', function () {
     expect(navVisibleFor('cs'))
-        ->toBe(['Dashboard', 'Customers', 'Products', 'Resellers', 'Tim Saya']);
+        ->toBe(['Dashboard', 'Customers', 'Products', 'Tim Saya']);
+});
+
+it('no longer lists a Resellers nav item in the sidebar (L2-B)', function () {
+    // Source guard so the contract mirror above can never silently drift back:
+    // the reseller UI is gone, so the sidebar must not offer the route.
+    expect(file_get_contents(resource_path('js/components/AppSidebar.vue')))
+        ->not->toContain('/resellers')
+        ->not->toContain("title: 'Resellers'");
 });
 
 it('shares the effective permission list to the frontend for nav gating', function () {

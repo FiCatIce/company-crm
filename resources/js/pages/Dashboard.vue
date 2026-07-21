@@ -2,7 +2,6 @@
 import { Head } from '@inertiajs/vue3';
 import {
     MessageSquare,
-    Network,
     Receipt,
     ShieldAlert,
     ShieldCheck,
@@ -17,9 +16,9 @@ import ExpiringWarrantyCard from '@/components/ExpiringWarrantyCard.vue';
 import MyInteractionsCard from '@/components/MyInteractionsCard.vue';
 import RecentCallsCard from '@/components/RecentCallsCard.vue';
 import RecentTransactionsCard from '@/components/RecentTransactionsCard.vue';
-import RevenueByResellerCard from '@/components/RevenueByResellerCard.vue';
+import RevenueBySalesCard from '@/components/RevenueBySalesCard.vue';
 import StatCard from '@/components/StatCard.vue';
-import TopResellersCard from '@/components/TopResellersCard.vue';
+import TopSalesCard from '@/components/TopSalesCard.vue';
 import TransactionTrendChart from '@/components/TransactionTrendChart.vue';
 import WarrantyDonut from '@/components/WarrantyDonut.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -34,7 +33,6 @@ type RecentRow = {
     id: number;
     customer: string | null;
     product: string | null;
-    reseller: string | null;
     purchased_at: string | null;
     warranty_expires_at: string | null;
     is_under_warranty: boolean;
@@ -49,9 +47,9 @@ type ExpiringRow = {
     days_left: number;
 };
 
-type TopReseller = { id: number; name: string; customers_count: number };
+type TopSales = { id: number; name: string; customers_count: number };
 
-type RevenueReseller = { id: number; name: string; revenue: number };
+type RevenueSales = { id: number; name: string; revenue: number };
 
 const props = defineProps<{
     // The org-wide aggregate band is composed per permission (DESIGN_RBAC.md §4.4):
@@ -64,7 +62,7 @@ const props = defineProps<{
         transactions?: number;
         transactionsThisMonth?: number;
         activeWarranties?: number;
-        activeResellers?: number;
+        activeSales?: number;
     };
     // Revenue band (H7d) — its own prop, NOT part of `stats`, because a scoped
     // viewer (manager/rep) gets no `stats` yet must still see their own money.
@@ -85,8 +83,12 @@ const props = defineProps<{
     // e.g. admin, which sees only aggregates + calls. See DESIGN_RBAC.md §4.4.
     recentTransactions?: RecentRow[];
     expiringSoon?: ExpiringRow[];
-    topResellers?: TopReseller[];
-    topResellersByRevenue?: RevenueReseller[];
+    // Per-Sales ranking band (L2-B, replaces the reseller breakdowns). Present for a
+    // viewer who spans multiple reps' books — a global role (org) or a manager
+    // (team); `salesScope` labels the cards. Revenue variant is money-gated on top.
+    topSales?: TopSales[];
+    revenueBySales?: RevenueSales[];
+    salesScope?: 'org' | 'team';
     recentCalls?: RecentCallRow[];
     me: {
         myCustomers: number;
@@ -173,9 +175,9 @@ const revenueLabels = computed(() => {
 // aggregate (absent entirely for a scoped Sales viewer).
 const hasOrgStats = computed(() => props.stats !== undefined);
 
-// Customer-detail widgets (recent transactions, expiring warranties, top
-// resellers) and the call feed are omitted for roles without the access — the
-// bands hide entirely rather than render empty.
+// Customer-detail widgets (recent transactions, expiring warranties) and the
+// call feed are omitted for roles without the access — the bands hide entirely
+// rather than render empty.
 const hasCustomerWidgets = computed(
     () => props.recentTransactions !== undefined,
 );
@@ -304,22 +306,22 @@ const revenueDelta = computed(() => {
                     description="unit masih bergaransi"
                 />
                 <StatCard
-                    v-if="stats?.activeResellers !== undefined"
-                    label="Reseller Aktif"
-                    :value="stats.activeResellers"
-                    :icon="Network"
-                    description="punya customer atau transaksi"
+                    v-if="stats?.activeSales !== undefined"
+                    label="Sales Aktif"
+                    :value="stats.activeSales"
+                    :icon="Users"
+                    description="akun sales yang aktif"
                 />
             </div>
 
             <!-- Band 1b — revenue (only for users who may see money) -->
             <div v-if="hasRevenue" class="grid gap-6 lg:grid-cols-3">
-                <!-- Without the org reseller breakdown (manager / rep) the two money
-                     cards sit side by side instead of leaving an empty column. -->
+                <!-- Without the per-Sales breakdown (a plain rep) the two money cards
+                     sit side by side instead of leaving an empty column. -->
                 <div
                     class="flex flex-col gap-4"
                     :class="
-                        topResellersByRevenue
+                        revenueBySales
                             ? ''
                             : 'lg:col-span-3 lg:flex-row lg:*:flex-1'
                     "
@@ -337,9 +339,19 @@ const revenueDelta = computed(() => {
                         :description="revenueDelta"
                     />
                 </div>
-                <div v-if="topResellersByRevenue" class="lg:col-span-2">
-                    <RevenueByResellerCard :items="topResellersByRevenue" />
+                <div v-if="revenueBySales" class="lg:col-span-2">
+                    <RevenueBySalesCard
+                        :items="revenueBySales"
+                        :scope="salesScope ?? 'org'"
+                    />
                 </div>
+            </div>
+
+            <!-- Band 1c — top sales ranking (org or team per salesScope). Its own
+                 band, not tied to the customer-detail widgets, so a manager (who has
+                 no org-detail band) still receives it. -->
+            <div v-if="topSales" class="grid gap-6 lg:grid-cols-3">
+                <TopSalesCard :items="topSales" :scope="salesScope ?? 'org'" />
             </div>
 
             <!-- Band 2 — trend + warranty donut. Each is gated on its domain
@@ -367,7 +379,6 @@ const revenueDelta = computed(() => {
                 </div>
                 <div class="flex flex-col gap-6">
                     <ExpiringWarrantyCard :items="expiringSoon ?? []" />
-                    <TopResellersCard :items="topResellers ?? []" />
                 </div>
             </div>
 

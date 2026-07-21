@@ -37,9 +37,9 @@ test('the expiring warranty card uses an amber watchlist pill', function () {
         ->toContain('hari lagi');
 });
 
-test('the top resellers card ranks with a proportional bar', function () {
-    expect(dashSource('components/TopResellersCard.vue'))
-        ->toContain('Reseller Teratas')
+test('the top sales card ranks with a proportional bar', function () {
+    expect(dashSource('components/TopSalesCard.vue'))
+        ->toContain('Sales Teratas')
         ->toContain('bg-primary') // blue proportion fill
         ->toContain('bg-muted'); // track
 });
@@ -51,7 +51,7 @@ test('the dashboard assembles every widget across three bands', function () {
         ->toContain('WarrantyDonut')
         ->toContain('RecentTransactionsCard')
         ->toContain('ExpiringWarrantyCard')
-        ->toContain('TopResellersCard')
+        ->toContain('TopSalesCard')
         ->toContain('lg:col-span-2'); // 2fr / 1fr split
 });
 
@@ -72,12 +72,12 @@ test('the my-interactions card links to the customer 360 and has an empty state'
 test('the dashboard has a revenue band wired to the revenue props', function () {
     expect(dashSource('pages/Dashboard.vue'))
         ->toContain('Total Pendapatan')
-        ->toContain('RevenueByResellerCard')
+        ->toContain('RevenueBySalesCard')
         ->toContain('revenue?.total'); // optional — the band is permission-gated
 });
 
-test('the revenue-by-reseller card formats IDR with a proportional bar', function () {
-    expect(dashSource('components/RevenueByResellerCard.vue'))
+test('the revenue-by-sales card formats IDR with a proportional bar', function () {
+    expect(dashSource('components/RevenueBySalesCard.vue'))
         ->toContain('per pendapatan')
         ->toContain('formatIdr') // shared IDR formatter reused
         ->toContain('bg-primary') // blue proportion fill
@@ -114,8 +114,8 @@ test('the dashboard page is wired to the full data contract', function () {
             ->component('Dashboard')
             ->hasAll([
                 'stats', 'trend', 'warrantyBreakdown',
-                'recentTransactions', 'expiringSoon', 'topResellers',
-                'topResellersByRevenue', 'recentCalls', 'me',
+                'recentTransactions', 'expiringSoon', 'topSales',
+                'revenueBySales', 'salesScope', 'recentCalls', 'me',
             ]));
 });
 
@@ -129,7 +129,7 @@ test('every widget falls back to the shared muted-icon empty state', function ()
         'components/WarrantyDonut.vue',
         'components/RecentTransactionsCard.vue',
         'components/ExpiringWarrantyCard.vue',
-        'components/TopResellersCard.vue',
+        'components/TopSalesCard.vue',
         'components/TransactionTrendChart.vue',
         'components/RecentCallsCard.vue',
     ];
@@ -156,12 +156,12 @@ test('the dashboard renders calmly with zero data', function () {
             ->where('stats.activeWarranties', 0)
             ->where('revenue.total', 0)
             ->where('revenue.thisMonth', 0)
-            ->has('topResellersByRevenue', 0)
+            ->has('revenueBySales', 0)
             ->where('warrantyBreakdown.active', 0)
             ->where('warrantyBreakdown.expired', 0)
             ->where('warrantyBreakdown.none', 0)
             ->has('recentTransactions', 0)
             ->has('expiringSoon', 0)
-            ->has('topResellers', 0)
+            ->has('topSales', 0)
             ->has('recentCalls', 0));
 });

@@ -8,11 +8,11 @@ use App\Enums\InteractionType;
 use App\Enums\PermissionName;
 use App\Models\Customer;
 use App\Models\Interaction;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\HierarchyResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,10 +44,17 @@ class DashboardController extends Controller
 
         // Each aggregate is gated by the permission for its data domain: transaction
         // counts/trend need transaction.view.all (so admin, which holds neither,
-        // never sees "Total Transaksi"); warranty needs customer.view.all; the
-        // reseller count needs reseller.view; money needs revenue.view.
+        // never sees "Total Transaksi"); warranty needs customer.view.all; money
+        // needs revenue.view.
         $canViewAllTransactions = $user->can(PermissionName::TransactionViewAll->value);
-        $canViewResellers = $user->can(PermissionName::ResellerView->value);
+        // L2-B: the per-Sales widgets (Top Sales / Revenue by Sales) replace the old
+        // reseller breakdowns. They rank the books of MULTIPLE sales reps, so they
+        // are meaningful only for a viewer who spans more than their own book: a
+        // global role (org) or a manager over a team. A rep (view.own), CS/maintenance
+        // (view.assigned) and admin (no customer view) get neither — a rep already
+        // has their personal band + own revenue.
+        $canSpanSalesBooks = $canViewAllCustomers
+            || $user->can(PermissionName::CustomerViewTeam->value);
         // Revenue (H7d). The band is SCOPED, not org-wide: the figure is the SUM of
         // the transactions this viewer may actually see (Transaction::visibleTo), so
         // it can never exceed their entitlement — org-wide for a global role, the
@@ -64,10 +71,6 @@ class DashboardController extends Controller
         $canSeeRevenue = $user->can(PermissionName::RevenueView->value)
             && ($user->can(PermissionName::TransactionViewAll->value)
                 || $user->can(PermissionName::TransactionViewOwn->value));
-        // Reseller money stays ORG-WIDE — a per-reseller breakdown spans every team,
-        // so it keeps the strict global gate rather than following the scoped band.
-        $canSeeOrgResellerRevenue = $user->can(PermissionName::RevenueView->value)
-            && $user->can(PermissionName::TransactionViewAll->value);
         // The call feed IS scoped per-viewer (Interaction::visibleTo), so anyone
         // who may see any calls gets it — Sales just sees their own customers'.
         $canViewCalls = $user->can(PermissionName::InteractionViewAll->value)
@@ -109,9 +112,15 @@ class DashboardController extends Controller
                 $stats['activeWarranties'] = $warranty['active'];
             }
 
-            if ($canViewResellers) {
-                $stats['activeResellers'] = Reseller::has('customers')->orHas('transactions')->count();
-            }
+            // L2-B: active-sales headcount (replaces the old active-reseller count).
+            // A harmless roster figure shown to the aggregate band (admin + global),
+            // counting active accounts that hold the sales marker (user.assign) — the
+            // same capability that identifies a rep in teamStats and the per-Sales
+            // widgets below, so the count matches who can appear in "Top Sales".
+            $stats['activeSales'] = User::query()
+                ->active()
+                ->permission(PermissionName::UserAssign->value)
+                ->count();
 
             $props['stats'] = $stats;
 
@@ -130,7 +139,15 @@ class DashboardController extends Controller
         if ($canViewAllCustomers) {
             $props['recentTransactions'] = $this->recentTransactions();
             $props['expiringSoon'] = $this->expiringSoon();
-            $props['topResellers'] = $this->topResellers();
+        }
+
+        // Per-Sales ranking band (L2-B, replaces the reseller breakdowns). Present
+        // for a viewer who spans multiple reps' books; `salesScope` labels the card
+        // (org for a global role, team for a manager) — the numbers are already
+        // bounded by Customer::visibleTo, so the label never widens what is counted.
+        if ($canSpanSalesBooks) {
+            $props['topSales'] = $this->topSales($user);
+            $props['salesScope'] = $canViewAllCustomers ? 'org' : 'team';
         }
 
         // Call feed — scoped per viewer: all for managers/CS/maintenance/admin,
@@ -147,8 +164,11 @@ class DashboardController extends Controller
             $props['revenue'] = $this->revenueStats($user);
         }
 
-        if ($canSeeOrgResellerRevenue) {
-            $props['topResellersByRevenue'] = $this->topResellersByRevenue();
+        // Revenue-by-Sales — the money twin of Top Sales. Same span gate PLUS the
+        // money gate (canSeeRevenue), so CS/maintenance (no revenue.view) and admin
+        // (no money) never receive it, and a plain rep (no span) does not either.
+        if ($canSpanSalesBooks && $canSeeRevenue) {
+            $props['revenueBySales'] = $this->revenueBySales($user);
         }
 
         return Inertia::render('Dashboard', $props);
@@ -232,26 +252,75 @@ class DashboardController extends Controller
     }
 
     /**
-     * The five resellers with the highest total sales value (revenue > 0). The
-     * per-reseller SUM is computed in SQL via withSum, not by scanning in PHP.
+     * The five sales reps with the highest total sales value (revenue > 0) within
+     * the viewer's scope (L2-B). Bounded by Transaction::visibleTo — org-wide for a
+     * global role, the team book for a manager — and attributed to the responsible
+     * sales rep (the customer's assigned owner, else whoever entered it). The
+     * per-rep SUM is computed in SQL, not scanned in PHP.
      *
      * @return array<int, array{id: int, name: string, revenue: float}>
      */
-    private function topResellersByRevenue(): array
+    private function revenueBySales(User $user): array
     {
-        return Reseller::query()
-            ->withSum('transactions as revenue', 'amount')
+        $salesIds = $this->scopedSalesIds($user);
+
+        if ($salesIds === []) {
+            return [];
+        }
+
+        $owner = 'COALESCE(customers.assigned_to, customers.created_by)';
+
+        $rows = Transaction::query()
+            ->visibleTo($user)
+            ->join('customers', 'transactions.customer_id', '=', 'customers.id')
+            ->selectRaw("{$owner} as owner_id, SUM(transactions.amount) as revenue")
+            ->whereIn(DB::raw($owner), $salesIds)
+            ->groupByRaw($owner)
             ->orderByDesc('revenue')
-            ->take(5)
-            ->get()
-            ->filter(fn (Reseller $reseller) => (float) $reseller->getAttribute('revenue') > 0)
-            ->map(fn (Reseller $reseller) => [
-                'id' => $reseller->id,
-                'name' => $reseller->name,
-                'revenue' => (float) $reseller->getAttribute('revenue'),
-            ])
+            ->orderBy('owner_id')
+            ->limit(5)
+            ->get();
+
+        $names = User::query()->whereIn('id', $rows->pluck('owner_id'))->pluck('name', 'id');
+
+        return $rows
+            ->filter(fn (Transaction $row): bool => (float) $row->getAttribute('revenue') > 0)
+            ->map(function (Transaction $row) use ($names): array {
+                $ownerId = (int) $row->getAttribute('owner_id');
+
+                return [
+                    'id' => $ownerId,
+                    'name' => $names[$ownerId] ?? '—',
+                    'revenue' => (float) $row->getAttribute('revenue'),
+                ];
+            })
             ->values()
             ->all();
+    }
+
+    /**
+     * The sales reps whose books this viewer may aggregate for the per-Sales widgets:
+     * the whole roster for a global (customer.view.all) viewer, the viewer's team
+     * for a manager (customer.view.team). "Sales" is the user.assign capability —
+     * the same rep marker teamStats uses — so managers/CS/system accounts that
+     * happen to own a record are never ranked as sales.
+     *
+     * @return list<int>
+     */
+    private function scopedSalesIds(User $user): array
+    {
+        $salesIds = array_values(array_map('intval', User::query()
+            ->permission(PermissionName::UserAssign->value)
+            ->pluck('id')
+            ->all()));
+
+        if ($user->can(PermissionName::CustomerViewAll->value)) {
+            return $salesIds;
+        }
+
+        // Manager (view.team): keep only reps inside their own team, so the ranking
+        // can never reach across teams — the same isolation Customer::visibleTo holds.
+        return array_values(array_intersect($salesIds, HierarchyResolver::teamMemberIds($user)));
     }
 
     /**
@@ -410,7 +479,7 @@ class DashboardController extends Controller
         // unscoped-ok: org-wide feed, added to props only for customer.view.all
         // roles (gated at the __invoke call site) — a Sales user never receives it.
         return Transaction::query()
-            ->with(['customer:id,name', 'product:id,name,warranty_months', 'reseller:id,name'])
+            ->with(['customer:id,name', 'product:id,name,warranty_months'])
             ->latest('purchased_at')
             ->latest('id')
             ->take(6)
@@ -419,7 +488,6 @@ class DashboardController extends Controller
                 'id' => $transaction->id,
                 'customer' => $transaction->customer?->name,
                 'product' => $transaction->product?->name,
-                'reseller' => $transaction->reseller?->name,
                 'purchased_at' => $transaction->purchased_at->toDateString(),
                 'warranty_expires_at' => $transaction->warranty_expires_at->toDateString(),
                 'is_under_warranty' => $transaction->is_under_warranty,
@@ -460,24 +528,45 @@ class DashboardController extends Controller
     }
 
     /**
-     * The five resellers with the most customers (only those with at least one).
+     * The five sales reps with the most customers within the viewer's scope (L2-B).
+     * Bounded by Customer::visibleTo (so the counts never exceed the viewer's
+     * entitlement) and attributed to the responsible sales rep (assigned owner, else
+     * whoever entered the record); only actual reps (user.assign) are ranked.
      *
      * @return array<int, array{id: int, name: string, customers_count: int}>
      */
-    private function topResellers(): array
+    private function topSales(User $user): array
     {
-        return Reseller::query()
-            ->has('customers')
-            ->withCount('customers')
+        $salesIds = $this->scopedSalesIds($user);
+
+        if ($salesIds === []) {
+            return [];
+        }
+
+        $owner = 'COALESCE(assigned_to, created_by)';
+
+        $rows = Customer::query()
+            ->visibleTo($user)
+            ->selectRaw("{$owner} as owner_id, COUNT(*) as customers_count")
+            ->whereIn(DB::raw($owner), $salesIds)
+            ->groupByRaw($owner)
             ->orderByDesc('customers_count')
-            ->orderBy('name')
-            ->take(5)
-            ->get(['id', 'name'])
-            ->map(fn (Reseller $reseller) => [
-                'id' => $reseller->id,
-                'name' => $reseller->name,
-                'customers_count' => (int) $reseller->customers_count,
-            ])
+            ->orderBy('owner_id')
+            ->limit(5)
+            ->get();
+
+        $names = User::query()->whereIn('id', $rows->pluck('owner_id'))->pluck('name', 'id');
+
+        return $rows
+            ->map(function (Customer $row) use ($names): array {
+                $ownerId = (int) $row->getAttribute('owner_id');
+
+                return [
+                    'id' => $ownerId,
+                    'name' => $names[$ownerId] ?? '—',
+                    'customers_count' => (int) $row->getAttribute('customers_count'),
+                ];
+            })
             ->all();
     }
 

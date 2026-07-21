@@ -48,8 +48,7 @@ it('exposes customer summary stats independent of the search filter', function (
         ->assertInertia(fn (Assert $page) => $page
             ->component('Customers/Index')
             ->where('stats.total', 3)
-            ->where('stats.underWarranty', 1)
-            ->where('stats.resellers', 3));
+            ->where('stats.underWarranty', 1));
 });
 
 it('exposes product summary stats including average warranty', function () {
@@ -83,7 +82,7 @@ it('exposes reseller summary stats for total, active, and top-level', function (
             ->where('stats.total', 3)
             ->where('stats.active', 1)
             ->where('stats.topLevel', 2));
-});
+})->skip('L2-B removed the reseller UI pages; the route + this test go in L2-C.');
 
 it('exposes transaction summary stats with an active/expired warranty split', function () {
     $reseller = Reseller::factory()->create();

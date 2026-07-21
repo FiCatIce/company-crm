@@ -14,12 +14,10 @@ const props = defineProps<{
         phone: string | null;
         email: string | null;
         address: string | null;
-        reseller_id: number;
         assigned_to: number | null;
         status: string;
         source: string | null;
     };
-    resellers: { id: number; name: string }[];
     statuses: SelectOption[];
     sources: SelectOption[];
     users: SelectOption[];
@@ -53,7 +51,6 @@ const breadcrumbs: BreadcrumbItem[] = [
                 v-slot="{ errors, processing }"
             >
                 <CustomerFormFields
-                    :resellers="resellers"
                     :statuses="statuses"
                     :sources="sources"
                     :users="users"

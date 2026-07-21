@@ -57,7 +57,6 @@ test('the customers index renders its data contract for an authorized user', fun
                 ->component('Customers/Index')
                 ->has('customers')
                 ->has('customers.data')
-                ->has('resellers')
                 ->has('filters')
                 ->has('can'),
         );

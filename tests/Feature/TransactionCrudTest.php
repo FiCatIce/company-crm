@@ -99,7 +99,7 @@ it('exposes an expired warranty status from the accessors', function () {
 // Create / store
 // ---------------------------------------------------------------------------
 
-it('opens the create page with customer, product, and reseller options', function () {
+it('opens the create page with customer and product options', function () {
     Customer::factory()->create();
     Product::factory()->create();
 
@@ -109,8 +109,7 @@ it('opens the create page with customer, product, and reseller options', functio
         ->assertInertia(fn (Assert $page) => $page
             ->component('Transactions/Create')
             ->has('customers')
-            ->has('products')
-            ->has('resellers'));
+            ->has('products'));
 });
 
 it('stores a transaction and redirects with a success flash', function () {

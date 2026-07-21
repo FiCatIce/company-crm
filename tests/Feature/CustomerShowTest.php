@@ -34,7 +34,6 @@ it('renders the customer 360 page with the expected props', function () {
             ->component('Customers/Show')
             ->where('customer.id', $customer->id)
             ->where('customer.name', 'Budi')
-            ->where('customer.reseller.name', 'Reseller A')
             ->where('customer.owner.name', 'Agen Satu')
             ->where('stats.interactionsCount', 3)
             ->has('timeline.data', 3)

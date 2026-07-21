@@ -109,7 +109,7 @@ it('lists the six most recent transactions, newest first', function () {
             ->where('recentTransactions.0.purchased_at', $newest)
             ->has('recentTransactions.0', fn (Assert $row) => $row
                 ->hasAll([
-                    'id', 'customer', 'product', 'reseller',
+                    'id', 'customer', 'product',
                     'purchased_at', 'warranty_expires_at',
                     'is_under_warranty', 'warranty_months',
                 ])));
@@ -148,24 +148,27 @@ it('surfaces active warranties expiring within 30 days, soonest first', function
                 ->where('days_left', fn (int $d) => $d >= 0 && $d <= 30)));
 });
 
-it('ranks the top resellers by customer count, excluding empty ones', function () {
-    $big = Reseller::factory()->create(['name' => 'Reseller Besar']);
-    $mid = Reseller::factory()->create(['name' => 'Reseller Sedang']);
-    $small = Reseller::factory()->create(['name' => 'Reseller Kecil']);
-    Reseller::factory()->create(['name' => 'Reseller Kosong']); // no customers → excluded
+it('ranks the top sales by customer count, only actual reps', function () {
+    // L2-B: the ranking attributes each customer to its assigned sales rep and
+    // counts only users who hold the sales marker (user.assign).
+    $big = userWithRole('sales');
+    $mid = userWithRole('sales');
+    $small = userWithRole('sales');
+    $cs = userWithRole('cs'); // owns customers but is NOT a sales rep → excluded
 
-    Customer::factory()->count(5)->create(['reseller_id' => $big->id]);
-    Customer::factory()->count(3)->create(['reseller_id' => $mid->id]);
-    Customer::factory()->count(1)->create(['reseller_id' => $small->id]);
+    Customer::factory()->count(5)->create(['assigned_to' => $big->id]);
+    Customer::factory()->count(3)->create(['assigned_to' => $mid->id]);
+    Customer::factory()->count(1)->create(['assigned_to' => $small->id]);
+    Customer::factory()->count(4)->create(['assigned_to' => $cs->id]);
 
     $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('topResellers', 3) // the empty reseller is dropped
-            ->where('topResellers.0.name', 'Reseller Besar')
-            ->where('topResellers.0.customers_count', 5)
-            ->where('topResellers.1.customers_count', 3)
-            ->where('topResellers.2.customers_count', 1));
+            ->has('topSales', 3) // the CS owner is not ranked
+            ->where('topSales.0.id', $big->id)
+            ->where('topSales.0.customers_count', 5)
+            ->where('topSales.1.customers_count', 3)
+            ->where('topSales.2.customers_count', 1));
 });
 
 it('keeps a warranty active through the end of its expiry day (endOfDay boundary)', function () {
@@ -220,14 +223,15 @@ it('sums revenue all-time and per month, ignoring null amounts', function () {
             ->where('revenue.lastMonth', 2000000));
 });
 
-it('ranks the top resellers by revenue, excluding those with none', function () {
-    $big = Reseller::factory()->create(['name' => 'Reseller Kaya']);
-    $small = Reseller::factory()->create(['name' => 'Reseller Kecil']);
-    $none = Reseller::factory()->create(['name' => 'Reseller Nihil']);
+it('ranks the top sales by revenue, excluding those with none', function () {
+    // L2-B: revenue attributed to each customer's assigned sales rep.
+    $big = userWithRole('sales');
+    $small = userWithRole('sales');
+    $none = userWithRole('sales');
 
-    $bigCust = Customer::factory()->create(['reseller_id' => $big->id]);
-    $smallCust = Customer::factory()->create(['reseller_id' => $small->id]);
-    $noneCust = Customer::factory()->create(['reseller_id' => $none->id]);
+    $bigCust = Customer::factory()->create(['assigned_to' => $big->id]);
+    $smallCust = Customer::factory()->create(['assigned_to' => $small->id]);
+    $noneCust = Customer::factory()->create(['assigned_to' => $none->id]);
 
     Transaction::factory()->forCustomer($bigCust)->create(['amount' => 5_000_000]);
     Transaction::factory()->forCustomer($bigCust)->create(['amount' => 3_000_000]);
@@ -237,11 +241,11 @@ it('ranks the top resellers by revenue, excluding those with none', function () 
     $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('topResellersByRevenue', 2)
-            ->where('topResellersByRevenue.0.name', 'Reseller Kaya')
-            ->where('topResellersByRevenue.0.revenue', 8000000)
-            ->where('topResellersByRevenue.1.name', 'Reseller Kecil')
-            ->where('topResellersByRevenue.1.revenue', 1000000));
+            ->has('revenueBySales', 2)
+            ->where('revenueBySales.0.id', $big->id)
+            ->where('revenueBySales.0.revenue', 8000000)
+            ->where('revenueBySales.1.id', $small->id)
+            ->where('revenueBySales.1.revenue', 1000000));
 });
 
 it('lists recent calls (any source) newest first, calls only, flagging CTI leads', function () {

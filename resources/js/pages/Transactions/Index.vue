@@ -33,7 +33,6 @@ type TransactionRow = {
     id: number;
     customer: string | null;
     product: string | null;
-    reseller: string | null;
     purchased_at: string | null;
     warranty_months: number;
     warranty_expires_at: string | null;
@@ -178,11 +177,6 @@ const initial = (name: string | null) =>
                                 <th
                                     class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                                 >
-                                    Reseller
-                                </th>
-                                <th
-                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                                >
                                     Tanggal Beli
                                 </th>
                                 <th
@@ -224,17 +218,6 @@ const initial = (name: string | null) =>
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">
                                     {{ t.product ?? '—' }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span
-                                        v-if="t.reseller"
-                                        class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                                    >
-                                        {{ t.reseller }}
-                                    </span>
-                                    <span v-else class="text-muted-foreground"
-                                        >—</span
-                                    >
                                 </td>
                                 <td class="px-6 py-4 text-muted-foreground">
                                     {{ t.purchased_at ?? '—' }}
@@ -348,7 +331,7 @@ const initial = (name: string | null) =>
                             </tr>
 
                             <tr v-if="transactions.data.length === 0">
-                                <td colspan="7" class="px-6 py-16 text-center">
+                                <td colspan="6" class="px-6 py-16 text-center">
                                     <div
                                         class="mx-auto flex max-w-sm flex-col items-center gap-2"
                                     >

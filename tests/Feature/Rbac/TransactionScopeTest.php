@@ -162,27 +162,28 @@ it('includes amount and totalSpend for a user with a money permission', function
  *   $hasMoneyBand — the SCOPED revenue band (revenue.view + any transaction view
  *                   tier). Its figure is Transaction::visibleTo, so a manager gets
  *                   their team and a rep gets their own book — never the org.
- *   $hasOrgResellerRevenue — the per-reseller breakdown, which spans every team and
- *                   therefore still demands transaction.view.all. No system role
- *                   holds that, so it stays off for all of them.
+ *   $hasSalesRevenue — the per-Sales revenue widget (L2-B, replaces the reseller
+ *                   breakdown). It ranks MULTIPLE reps, so it needs a SPANNING view
+ *                   (view.all or view.team) on top of the money gate: a manager gets
+ *                   it (team), a lone rep does not, CS/maintenance/admin never do.
  */
-it('gates the dashboard money band per tier, and org reseller revenue globally',
-    function (string $role, bool $hasMoneyBand, bool $hasOrgResellerRevenue) {
+it('gates the dashboard money band per tier, and the per-Sales revenue widget by span',
+    function (string $role, bool $hasMoneyBand, bool $hasSalesRevenue) {
         Transaction::factory()->create(['amount' => 1_000_000]);
 
         $this->actingAs(userWithRole($role))
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertInertia(function (Assert $page) use ($hasMoneyBand, $hasOrgResellerRevenue) {
+            ->assertInertia(function (Assert $page) use ($hasMoneyBand, $hasSalesRevenue) {
                 $hasMoneyBand ? $page->has('revenue.total') : $page->missing('revenue');
-                $hasOrgResellerRevenue
-                    ? $page->has('topResellersByRevenue')
-                    : $page->missing('topResellersByRevenue');
+                $hasSalesRevenue
+                    ? $page->has('revenueBySales')
+                    : $page->missing('revenueBySales');
             });
     })->with([
-        // H7d: supervisor + sales now get a SCOPED band (team / own) where H3 had
-        // left them blank. Neither gets the org reseller breakdown.
-        ['supervisor', true, false],
+        // Manager: team money band AND the team-scoped per-Sales widget (L2-B).
+        ['supervisor', true, true],
+        // Rep: own money band, but view.own is not a spanning view → no rep ranking.
         ['sales', true, false],
         ['cs', false, false],          // B3 removed money from cs entirely
         ['maintenance', false, false], // read-only, no transaction tier
@@ -195,5 +196,5 @@ it('shows dashboard revenue to a global viewer holding revenue.view', function (
     $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('revenue.total')->has('topResellersByRevenue'));
+        ->assertInertia(fn (Assert $page) => $page->has('revenue.total')->has('revenueBySales'));
 });

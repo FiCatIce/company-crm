@@ -44,7 +44,7 @@ it('opens the create page for an authorized user', function () {
     $this->actingAs(userWithRole('cs'))
         ->get(route('customers.create'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('Customers/Create')->has('resellers')->has('users'));
+        ->assertInertia(fn (Assert $page) => $page->component('Customers/Create')->has('users'));
 });
 
 it('stores a customer without a reseller (L2-A stop-use)', function () {
@@ -131,8 +131,7 @@ it('shows the edit page with the customer loaded', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Customers/Edit')
-            ->where('customer.id', $customer->id)
-            ->has('resellers'));
+            ->where('customer.id', $customer->id));
 });
 
 it('updates a customer and redirects with a success flash', function () {
@@ -240,17 +239,6 @@ it('filters the index by search term', function () {
             ->component('Customers/Index')
             ->has('customers.data', 1)
             ->where('customers.data.0.name', 'Zebra Unique'));
-});
-
-it('filters the index by reseller', function () {
-    $resellerA = Reseller::factory()->create();
-    $resellerB = Reseller::factory()->create();
-    Customer::factory()->count(2)->create(['reseller_id' => $resellerA->id]);
-    Customer::factory()->create(['reseller_id' => $resellerB->id]);
-
-    $this->actingAs(userWithGlobalView())
-        ->get(route('customers.index', ['reseller' => $resellerA->id]))
-        ->assertInertia(fn (Assert $page) => $page->has('customers.data', 2));
 });
 
 it('paginates the index at 10 per page', function () {

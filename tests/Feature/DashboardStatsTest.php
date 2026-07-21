@@ -2,7 +2,6 @@
 
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use Database\Seeders\RoleSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -13,26 +12,27 @@ beforeEach(function () {
 });
 
 it('shows summary stats derived from the domain data', function () {
-    $activeReseller = Reseller::factory()->create();
-    Reseller::factory()->create(); // inactive: no customers or transactions
-
-    $customers = Customer::factory()->count(3)->create(['reseller_id' => $activeReseller->id]);
+    $customers = Customer::factory()->count(3)->create();
 
     $under = Product::factory()->create(['warranty_months' => 12]);
     $expired = Product::factory()->create(['warranty_months' => 6]);
 
     Transaction::factory()->create([
         'customer_id' => $customers[0]->id,
-        'reseller_id' => $activeReseller->id,
         'product_id' => $under->id,
         'purchased_at' => now()->subMonths(3),
     ]);
     Transaction::factory()->create([
         'customer_id' => $customers[1]->id,
-        'reseller_id' => $activeReseller->id,
         'product_id' => $expired->id,
         'purchased_at' => now()->subYear(),
     ]);
+
+    // L2-B: "Sales Aktif" replaces the reseller count — active accounts holding the
+    // sales marker (user.assign). Two active sales + one deactivated → count is 2.
+    userWithRole('sales');
+    userWithRole('sales');
+    userWithRole('sales')->forceFill(['is_active' => false])->save();
 
     $this->actingAs(userWithGlobalView())
         ->get(route('dashboard'))
@@ -42,7 +42,7 @@ it('shows summary stats derived from the domain data', function () {
             ->where('stats.customers', 3)
             ->where('stats.transactions', 2)
             ->where('stats.activeWarranties', 1)
-            ->where('stats.activeResellers', 1));
+            ->where('stats.activeSales', 2));
 });
 
 it('builds a 12-month transaction trend and counts the current month', function () {

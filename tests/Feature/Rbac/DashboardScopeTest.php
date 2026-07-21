@@ -98,8 +98,9 @@ it('hides the org-wide detail widgets from a sales user but keeps their call fee
             ->missing('warrantyBreakdown')
             ->missing('recentTransactions')
             ->missing('expiringSoon')
-            ->missing('topResellers')
-            ->missing('topResellersByRevenue'));
+            ->missing('topSales')
+            ->missing('salesScope')
+            ->missing('revenueBySales'));
 });
 
 it('gives a global viewer every widget including revenue', function () {
@@ -113,10 +114,53 @@ it('gives a global viewer every widget including revenue', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->has('recentTransactions')
             ->has('expiringSoon')
-            ->has('topResellers')
+            ->has('topSales')
+            ->where('salesScope', 'org')
             ->has('revenue.total')
-            ->has('topResellersByRevenue')
+            ->has('revenueBySales')
             ->has('recentCalls'));
+});
+
+it('scopes a manager\'s per-Sales widgets to their own team (L2-B)', function () {
+    $salesA = userWithRole('sales');
+    $manager = managerOverTeamOf($salesA); // manager + salesA share a team
+    $outsider = userWithRole('sales');     // a rep on no shared team
+
+    // The team's rep owns 3 customers with 1M revenue; the off-team rep owns a
+    // customer with far more money the manager must never see or rank.
+    $teamBook = Customer::factory()->count(3)->create(['assigned_to' => $salesA->id]);
+    Transaction::factory()->forCustomer($teamBook[0])->create(['amount' => 1_000_000]);
+
+    $offTeam = Customer::factory()->create(['assigned_to' => $outsider->id]);
+    Transaction::factory()->forCustomer($offTeam)->create(['amount' => 9_000_000]);
+
+    $this->actingAs($manager)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('salesScope', 'team')          // labelled team, not org
+            ->missing('stats')                      // scoped viewer → no org band
+            ->has('topSales', 1)                    // only the team rep is ranked
+            ->where('topSales.0.id', $salesA->id)
+            ->where('topSales.0.customers_count', 3)
+            ->has('revenueBySales', 1)
+            ->where('revenueBySales.0.id', $salesA->id)
+            ->where('revenueBySales.0.revenue', 1000000)); // never the 9M off-team
+});
+
+it('never gives CS/maintenance the money per-Sales widget (L2-B)', function () {
+    // CS holds no revenue.view and only view.assigned (not a spanning view), so
+    // neither per-Sales widget reaches them — money stays omitted, as everywhere.
+    $customer = Customer::factory()->create();
+    [$cs] = supportAssignedToOwnerOf($customer, 'cs');
+
+    $this->actingAs($cs)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->missing('revenueBySales')
+            ->missing('topSales')
+            ->missing('salesScope'));
 });
 
 // ---------------------------------------------------------------------------
@@ -183,5 +227,5 @@ it('never shows revenue to a user holding revenue.view but no transaction view',
         ->assertInertia(fn (Assert $page) => $page
             ->has('stats')                    // still an aggregate viewer...
             ->missing('revenue')        // ...but revenue is gated off
-            ->missing('topResellersByRevenue'));
+            ->missing('revenueBySales'));
 });

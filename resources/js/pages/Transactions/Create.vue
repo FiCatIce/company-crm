@@ -9,7 +9,6 @@ import type { BreadcrumbItem } from '@/types';
 defineProps<{
     customers: { id: number; name: string }[];
     products: { id: number; name: string }[];
-    resellers: { id: number; name: string }[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -42,7 +41,6 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <TransactionFormFields
                     :customers="customers"
                     :products="products"
-                    :resellers="resellers"
                     :errors="errors"
                 />
 

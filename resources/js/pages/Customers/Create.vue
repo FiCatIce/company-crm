@@ -8,7 +8,6 @@ import type { BreadcrumbItem } from '@/types';
 import type { SelectOption } from '@/types/crm';
 
 defineProps<{
-    resellers: { id: number; name: string }[];
     statuses: SelectOption[];
     sources: SelectOption[];
     users: SelectOption[];
@@ -42,7 +41,6 @@ const breadcrumbs: BreadcrumbItem[] = [
                 v-slot="{ errors, processing }"
             >
                 <CustomerFormFields
-                    :resellers="resellers"
                     :statuses="statuses"
                     :sources="sources"
                     :users="users"

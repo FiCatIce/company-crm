@@ -178,16 +178,18 @@ it('never surfaces money from a dangling revenue.view alone', function () {
     expect($props)->not->toHaveKey('revenue');
 });
 
-it('keeps the org reseller revenue breakdown global-only', function () {
+it('gives the manager a team-scoped per-Sales revenue widget (L2-B)', function () {
     [$manager, $rep] = teamWithRep();
     saleFor($rep, 1_000_000);
 
     $props = $this->actingAs($manager)->get('/dashboard')->assertOk()
         ->viewData('page')['props'];
 
-    // The manager gets their money band but NOT the per-reseller org breakdown,
-    // which spans every team.
+    // L2-B: the org-wide reseller breakdown is gone; the manager now gets the
+    // per-Sales revenue widget, SCOPED to their team (never the org).
     expect($props)->toHaveKey('revenue')
+        ->and($props)->toHaveKey('revenueBySales')
+        ->and($props['salesScope'])->toBe('team')
         ->and($props)->not->toHaveKey('topResellersByRevenue');
 });
 

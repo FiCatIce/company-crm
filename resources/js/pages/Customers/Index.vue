@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Check, Network, Plus, Search, ShieldCheck, Users } from '@lucide/vue';
+import { Check, Plus, Search, ShieldCheck, Users } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
@@ -29,7 +29,6 @@ type CustomerRow = {
     phone: string | null;
     email: string | null;
     address: string | null;
-    reseller: string | null;
     status: string;
     status_label: string;
     owner: { id: number; name: string } | null;
@@ -51,13 +50,11 @@ type Paginated<T> = {
 
 const props = defineProps<{
     customers: Paginated<CustomerRow>;
-    resellers: { id: number; name: string }[];
     statuses: SelectOption[];
     users: SelectOption[];
-    stats: { total: number; underWarranty: number; resellers: number };
+    stats: { total: number; underWarranty: number };
     filters: {
         search: string;
-        reseller: number | null;
         status: string | null;
         owner: string | null;
     };
@@ -72,9 +69,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const search = ref(props.filters.search ?? '');
-const reseller = ref(
-    props.filters.reseller ? String(props.filters.reseller) : '',
-);
 const status = ref(props.filters.status ?? '');
 const owner = ref(props.filters.owner ?? '');
 
@@ -83,7 +77,6 @@ function applyFilters() {
         CustomerController.index.url(),
         {
             search: search.value || undefined,
-            reseller: reseller.value || undefined,
             status: status.value || undefined,
             owner: owner.value || undefined,
         },
@@ -92,7 +85,6 @@ function applyFilters() {
 }
 
 watchDebounced(search, applyFilters, { debounce: 300 });
-watch(reseller, applyFilters);
 watch(status, applyFilters);
 watch(owner, applyFilters);
 
@@ -116,7 +108,7 @@ const selectClasses =
                         Data Customer
                     </h1>
                     <p class="text-sm text-muted-foreground">
-                        Kelola customer beserta reseller dan status garansinya.
+                        Kelola customer beserta status garansinya.
                     </p>
                 </div>
 
@@ -129,7 +121,7 @@ const selectClasses =
             </div>
 
             <!-- Summary cards -->
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="grid gap-4 sm:grid-cols-2">
                 <IndexStatCard
                     label="Total Customer"
                     :value="stats.total"
@@ -141,12 +133,6 @@ const selectClasses =
                     :value="stats.underWarranty"
                     :icon="ShieldCheck"
                     detail="Customer dengan garansi berjalan"
-                />
-                <IndexStatCard
-                    label="Total Reseller"
-                    :value="stats.resellers"
-                    :icon="Network"
-                    detail="Reseller terdaftar"
                 />
             </div>
 
@@ -178,16 +164,6 @@ const selectClasses =
                             class="pl-9"
                         />
                     </div>
-                    <select v-model="reseller" :class="selectClasses">
-                        <option value="">Semua reseller</option>
-                        <option
-                            v-for="r in resellers"
-                            :key="r.id"
-                            :value="String(r.id)"
-                        >
-                            {{ r.name }}
-                        </option>
-                    </select>
                     <select v-model="status" :class="selectClasses">
                         <option value="">Semua status</option>
                         <option
@@ -242,11 +218,6 @@ const selectClasses =
                                 <th
                                     class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
                                 >
-                                    Reseller
-                                </th>
-                                <th
-                                    class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                                >
                                     Status
                                 </th>
                                 <th
@@ -295,17 +266,6 @@ const selectClasses =
                                     :title="c.address ?? ''"
                                 >
                                     {{ c.address ?? '—' }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span
-                                        v-if="c.reseller"
-                                        class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                                    >
-                                        {{ c.reseller }}
-                                    </span>
-                                    <span v-else class="text-muted-foreground"
-                                        >—</span
-                                    >
                                 </td>
                                 <td class="px-6 py-4">
                                     <CustomerStatusBadge
@@ -405,7 +365,7 @@ const selectClasses =
                             </tr>
 
                             <tr v-if="customers.data.length === 0">
-                                <td colspan="8" class="px-6 py-16 text-center">
+                                <td colspan="7" class="px-6 py-16 text-center">
                                     <div
                                         class="mx-auto flex max-w-sm flex-col items-center gap-2"
                                     >

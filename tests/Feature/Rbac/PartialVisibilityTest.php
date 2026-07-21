@@ -85,7 +85,7 @@ it('hides dashboard revenue from the money-less roles', function (string $role) 
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->missing('stats.revenue')
-            ->missing('topResellersByRevenue'));
+            ->missing('revenueBySales'));
 })->with(['cs', 'maintenance']);
 
 // ---------------------------------------------------------------------------

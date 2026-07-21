@@ -31,7 +31,8 @@ it('allows admin, supervisor, and cs to view the index', function (string $role)
         ->get(route('resellers.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Resellers/Index'));
-})->with(['supervisor', 'cs']);
+})->with(['supervisor', 'cs'])
+    ->skip('L2-B removed the reseller UI pages; the route + this test go in L2-C.');
 
 // ---------------------------------------------------------------------------
 // Tree view
@@ -49,7 +50,7 @@ it('returns the reseller hierarchy as a nested tree', function () {
             ->where('tree.0.name', 'Parent Co')
             ->has('tree.0.children', 2)
             ->where('tree.0.children.0.parent_id', $parent->id));
-});
+})->skip('L2-B removed the reseller UI pages; the route + this test go in L2-C.');
 
 // ---------------------------------------------------------------------------
 // Create / store
@@ -64,7 +65,7 @@ it('opens the create page with parent options', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Resellers/Create')
             ->has('parentOptions', 2));
-});
+})->skip('L2-B removed the reseller UI pages; the route + this test go in L2-C.');
 
 it('stores a top-level reseller', function () {
     $this->actingAs(userWithRole('supervisor'))
@@ -126,7 +127,7 @@ it('excludes self and descendants from the edit parent options', function () {
     $this->actingAs(userWithRole('supervisor'))
         ->get(route('resellers.edit', $c))
         ->assertInertia(fn (Assert $page) => $page->has('parentOptions', 2));
-});
+})->skip('L2-B removed the reseller UI pages; the route + this test go in L2-C.');
 
 it('updates a reseller name', function () {
     $reseller = Reseller::factory()->create();

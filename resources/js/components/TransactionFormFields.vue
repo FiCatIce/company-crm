@@ -9,12 +9,10 @@ type Option = { id: number; name: string };
 const props = defineProps<{
     customers: Option[];
     products: Option[];
-    resellers: Option[];
     errors: Partial<Record<string, string>>;
     transaction?: {
         customer_id: number;
         product_id: number;
-        reseller_id: number;
         purchased_at: string | null;
         amount: string | null;
     } | null;
@@ -23,7 +21,6 @@ const props = defineProps<{
 // Controlled selects so choices survive re-renders after a validation error.
 const customerId = ref<number | ''>(props.transaction?.customer_id ?? '');
 const productId = ref<number | ''>(props.transaction?.product_id ?? '');
-const resellerId = ref<number | ''>(props.transaction?.reseller_id ?? '');
 
 const selectClass =
     'border-input h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
@@ -62,23 +59,6 @@ const selectClass =
             </option>
         </select>
         <InputError :message="errors.product_id" />
-    </div>
-
-    <div class="grid gap-2">
-        <Label for="reseller_id">Reseller</Label>
-        <select
-            id="reseller_id"
-            v-model="resellerId"
-            name="reseller_id"
-            required
-            :class="selectClass"
-        >
-            <option value="" disabled>Pilih reseller</option>
-            <option v-for="r in resellers" :key="r.id" :value="r.id">
-                {{ r.name }}
-            </option>
-        </select>
-        <InputError :message="errors.reseller_id" />
     </div>
 
     <div class="grid gap-2">

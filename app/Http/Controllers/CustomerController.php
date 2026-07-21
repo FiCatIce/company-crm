@@ -14,7 +14,6 @@ use App\Http\Requests\UpdateCustomerOwnerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Interaction;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\HierarchyResolver;
@@ -34,7 +33,6 @@ class CustomerController extends Controller
         $this->authorize('viewAny', Customer::class);
 
         $search = trim((string) $request->input('search', ''));
-        $resellerId = $request->integer('reseller') ?: null;
         $status = CustomerStatus::tryFrom((string) $request->input('status', ''));
         // Owner scope: 'me' (mine), 'unassigned' (none), or a specific user id.
         $ownerRaw = (string) $request->input('owner', '');
@@ -49,7 +47,7 @@ class CustomerController extends Controller
             // Row-level scope first, so every filter below (search, owner, …)
             // operates strictly WITHIN what this user may see — never a bypass.
             ->visibleTo($request->user())
-            ->with(['reseller:id,name', 'owner:id,name'])
+            ->with(['owner:id,name'])
             ->when($search !== '', function ($query) use ($search) {
                 // Case-insensitive across drivers (ILIKE on Postgres, lower() on SQLite);
                 // escape LIKE wildcards so a user's % or _ can't broaden the match.
@@ -60,7 +58,6 @@ class CustomerController extends Controller
                         ->orWhereLike('phone', $term, caseSensitive: false);
                 });
             })
-            ->when($resellerId, fn ($query, $id) => $query->where('reseller_id', $id))
             ->when($status, fn ($query) => $query->where('status', $status->value))
             ->when($owner === 'me', fn ($query) => $query->where('assigned_to', $authId))
             ->when($owner === 'unassigned', fn ($query) => $query->whereNull('assigned_to'))
@@ -74,7 +71,6 @@ class CustomerController extends Controller
                 'phone' => $customer->phone,
                 'email' => $customer->email,
                 'address' => $customer->address,
-                'reseller' => $customer->reseller?->name,
                 'status' => $customer->status->value,
                 'status_label' => $customer->status->label(),
                 'owner' => $customer->owner
@@ -89,13 +85,11 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
-            'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
             'users' => $this->userOptions($request),
             'stats' => $this->stats($request),
             'filters' => [
                 'search' => $search,
-                'reseller' => $resellerId,
                 'status' => $status?->value,
                 'owner' => $owner,
             ],
@@ -105,11 +99,10 @@ class CustomerController extends Controller
 
     /**
      * Summary metrics for the index header cards (whole dataset, ignores filters).
-     * The customer total and the warranty count both honour the viewer's scope (a
-     * Sales user's cards reflect only their own book); the reseller count is an
-     * org-wide aggregate.
+     * The customer total and the warranty count both honour the viewer's scope — a
+     * Sales user's cards reflect only their own book.
      *
-     * @return array{total: int, underWarranty: int, resellers: int}
+     * @return array{total: int, underWarranty: int}
      */
     private function stats(Request $request): array
     {
@@ -128,7 +121,6 @@ class CustomerController extends Controller
         return [
             'total' => Customer::query()->visibleTo($request->user())->count(),
             'underWarranty' => $customersUnderWarranty,
-            'resellers' => Reseller::count(),
         ];
     }
 
@@ -194,7 +186,6 @@ class CustomerController extends Controller
         $this->authorize('create', Customer::class);
 
         return Inertia::render('Customers/Create', [
-            'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
             'sources' => $this->sourceOptions(),
             'users' => $this->userOptions($request),
@@ -220,7 +211,7 @@ class CustomerController extends Controller
         $canSeeAmount = $this->canSeeAmount($user);
         $canSeeProducts = $user->can(PermissionName::CustomerViewProducts->value);
 
-        $customer->load(['reseller:id,name', 'owner:id,name']);
+        $customer->load(['owner:id,name']);
 
         // Fetched once and reused for both the list and the warranty summary.
         $transactions = $customer->transactions()
@@ -308,9 +299,6 @@ class CustomerController extends Controller
                 'status_label' => $customer->status->label(),
                 'source' => $customer->source?->value,
                 'source_label' => $customer->source?->label(),
-                'reseller' => $customer->reseller
-                    ? ['id' => $customer->reseller->id, 'name' => $customer->reseller->name]
-                    : null,
                 'owner' => $customer->owner
                     ? ['id' => $customer->owner->id, 'name' => $customer->owner->name]
                     : null,
@@ -374,12 +362,10 @@ class CustomerController extends Controller
                 'phone' => $customer->phone,
                 'email' => $customer->email,
                 'address' => $customer->address,
-                'reseller_id' => $customer->reseller_id,
                 'assigned_to' => $customer->assigned_to,
                 'status' => $customer->status->value,
                 'source' => $customer->source?->value,
             ],
-            'resellers' => Reseller::orderBy('name')->get(['id', 'name']),
             'statuses' => $this->statusOptions(),
             'sources' => $this->sourceOptions(),
             'users' => $this->userOptions($request),

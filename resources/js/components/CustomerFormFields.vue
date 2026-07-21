@@ -5,10 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { SelectOption } from '@/types/crm';
 
-type Reseller = { id: number; name: string };
-
 const props = defineProps<{
-    resellers: Reseller[];
     statuses: SelectOption[];
     sources: SelectOption[];
     users: SelectOption[];
@@ -18,7 +15,6 @@ const props = defineProps<{
         phone: string | null;
         email: string | null;
         address: string | null;
-        reseller_id: number;
         assigned_to: number | null;
         status: string;
         source: string | null;
@@ -27,7 +23,6 @@ const props = defineProps<{
 
 // Native <select>/<textarea> are controlled so their state survives re-renders
 // (e.g. when the Inertia <Form> re-renders after a validation error).
-const resellerId = ref<number | ''>(props.customer?.reseller_id ?? '');
 const address = ref<string>(props.customer?.address ?? '');
 // Empty string = unassigned (Laravel converts it to null before validation).
 const assignedTo = ref<string>(
@@ -44,23 +39,6 @@ const controlClasses =
 </script>
 
 <template>
-    <div class="grid gap-2">
-        <Label for="reseller_id">Reseller</Label>
-        <select
-            id="reseller_id"
-            v-model="resellerId"
-            name="reseller_id"
-            required
-            :class="['h-9', controlClasses]"
-        >
-            <option value="" disabled>Pilih reseller</option>
-            <option v-for="r in resellers" :key="r.id" :value="r.id">
-                {{ r.name }}
-            </option>
-        </select>
-        <InputError :message="errors.reseller_id" />
-    </div>
-
     <div class="grid gap-2">
         <Label for="name">Nama</Label>
         <Input
