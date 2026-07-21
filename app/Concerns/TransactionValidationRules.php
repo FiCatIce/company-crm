@@ -35,19 +35,11 @@ trait TransactionValidationRules
                 },
             ],
             'product_id' => ['required', 'integer', Rule::exists('products', 'id')],
-            'reseller_id' => [
-                'required', 'integer', Rule::exists('resellers', 'id'),
-                // The reseller must be the one that owns the selected customer, so
-                // sales can't be misattributed to an unrelated reseller.
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    $customerId = $this->input('customer_id');
-                    $ownerId = $customerId ? Customer::whereKey($customerId)->value('reseller_id') : null;
-
-                    if ($ownerId !== null && (int) $value !== (int) $ownerId) {
-                        $fail('Reseller harus sama dengan reseller pemilik customer.');
-                    }
-                },
-            ],
+            // L2-A: reseller_id is no longer accepted. Dropping the rule means it
+            // falls out of validated(), so new transactions are recorded with a null
+            // reseller — the deprecation direction. This also retires the old
+            // "reseller must match the customer's reseller" data-integrity closure,
+            // which only existed to keep the two reseller pointers in sync.
             // A purchase can't be recorded in the future.
             'purchased_at' => ['required', 'date', 'before_or_equal:today'],
             // Sale value — optional (legacy rows have none); fits decimal(14,2).

@@ -47,12 +47,9 @@ it('opens the create page for an authorized user', function () {
         ->assertInertia(fn (Assert $page) => $page->component('Customers/Create')->has('resellers')->has('users'));
 });
 
-it('stores a customer and redirects with a success flash', function () {
-    $reseller = Reseller::factory()->create();
-
+it('stores a customer without a reseller (L2-A stop-use)', function () {
     $response = $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Budi Santoso',
             'phone' => '08123456789',
             'email' => 'budi@example.com',
@@ -62,11 +59,26 @@ it('stores a customer and redirects with a success flash', function () {
     $response->assertRedirect(route('customers.index'))
         ->assertSessionHas('success');
 
+    // reseller_id is no longer set on new records — it lands null.
     $this->assertDatabaseHas('customers', [
         'name' => 'Budi Santoso',
-        'reseller_id' => $reseller->id,
+        'reseller_id' => null,
         'email' => 'budi@example.com',
     ]);
+});
+
+it('ignores a submitted reseller_id (the stale field is a no-op until L2-B)', function () {
+    $reseller = Reseller::factory()->create();
+
+    $this->actingAs(userWithRole('supervisor'))
+        ->post(route('customers.store'), [
+            'reseller_id' => $reseller->id, // still on the form until L2-B removes it
+            'name' => 'Ignored Reseller',
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    // Dropped from validated() — the value never reaches the model.
+    $this->assertDatabaseHas('customers', ['name' => 'Ignored Reseller', 'reseller_id' => null]);
 });
 
 it('accepts null contact fields when storing', function () {
@@ -89,21 +101,11 @@ it('validates required and typed fields when storing', function () {
     $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.create'))
         ->post(route('customers.store'), [
-            'reseller_id' => null,
             'name' => '',
             'email' => 'not-an-email',
         ])
-        ->assertSessionHasErrors(['reseller_id', 'name', 'email']);
-});
-
-it('rejects a non-existent reseller when storing', function () {
-    $this->actingAs(userWithRole('supervisor'))
-        ->from(route('customers.create'))
-        ->post(route('customers.store'), [
-            'reseller_id' => 999999,
-            'name' => 'Ghost',
-        ])
-        ->assertSessionHasErrors('reseller_id');
+        ->assertSessionHasErrors(['name', 'email']);
+    // reseller_id is no longer a required/validated field (L2-A).
 });
 
 it('forbids users without a role from storing', function () {
@@ -135,11 +137,9 @@ it('shows the edit page with the customer loaded', function () {
 
 it('updates a customer and redirects with a success flash', function () {
     $customer = Customer::factory()->create();
-    $newReseller = Reseller::factory()->create();
 
     $this->actingAs(userWithGlobalView())
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $newReseller->id,
             'name' => 'Nama Baru',
             'phone' => '0811',
             'email' => 'baru@example.com',
@@ -151,7 +151,25 @@ it('updates a customer and redirects with a success flash', function () {
     $this->assertDatabaseHas('customers', [
         'id' => $customer->id,
         'name' => 'Nama Baru',
-        'reseller_id' => $newReseller->id,
+    ]);
+});
+
+it('leaves an existing reseller_id untouched on update (data intact)', function () {
+    // L2-A does not migrate data: a customer that still carries a reseller keeps it
+    // through an ordinary edit, since reseller_id simply is not in the payload.
+    $reseller = Reseller::factory()->create();
+    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+
+    $this->actingAs(userWithGlobalView())
+        ->put(route('customers.update', $customer), [
+            'name' => 'Nama Baru',
+        ])
+        ->assertRedirect(route('customers.index'));
+
+    $this->assertDatabaseHas('customers', [
+        'id' => $customer->id,
+        'name' => 'Nama Baru',
+        'reseller_id' => $reseller->id,
     ]);
 });
 

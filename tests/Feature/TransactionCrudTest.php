@@ -15,18 +15,16 @@ beforeEach(function () {
 });
 
 /**
- * A valid set of foreign keys for a transaction payload.
+ * A valid set of foreign keys for a transaction payload. Since L2-A, reseller_id is
+ * no longer part of it — new transactions carry no reseller.
  *
- * @return array{customer_id: int, product_id: int, reseller_id: int}
+ * @return array{customer_id: int, product_id: int}
  */
 function transactionLinks(): array
 {
-    $customer = Customer::factory()->create();
-
     return [
-        'customer_id' => $customer->id,
+        'customer_id' => Customer::factory()->create()->id,
         'product_id' => Product::factory()->create()->id,
-        'reseller_id' => $customer->reseller_id,
     ];
 }
 
@@ -126,7 +124,8 @@ it('stores a transaction and redirects with a success flash', function () {
         ->assertRedirect(route('transactions.index'))
         ->assertSessionHas('success');
 
-    $this->assertDatabaseHas('transactions', $links);
+    // Stored without a reseller (L2-A) — the column lands null on new rows.
+    $this->assertDatabaseHas('transactions', [...$links, 'reseller_id' => null]);
 });
 
 it('promotes a lead customer to active on their first transaction', function () {
@@ -136,7 +135,6 @@ it('promotes a lead customer to active on their first transaction', function () 
         ->post(route('transactions.store'), [
             'customer_id' => $customer->id,
             'product_id' => Product::factory()->create()->id,
-            'reseller_id' => $customer->reseller_id,
             'purchased_at' => now()->toDateString(),
         ])
         ->assertRedirect(route('transactions.index'));
@@ -151,7 +149,6 @@ it('does not change a non-lead customer status on a transaction', function () {
         ->post(route('transactions.store'), [
             'customer_id' => $customer->id,
             'product_id' => Product::factory()->create()->id,
-            'reseller_id' => $customer->reseller_id,
             'purchased_at' => now()->toDateString(),
         ])
         ->assertRedirect(route('transactions.index'));
@@ -163,7 +160,8 @@ it('validates that all links and the purchase date are required', function () {
     $this->actingAs(userWithRole('supervisor'))
         ->from(route('transactions.create'))
         ->post(route('transactions.store'), [])
-        ->assertSessionHasErrors(['customer_id', 'product_id', 'reseller_id', 'purchased_at']);
+        ->assertSessionHasErrors(['customer_id', 'product_id', 'purchased_at']);
+    // reseller_id is no longer a required link (L2-A).
 });
 
 it('rejects non-existent linked records', function () {
@@ -172,28 +170,13 @@ it('rejects non-existent linked records', function () {
         ->post(route('transactions.store'), [
             'customer_id' => 999999,
             'product_id' => 999999,
-            'reseller_id' => 999999,
             'purchased_at' => now()->toDateString(),
         ])
-        ->assertSessionHasErrors(['customer_id', 'product_id', 'reseller_id']);
+        ->assertSessionHasErrors(['customer_id', 'product_id']);
 });
 
-it('rejects a reseller that does not own the selected customer', function () {
-    $customer = Customer::factory()->create();
-    $unrelatedReseller = Reseller::factory()->create();
-
-    $this->actingAs(userWithRole('supervisor'))
-        ->from(route('transactions.create'))
-        ->post(route('transactions.store'), [
-            'customer_id' => $customer->id,
-            'product_id' => Product::factory()->create()->id,
-            'reseller_id' => $unrelatedReseller->id,
-            'purchased_at' => now()->toDateString(),
-        ])
-        ->assertSessionHasErrors('reseller_id');
-
-    $this->assertDatabaseMissing('transactions', ['customer_id' => $customer->id]);
-});
+// The "reseller must own the customer" validation was retired with L2-A: reseller_id
+// is no longer accepted, so there is nothing left to mismatch.
 
 it('rejects a future purchase date', function () {
     $this->actingAs(userWithRole('supervisor'))

@@ -21,7 +21,10 @@ trait CustomerValidationRules
     protected function customerRules(): array
     {
         return [
-            'reseller_id' => ['required', 'integer', Rule::exists('resellers', 'id')],
+            // L2-A: reseller_id is no longer accepted (dropped from validated()), so
+            // new customers are created with a null reseller — the first step of
+            // deprecating the entity. The column and existing values stay untouched;
+            // the drop is the destructive L2-D.
             // Owning agent. This is an ACCESS GATE, not mere attribution: since B1/H3
             // Customer::scopeVisibleTo matches created_by OR assigned_to, so handing a
             // customer over GRANTS the recipient sight of it. H7 therefore bounds the
