@@ -33,7 +33,7 @@ it('keeps admin free of every data/money permission (B4 lockdown)', function () 
     foreach ([
         P::CustomerViewAll, P::CustomerViewOwn, P::CustomerCreate, P::CustomerUpdateAll,
         P::CustomerDelete, P::TransactionViewAll, P::TransactionViewOwn, P::TransactionCreate,
-        P::RevenueView, P::ProductView, P::ResellerView,
+        P::RevenueView, P::ProductView,
     ] as $permission) {
         expect($admin->can($permission->value))->toBeFalse();
     }

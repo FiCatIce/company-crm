@@ -4,7 +4,6 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ResellerController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupportAssignmentController;
 use App\Http\Controllers\TeamController;
@@ -25,7 +24,6 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('customers/{customer}/status', [CustomerController::class, 'updateStatus'])->name('customers.status');
     Route::patch('customers/{customer}/owner', [CustomerController::class, 'updateOwner'])->name('customers.owner');
     Route::resource('products', ProductController::class)->except(['show']);
-    Route::resource('resellers', ResellerController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class)->except(['show']);
 
     // Interactions — shallow nested: create under a customer, edit/delete standalone.

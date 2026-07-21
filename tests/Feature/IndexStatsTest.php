@@ -66,23 +66,7 @@ it('exposes product summary stats including average warranty', function () {
             ->where('stats.avgWarrantyMonths', 12)); // round((0+12+24)/3)
 });
 
-it('exposes reseller summary stats for total, active, and top-level', function () {
-    $root = Reseller::factory()->create(['parent_id' => null]);
-    $child = Reseller::factory()->create(['parent_id' => $root->id]);
-    Reseller::factory()->create(['parent_id' => null]); // second root, inactive
-
-    // Only the child gains a customer, so only it counts as "active".
-    Customer::factory()->create(['reseller_id' => $child->id]);
-
-    $this->actingAs(userWithRole('supervisor'))
-        ->get(route('resellers.index'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Resellers/Index')
-            ->where('stats.total', 3)
-            ->where('stats.active', 1)
-            ->where('stats.topLevel', 2));
-})->skip('L2-B removed the reseller UI pages; the route + this test go in L2-C.');
+// L2-C: the reseller index (route + controller + stats) is gone — no test here.
 
 it('exposes transaction summary stats with an active/expired warranty split', function () {
     $reseller = Reseller::factory()->create();

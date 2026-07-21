@@ -1,9 +1,12 @@
 <?php
 
+use App\Enums\PermissionName;
+use App\Enums\RoleName;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Reseller;
 use App\Models\Transaction;
+use App\Support\RolePresets;
 use Database\Seeders\RoleSeeder;
 
 /**
@@ -85,4 +88,32 @@ it('still resolves the existing reseller relation for legacy rows', function () 
 
     expect($customer->reseller)->not->toBeNull()
         ->and($customer->reseller->name)->toBe('Legacy Distributor');
+});
+
+// ---------------------------------------------------------------------------
+// L2-C — the reseller FEATURE surface is gone: no route, no permission. (The
+// model / factory / relation / reseller_id column stay as data plumbing until
+// L2-D drops the table.)
+// ---------------------------------------------------------------------------
+
+it('has removed every reseller route (404, not a dev-error)', function () {
+    $actor = userWithRole('supervisor');
+
+    // The paths no longer resolve to any controller — a clean 404, which closes
+    // the L2-B wart where /resellers rendered a now-deleted Inertia page.
+    $this->actingAs($actor)->get('/resellers')->assertNotFound();
+    $this->actingAs($actor)->get('/resellers/create')->assertNotFound();
+    $this->actingAs($actor)->post('/resellers', ['name' => 'X'])->assertNotFound();
+});
+
+it('has removed reseller permissions from the enum and every role preset', function () {
+    $resellerPerms = ['reseller.view', 'reseller.create', 'reseller.update', 'reseller.delete'];
+
+    foreach ($resellerPerms as $perm) {
+        expect(PermissionName::values())->not->toContain($perm);
+
+        foreach (RoleName::cases() as $role) {
+            expect(RolePresets::permissions($role))->not->toContain($perm);
+        }
+    }
 });

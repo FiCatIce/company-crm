@@ -30,7 +30,6 @@ it('forbids admin from every data area', function (string $routeName) {
     'customers.index',
     'transactions.index',
     'products.index',
-    'resellers.index',
 ]);
 
 it('forbids admin from opening a specific customer', function () {

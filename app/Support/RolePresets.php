@@ -132,7 +132,6 @@ final class RolePresets
             P::TransactionViewOwn, P::TransactionCreate, P::TransactionUpdate,
             P::TransactionDelete, P::RevenueView,
             P::ProductView, P::ProductCreate, P::ProductUpdate, P::ProductDelete,
-            P::ResellerView, P::ResellerCreate, P::ResellerUpdate, P::ResellerDelete,
             P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate,
             P::InteractionDelete, P::InteractionManageAll,
             P::DashboardView, P::DashboardStatsAggregate,
@@ -182,7 +181,6 @@ final class RolePresets
             P::CustomerViewOwn, P::CustomerViewAssigned, P::CustomerViewProducts, P::CustomerCreate,
             P::CustomerUpdateAll, P::CustomerReassign,
             P::ProductView, P::ProductCreate, P::ProductUpdate,
-            P::ResellerView, P::ResellerCreate, P::ResellerUpdate,
             P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate,
             P::InteractionDelete,
             P::DashboardView, P::DashboardStatsAggregate,
@@ -210,7 +208,6 @@ final class RolePresets
             // revenue breakdown still needs transaction.view.all, which they lack.
             P::RevenueView,
             P::ProductView,
-            P::ResellerView,
             P::InteractionViewOwn, P::InteractionCreate, P::InteractionUpdate, P::InteractionDelete,
             P::DashboardView, P::DashboardStatsAggregate,
             // H2 (DESIGN_HIERARCHY.md DH5): sales may ASSIGN existing CS/maintenance

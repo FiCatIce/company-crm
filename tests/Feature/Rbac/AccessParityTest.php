@@ -3,7 +3,6 @@
 use App\Enums\PermissionName;
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -19,17 +18,16 @@ $resources = [
     'customer' => Customer::class,
     'transaction' => Transaction::class,
     'product' => Product::class,
-    'reseller' => Reseller::class,
 ];
 
-// Supervisor (Manager) may view/create/update customers, products and resellers.
+// Supervisor (Manager) may view/create/update customers and products.
 // H3: transactions are hierarchy-scoped now — the list (viewAny) + create stay
 // open, but class-level view/update resolve only against a concrete record (a
 // null-record check is false, exactly like any other scoped viewer).
 it('lets the manager view, create and update the non-scoped resources', function () {
     $user = userWithRole('supervisor');
 
-    foreach ([Customer::class, Product::class, Reseller::class] as $class) {
+    foreach ([Customer::class, Product::class] as $class) {
         expect($user->can('viewAny', $class))->toBeTrue()
             ->and($user->can('view', $class))->toBeTrue()
             ->and($user->can('create', $class))->toBeTrue()
@@ -58,11 +56,11 @@ it('denies admin every domain data action while keeping system access', function
         ->and($user->can(PermissionName::UserView->value))->toBeTrue();
 });
 
-// CS keeps customers/products/resellers but B3 removed ALL transaction access.
-it('lets cs manage customers, products and resellers but not transactions', function () {
+// CS keeps customers/products but B3 removed ALL transaction access.
+it('lets cs manage customers and products but not transactions', function () {
     $user = userWithRole('cs');
 
-    foreach ([Customer::class, Product::class, Reseller::class] as $class) {
+    foreach ([Customer::class, Product::class] as $class) {
         expect($user->can('viewAny', $class))->toBeTrue()
             ->and($user->can('create', $class))->toBeTrue()
             ->and($user->can('update', $class))->toBeTrue();
@@ -83,7 +81,7 @@ it('lets cs manage customers, products and resellers but not transactions', func
 it('lets the manager delete the non-scoped resources', function () {
     $user = userWithRole('supervisor');
 
-    foreach ([Customer::class, Product::class, Reseller::class] as $class) {
+    foreach ([Customer::class, Product::class] as $class) {
         expect($user->can('delete', $class))->toBeTrue();
     }
 

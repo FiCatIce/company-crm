@@ -43,12 +43,6 @@ enum PermissionName: string
     case ProductUpdate = 'product.update';
     case ProductDelete = 'product.delete';
 
-    // Reseller
-    case ResellerView = 'reseller.view';
-    case ResellerCreate = 'reseller.create';
-    case ResellerUpdate = 'reseller.update';
-    case ResellerDelete = 'reseller.delete';
-
     // Interaction / call log
     case InteractionViewAll = 'interaction.view.all';
     case InteractionViewOwn = 'interaction.view.own';
@@ -104,7 +98,6 @@ enum PermissionName: string
             self::TransactionViewAll, self::TransactionViewOwn, self::TransactionCreate,
             self::TransactionUpdate, self::TransactionDelete, self::RevenueView => 'Transaction',
             self::ProductView, self::ProductCreate, self::ProductUpdate, self::ProductDelete => 'Product',
-            self::ResellerView, self::ResellerCreate, self::ResellerUpdate, self::ResellerDelete => 'Reseller',
             self::InteractionViewAll, self::InteractionViewOwn, self::InteractionCreate,
             self::InteractionUpdate, self::InteractionDelete, self::InteractionManageAll => 'Interaction',
             self::DashboardView, self::DashboardStatsAggregate => 'Dashboard',
@@ -171,10 +164,6 @@ enum PermissionName: string
             self::ProductCreate => 'Tambah produk',
             self::ProductUpdate => 'Edit produk',
             self::ProductDelete => 'Hapus produk',
-            self::ResellerView => 'Lihat reseller',
-            self::ResellerCreate => 'Tambah reseller',
-            self::ResellerUpdate => 'Edit reseller',
-            self::ResellerDelete => 'Hapus reseller',
             self::InteractionViewAll => 'Lihat semua call log',
             self::InteractionViewOwn => 'Lihat call log sendiri',
             self::InteractionCreate => 'Log interaksi',
