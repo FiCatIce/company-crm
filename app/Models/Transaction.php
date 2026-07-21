@@ -21,13 +21,12 @@ class Transaction extends Model
     /** @use HasFactory<TransactionFactory> */
     use HasFactory;
 
-    protected $fillable = ['customer_id', 'product_id', 'reseller_id', 'purchased_at', 'amount'];
+    protected $fillable = ['customer_id', 'product_id', 'purchased_at', 'amount'];
 
     protected $casts = [
         'purchased_at' => 'date',
         'customer_id' => 'integer',
         'product_id' => 'integer',
-        'reseller_id' => 'integer',
         'amount' => 'decimal:2',
     ];
 
@@ -45,14 +44,6 @@ class Transaction extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
-    }
-
-    /**
-     * @return BelongsTo<Reseller, $this>
-     */
-    public function reseller(): BelongsTo
-    {
-        return $this->belongsTo(Reseller::class);
     }
 
     /**

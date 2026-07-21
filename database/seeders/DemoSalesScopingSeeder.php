@@ -7,7 +7,6 @@ use App\Enums\RoleName;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\RolePresets;
@@ -44,7 +43,6 @@ class DemoSalesScopingSeeder extends Seeder
     {
         $sales2 = $this->upsertSalesUser();
 
-        $reseller = Reseller::firstOrCreate(['name' => 'Demo Sales 2 — Toko Mitra']);
         $product = Product::query()->inRandomOrder()->first()
             ?? Product::factory()->create(['name' => 'Demo Sales 2 Product', 'warranty_months' => 12]);
 
@@ -55,7 +53,6 @@ class DemoSalesScopingSeeder extends Seeder
             $customer = Customer::factory()
                 ->createdBy($sales2)
                 ->create([
-                    'reseller_id' => $reseller->id,
                     'assigned_to' => null, // visible to sales2 purely via created_by
                     'status' => $index === 0 ? CustomerStatus::Lead : CustomerStatus::Active,
                 ]);

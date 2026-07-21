@@ -129,7 +129,6 @@ it('rejects handing a customer to an agent outside the actor hierarchy', functio
     $this->actingAs($rep)
         ->from(route('customers.edit', $customer))
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
             'assigned_to' => $outsider->id,
         ])
@@ -146,7 +145,6 @@ it('allows handing a customer to a teammate', function () {
     $this->actingAs($rep)
         ->from(route('customers.edit', $customer))
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
             'assigned_to' => $mate->id,
         ])

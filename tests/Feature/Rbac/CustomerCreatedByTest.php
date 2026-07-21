@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Customer;
-use App\Models\Reseller;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 
@@ -9,11 +8,9 @@ beforeEach(fn () => $this->seed(RoleSeeder::class));
 
 it('stamps created_by with the authenticated user on store', function () {
     $actor = userWithRole('cs');
-    $reseller = Reseller::factory()->create();
 
     $this->actingAs($actor)
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Customer Baru',
         ])
         ->assertRedirect(route('customers.index'));
@@ -24,11 +21,9 @@ it('stamps created_by with the authenticated user on store', function () {
 it('ignores a forged created_by in the request payload', function () {
     $actor = userWithRole('supervisor');
     $victim = User::factory()->create();
-    $reseller = Reseller::factory()->create();
 
     $this->actingAs($actor)
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Tidak Bisa Dipalsukan',
             'created_by' => $victim->id, // attacker-supplied — must be ignored
         ])

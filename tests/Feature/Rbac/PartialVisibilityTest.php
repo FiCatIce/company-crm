@@ -3,7 +3,6 @@
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -116,7 +115,6 @@ it('lets the money-less roles see call logs authored by other agents', function 
 // ---------------------------------------------------------------------------
 
 it('lets cs create and update customers', function () {
-    $reseller = Reseller::factory()->create();
     // The SAME agent throughout: each userWithRole() call mints a new user, and
     // post-H7 a CS agent may only edit customers it can see — its own entries
     // included. Two different agents would (correctly) fail the second write.
@@ -124,7 +122,6 @@ it('lets cs create and update customers', function () {
 
     $this->actingAs($cs)
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Pelanggan CS',
         ])
         ->assertRedirect(route('customers.index'));
@@ -133,7 +130,6 @@ it('lets cs create and update customers', function () {
 
     $this->actingAs($cs)
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $reseller->id,
             'name' => 'Pelanggan CS (diperbarui)',
         ])
         ->assertRedirect(route('customers.index'));
@@ -142,8 +138,7 @@ it('lets cs create and update customers', function () {
 });
 
 it('keeps maintenance read-only on customers', function () {
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $customer = Customer::factory()->create();
     // H3: maintenance reaches the customer via assignment to its owning sales.
     [$maintenance] = supportAssignedToOwnerOf($customer, 'maintenance');
 
@@ -154,11 +149,11 @@ it('keeps maintenance read-only on customers', function () {
 
     // ...but cannot create, update, or delete.
     $this->actingAs($maintenance)
-        ->post(route('customers.store'), ['reseller_id' => $reseller->id, 'name' => 'Nope'])
+        ->post(route('customers.store'), ['name' => 'Nope'])
         ->assertForbidden();
 
     $this->actingAs($maintenance)
-        ->put(route('customers.update', $customer), ['reseller_id' => $reseller->id, 'name' => 'Nope'])
+        ->put(route('customers.update', $customer), ['name' => 'Nope'])
         ->assertForbidden();
 
     $this->actingAs($maintenance)

@@ -6,7 +6,6 @@ use App\Enums\InteractionSource;
 use App\Enums\InteractionType;
 use App\Models\Customer;
 use App\Models\Interaction;
-use App\Models\Reseller;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
@@ -112,7 +111,6 @@ it('auto-creates a guarded lead for an answered call from an unknown number', fu
     $customer = Customer::query()->where('phone_normalized', '+6282298765432')->sole();
     expect($customer->status)->toBe(CustomerStatus::Lead)
         ->and($customer->source)->toBe(CustomerSource::Cti)
-        ->and($customer->reseller_id)->toBeNull()
         ->and($customer->name)->toContain('Penelepon')
         ->and($customer->interactions()->count())->toBe(1);
 });
@@ -195,20 +193,14 @@ it('rejects an invalid payload (422)', function (array $overrides) {
     'bad outcome' => [['outcome' => 'exploded']],
 ]);
 
-it('allows customers with and without a reseller', function () {
-    // Legacy row keeps its reseller.
-    $withReseller = Customer::factory()->create();
-    expect($withReseller->reseller_id)->not->toBeNull();
-
-    // A reseller-less customer (CTI lead shape) is now valid.
+it('creates a reseller-less lead customer (CTI shape)', function () {
     $lead = Customer::create([
-        'reseller_id' => null,
         'name' => 'Penelepon +6282298765432',
         'phone' => '082298765432',
         'status' => CustomerStatus::Lead,
         'source' => CustomerSource::Cti,
     ]);
 
-    expect($lead->fresh()->reseller_id)->toBeNull()
-        ->and(Reseller::count())->toBe(1);
+    expect($lead->fresh()->status)->toBe(CustomerStatus::Lead)
+        ->and($lead->fresh()->source)->toBe(CustomerSource::Cti);
 });

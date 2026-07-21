@@ -69,7 +69,6 @@ class IngestCall
                             'phone' => $rawNumber,
                             'status' => CustomerStatus::Lead,
                             'source' => CustomerSource::Cti,
-                            'reseller_id' => null,
                             'assigned_to' => $agentId,
                         ],
                     );

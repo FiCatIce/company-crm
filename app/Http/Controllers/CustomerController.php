@@ -299,6 +299,10 @@ class CustomerController extends Controller
                 'status_label' => $customer->status->label(),
                 'source' => $customer->source?->value,
                 'source_label' => $customer->source?->label(),
+                // Historical only (L2-D): the distributor this account originally
+                // came through, archived as plain text before the reseller entity
+                // was dropped. Null for records that never had one.
+                'reseller_name_legacy' => $customer->reseller_name_legacy,
                 'owner' => $customer->owner
                     ? ['id' => $customer->owner->id, 'name' => $customer->owner->name]
                     : null,

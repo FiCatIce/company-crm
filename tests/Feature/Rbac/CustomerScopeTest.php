@@ -90,7 +90,6 @@ it('forbids a sales user from updating another rep\'s customer (write IDOR)', fu
     ['a' => $a, 'created' => $created, 'theirs' => $theirs] = scopedBooks();
 
     $payload = fn (Customer $c) => [
-        'reseller_id' => $c->reseller_id,
         'name' => 'Diedit',
     ];
 

@@ -7,7 +7,6 @@ use App\Enums\RoleName;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\RolePresets;
@@ -17,8 +16,10 @@ use Illuminate\Support\Collection;
 class DemoDataSeeder extends Seeder
 {
     /**
-     * Seed realistic demo data: staff agents, a reseller tree, a product catalog,
-     * customers per leaf reseller, their purchases, and interaction history.
+     * Seed realistic demo data: staff agents, a product catalog, a pool of
+     * customers attributed to agents, their purchases, and interaction history.
+     * (The reseller tree was removed in L2-D — ownership now flows through
+     * assigned_to/created_by, not a distributor hierarchy.)
      */
     public function run(): void
     {
@@ -28,35 +29,33 @@ class DemoDataSeeder extends Seeder
 
         $products = $this->seedProducts();
         $agents = $this->seedAgents();
-        $leafResellers = $this->seedResellerTree();
 
-        $leafResellers->each(function (Reseller $reseller) use ($products, $agents) {
-            Customer::factory()
-                ->count(fake()->numberBetween(3, 6))
-                ->create([
-                    'reseller_id' => $reseller->id,
-                    'assigned_to' => fake()->boolean(65) ? $agents->random()->id : null,
-                    'status' => fake()->randomElement([
-                        CustomerStatus::Active, CustomerStatus::Active, CustomerStatus::Active,
-                        CustomerStatus::Lead, CustomerStatus::Inactive, CustomerStatus::Churned,
-                    ]),
-                ])
-                ->each(function (Customer $customer) use ($products, $agents) {
-                    foreach (range(1, fake()->numberBetween(1, 3)) as $ignored) {
-                        Transaction::factory()
-                            ->forCustomer($customer)
-                            ->create(['product_id' => $products->random()->id]);
-                    }
+        Customer::factory()
+            ->count(40)
+            ->create([
+                // Closure attributes are evaluated per row, so ownership + status
+                // vary across the pool instead of being stamped identically.
+                'assigned_to' => fn () => fake()->boolean(65) ? $agents->random()->id : null,
+                'status' => fn () => fake()->randomElement([
+                    CustomerStatus::Active, CustomerStatus::Active, CustomerStatus::Active,
+                    CustomerStatus::Lead, CustomerStatus::Inactive, CustomerStatus::Churned,
+                ]),
+            ])
+            ->each(function (Customer $customer) use ($products, $agents) {
+                foreach (range(1, fake()->numberBetween(1, 3)) as $ignored) {
+                    Transaction::factory()
+                        ->forCustomer($customer)
+                        ->create(['product_id' => $products->random()->id]);
+                }
 
-                    $interactionCount = fake()->numberBetween(0, 8);
+                $interactionCount = fake()->numberBetween(0, 8);
 
-                    for ($i = 0; $i < $interactionCount; $i++) {
-                        Interaction::factory()
-                            ->forCustomer($customer)
-                            ->create(['user_id' => $agents->random()->id]);
-                    }
-                });
-        });
+                for ($i = 0; $i < $interactionCount; $i++) {
+                    Interaction::factory()
+                        ->forCustomer($customer)
+                        ->create(['user_id' => $agents->random()->id]);
+                }
+            });
     }
 
     /**
@@ -117,30 +116,5 @@ class DemoDataSeeder extends Seeder
         ];
 
         return collect($catalog)->map(fn (array $product) => Product::factory()->create($product));
-    }
-
-    /**
-     * Seed a three-level reseller tree (national -> regional -> city).
-     *
-     * @return Collection<int, Reseller> the leaf (city-level) resellers
-     */
-    protected function seedResellerTree(): Collection
-    {
-        $leaves = collect();
-
-        Reseller::factory()->count(2)->create()->each(function (Reseller $national) use ($leaves) {
-            Reseller::factory()
-                ->count(fake()->numberBetween(2, 3))
-                ->create(['parent_id' => $national->id])
-                ->each(function (Reseller $regional) use ($leaves) {
-                    $cities = Reseller::factory()
-                        ->count(fake()->numberBetween(1, 3))
-                        ->create(['parent_id' => $regional->id]);
-
-                    $leaves->push(...$cities);
-                });
-        });
-
-        return $leaves;
     }
 }

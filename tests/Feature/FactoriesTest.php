@@ -1,24 +1,7 @@
 <?php
 
-use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
-
-it('creates a top-level reseller with no parent by default', function () {
-    $reseller = Reseller::factory()->create();
-
-    expect($reseller->parent_id)->toBeNull()
-        ->and($reseller->exists)->toBeTrue();
-});
-
-it('builds a reseller tree via the childOf state', function () {
-    $parent = Reseller::factory()->create();
-    $child = Reseller::factory()->childOf($parent)->create();
-
-    expect($child->parent->is($parent))->toBeTrue()
-        ->and($parent->children->pluck('id'))->toContain($child->id);
-});
 
 it('creates a product with a non-negative warranty period', function () {
     $product = Product::factory()->create();
@@ -26,17 +9,10 @@ it('creates a product with a non-negative warranty period', function () {
     expect($product->warranty_months)->toBeGreaterThanOrEqual(0);
 });
 
-it('creates a customer attached to a reseller', function () {
-    $customer = Customer::factory()->create();
-
-    expect($customer->reseller)->not->toBeNull()
-        ->and($customer->reseller)->toBeInstanceOf(Reseller::class);
-});
-
-it('creates a transaction whose reseller matches its customer', function () {
+it('creates a transaction linked to a customer and product', function () {
     $transaction = Transaction::factory()->create();
 
-    expect($transaction->reseller_id)->toBe($transaction->customer->reseller_id)
+    expect($transaction->customer)->not->toBeNull()
         ->and($transaction->product)->not->toBeNull();
 });
 

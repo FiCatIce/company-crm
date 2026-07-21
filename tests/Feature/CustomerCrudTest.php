@@ -3,7 +3,6 @@
 use App\Enums\CustomerSource;
 use App\Enums\CustomerStatus;
 use App\Models\Customer;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -59,34 +58,15 @@ it('stores a customer without a reseller (L2-A stop-use)', function () {
     $response->assertRedirect(route('customers.index'))
         ->assertSessionHas('success');
 
-    // reseller_id is no longer set on new records — it lands null.
     $this->assertDatabaseHas('customers', [
         'name' => 'Budi Santoso',
-        'reseller_id' => null,
         'email' => 'budi@example.com',
     ]);
 });
 
-it('ignores a submitted reseller_id (the stale field is a no-op until L2-B)', function () {
-    $reseller = Reseller::factory()->create();
-
-    $this->actingAs(userWithRole('supervisor'))
-        ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id, // still on the form until L2-B removes it
-            'name' => 'Ignored Reseller',
-        ])
-        ->assertRedirect(route('customers.index'));
-
-    // Dropped from validated() — the value never reaches the model.
-    $this->assertDatabaseHas('customers', ['name' => 'Ignored Reseller', 'reseller_id' => null]);
-});
-
 it('accepts null contact fields when storing', function () {
-    $reseller = Reseller::factory()->create();
-
     $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Tanpa Kontak',
             'phone' => null,
             'email' => null,
@@ -109,11 +89,8 @@ it('validates required and typed fields when storing', function () {
 });
 
 it('forbids users without a role from storing', function () {
-    $reseller = Reseller::factory()->create();
-
     $this->actingAs(User::factory()->create())
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'X',
         ])
         ->assertForbidden();
@@ -153,32 +130,12 @@ it('updates a customer and redirects with a success flash', function () {
     ]);
 });
 
-it('leaves an existing reseller_id untouched on update (data intact)', function () {
-    // L2-A does not migrate data: a customer that still carries a reseller keeps it
-    // through an ordinary edit, since reseller_id simply is not in the payload.
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
-
-    $this->actingAs(userWithGlobalView())
-        ->put(route('customers.update', $customer), [
-            'name' => 'Nama Baru',
-        ])
-        ->assertRedirect(route('customers.index'));
-
-    $this->assertDatabaseHas('customers', [
-        'id' => $customer->id,
-        'name' => 'Nama Baru',
-        'reseller_id' => $reseller->id,
-    ]);
-});
-
 it('validates when updating', function () {
     $customer = Customer::factory()->create();
 
     $this->actingAs(userWithGlobalView())
         ->from(route('customers.edit', $customer))
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $customer->reseller_id,
             'name' => '',
         ])
         ->assertSessionHasErrors('name');
@@ -256,11 +213,8 @@ it('paginates the index at 10 per page', function () {
 // ---------------------------------------------------------------------------
 
 it('stores the lifecycle status and source', function () {
-    $reseller = Reseller::factory()->create();
-
     $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Prospek Baru',
             'status' => CustomerStatus::Lead->value,
             'source' => CustomerSource::Referral->value,
@@ -275,11 +229,8 @@ it('stores the lifecycle status and source', function () {
 });
 
 it('defaults status to active when omitted', function () {
-    $reseller = Reseller::factory()->create();
-
     $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Tanpa Status',
         ])
         ->assertRedirect(route('customers.index'));
@@ -292,12 +243,9 @@ it('defaults status to active when omitted', function () {
 });
 
 it('rejects an invalid status or source when storing', function () {
-    $reseller = Reseller::factory()->create();
-
     $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.create'))
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Bad Enums',
             'status' => 'vip',
             'source' => 'carrier-pigeon',
@@ -313,7 +261,6 @@ it('updates the lifecycle status and source', function () {
 
     $this->actingAs(userWithGlobalView())
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
             'status' => CustomerStatus::Inactive->value,
             'source' => CustomerSource::Online->value,
@@ -394,12 +341,10 @@ it('forbids a roleless user from quick-changing status', function () {
 // ---------------------------------------------------------------------------
 
 it('stores the assigned owner', function () {
-    $reseller = Reseller::factory()->create();
     $agent = User::factory()->create();
 
     $this->actingAs(userWithGlobalView())
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Punya Agen',
             'assigned_to' => $agent->id,
         ])
@@ -409,11 +354,8 @@ it('stores the assigned owner', function () {
 });
 
 it('stores an unassigned customer (null owner)', function () {
-    $reseller = Reseller::factory()->create();
-
     $this->actingAs(userWithRole('supervisor'))
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Tanpa Owner',
             'assigned_to' => null,
         ])
@@ -423,12 +365,9 @@ it('stores an unassigned customer (null owner)', function () {
 });
 
 it('rejects a non-existent owner when storing', function () {
-    $reseller = Reseller::factory()->create();
-
     $this->actingAs(userWithRole('supervisor'))
         ->from(route('customers.create'))
         ->post(route('customers.store'), [
-            'reseller_id' => $reseller->id,
             'name' => 'Bad Owner',
             'assigned_to' => 999999,
         ])
@@ -441,7 +380,6 @@ it('updates and clears the assigned owner', function () {
 
     $this->actingAs(userWithGlobalView())
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
             'assigned_to' => null,
         ])
@@ -559,7 +497,6 @@ it('keeps access org-wide regardless of assignment', function () {
     // ...and still edit the customer — assignment is attribution, not a lock.
     $this->actingAs($nonOwner)
         ->put(route('customers.update', $customer), [
-            'reseller_id' => $customer->reseller_id,
             'name' => 'Diedit Non-Owner',
         ])
         ->assertRedirect(route('customers.index'));

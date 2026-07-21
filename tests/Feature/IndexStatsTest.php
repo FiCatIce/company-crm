@@ -2,7 +2,6 @@
 
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use Database\Seeders\RoleSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -19,24 +18,19 @@ beforeEach(function () {
 });
 
 it('exposes customer summary stats independent of the search filter', function () {
-    $resellerA = Reseller::factory()->create();
-    Reseller::factory()->count(2)->create(); // three resellers total
-
-    $customers = Customer::factory()->count(3)->create(['reseller_id' => $resellerA->id]);
+    $customers = Customer::factory()->count(3)->create();
 
     $product = Product::factory()->create(['warranty_months' => 12]);
 
     // customer[0]: two active-warranty transactions — must still count once.
     Transaction::factory()->count(2)->create([
         'customer_id' => $customers[0]->id,
-        'reseller_id' => $resellerA->id,
         'product_id' => $product->id,
         'purchased_at' => now()->subMonths(2),
     ]);
     // customer[1]: warranty already expired.
     Transaction::factory()->create([
         'customer_id' => $customers[1]->id,
-        'reseller_id' => $resellerA->id,
         'product_id' => $product->id,
         'purchased_at' => now()->subYears(2),
     ]);
@@ -69,8 +63,7 @@ it('exposes product summary stats including average warranty', function () {
 // L2-C: the reseller index (route + controller + stats) is gone — no test here.
 
 it('exposes transaction summary stats with an active/expired warranty split', function () {
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $customer = Customer::factory()->create();
 
     $warrantied = Product::factory()->create(['warranty_months' => 12]);
     $noWarranty = Product::factory()->create(['warranty_months' => 0]);
@@ -78,21 +71,18 @@ it('exposes transaction summary stats with an active/expired warranty split', fu
     // Active warranty.
     Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $warrantied->id,
         'purchased_at' => now()->subMonths(3),
     ]);
     // Expired warranty (had one, now past).
     Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $warrantied->id,
         'purchased_at' => now()->subYears(2),
     ]);
     // Product sold without warranty — neither active nor expired.
     Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $noWarranty->id,
         'purchased_at' => now()->subYear(),
     ]);

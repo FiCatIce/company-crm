@@ -3,7 +3,6 @@
 use App\Enums\CustomerStatus;
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -61,7 +60,6 @@ it('exposes an active warranty status from the accessors', function () {
 
     Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $customer->reseller_id,
         'product_id' => $product->id,
         'purchased_at' => $purchased->toDateString(),
     ]);
@@ -84,7 +82,6 @@ it('exposes an expired warranty status from the accessors', function () {
 
     Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $customer->reseller_id,
         'product_id' => $product->id,
         'purchased_at' => now()->subYear()->toDateString(),
     ]);
@@ -123,8 +120,7 @@ it('stores a transaction and redirects with a success flash', function () {
         ->assertRedirect(route('transactions.index'))
         ->assertSessionHas('success');
 
-    // Stored without a reseller (L2-A) — the column lands null on new rows.
-    $this->assertDatabaseHas('transactions', [...$links, 'reseller_id' => null]);
+    $this->assertDatabaseHas('transactions', $links);
 });
 
 it('promotes a lead customer to active on their first transaction', function () {
@@ -221,7 +217,6 @@ it('updates a transaction and redirects with a success flash', function () {
         ->put(route('transactions.update', $transaction), [
             'customer_id' => $transaction->customer_id,
             'product_id' => $newProduct->id,
-            'reseller_id' => $transaction->reseller_id,
             'purchased_at' => now()->subMonth()->toDateString(),
         ])
         ->assertRedirect(route('transactions.index'))
@@ -241,7 +236,6 @@ it('validates when updating', function () {
         ->put(route('transactions.update', $transaction), [
             'customer_id' => $transaction->customer_id,
             'product_id' => $transaction->product_id,
-            'reseller_id' => $transaction->reseller_id,
             'purchased_at' => '',
         ])
         ->assertSessionHasErrors('purchased_at');
@@ -278,8 +272,8 @@ it('forbids cs from deleting a transaction', function () {
 it('filters the index by customer name', function () {
     $match = Customer::factory()->create(['name' => 'Zebra Buyer']);
     $other = Customer::factory()->create(['name' => 'Common Buyer']);
-    Transaction::factory()->create(['customer_id' => $match->id, 'reseller_id' => $match->reseller_id]);
-    Transaction::factory()->create(['customer_id' => $other->id, 'reseller_id' => $other->reseller_id]);
+    Transaction::factory()->create(['customer_id' => $match->id]);
+    Transaction::factory()->create(['customer_id' => $other->id]);
 
     $this->actingAs(userWithGlobalView())
         ->get(route('transactions.index', ['search' => 'Zebra']))
@@ -355,7 +349,6 @@ it('updates and clears the amount', function () {
         ->put(route('transactions.update', $transaction), [
             'customer_id' => $transaction->customer_id,
             'product_id' => $transaction->product_id,
-            'reseller_id' => $transaction->reseller_id,
             'purchased_at' => $transaction->purchased_at->toDateString(),
             'amount' => null,
         ])

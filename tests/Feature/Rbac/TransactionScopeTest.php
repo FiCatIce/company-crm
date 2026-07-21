@@ -61,7 +61,6 @@ it('forbids a sales user from editing another rep\'s transaction (write IDOR)', 
         ->put(route('transactions.update', $txB), [
             'customer_id' => $custB->id,
             'product_id' => $txB->product_id,
-            'reseller_id' => $txB->reseller_id,
             'purchased_at' => now()->toDateString(),
         ])
         ->assertForbidden();
@@ -71,7 +70,6 @@ it('forbids a sales user from editing another rep\'s transaction (write IDOR)', 
         ->put(route('transactions.update', $txA), [
             'customer_id' => $txA->customer_id,
             'product_id' => $txA->product_id,
-            'reseller_id' => $txA->reseller_id,
             'purchased_at' => now()->toDateString(),
         ])
         ->assertRedirect(route('transactions.index'));
@@ -87,7 +85,6 @@ it('lets a sales user create a transaction only for their own customer', functio
         ->post(route('transactions.store'), [
             'customer_id' => $custB->id,
             'product_id' => $product->id,
-            'reseller_id' => $custB->reseller_id,
             'purchased_at' => now()->toDateString(),
         ])
         ->assertSessionHasErrors('customer_id');
@@ -97,7 +94,6 @@ it('lets a sales user create a transaction only for their own customer', functio
         ->post(route('transactions.store'), [
             'customer_id' => $custA->id,
             'product_id' => $product->id,
-            'reseller_id' => $custA->reseller_id,
             'purchased_at' => now()->toDateString(),
             'amount' => 1_000_000,
         ])

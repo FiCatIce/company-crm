@@ -7,7 +7,6 @@ use App\Enums\InteractionType;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use Database\Seeders\RoleSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -25,26 +24,22 @@ beforeEach(function () {
 });
 
 it('counts new customers and transactions in the current month', function () {
-    $reseller = Reseller::factory()->create();
     $product = Product::factory()->create();
 
     // Two customers created this month, one created last month.
-    $current = Customer::factory()->count(2)->create(['reseller_id' => $reseller->id]);
+    $current = Customer::factory()->count(2)->create();
     Customer::factory()->create([
-        'reseller_id' => $reseller->id,
         'created_at' => now()->subMonthNoOverflow(),
     ]);
 
     // Two transactions purchased this month, one purchased last month.
     Transaction::factory()->count(2)->create([
         'customer_id' => $current[0]->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'purchased_at' => now(),
     ]);
     Transaction::factory()->create([
         'customer_id' => $current[0]->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'purchased_at' => now()->subMonthNoOverflow(),
     ]);
@@ -59,15 +54,13 @@ it('counts new customers and transactions in the current month', function () {
 });
 
 it('splits transactions into active, expired, and no-warranty buckets', function () {
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $customer = Customer::factory()->create();
 
     $warrantied = Product::factory()->create(['warranty_months' => 12]);
     $noWarranty = Product::factory()->create(['warranty_months' => 0]);
 
     $make = fn (Product $product, $purchasedAt) => Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'purchased_at' => $purchasedAt,
     ]);
@@ -86,15 +79,13 @@ it('splits transactions into active, expired, and no-warranty buckets', function
 });
 
 it('lists the six most recent transactions, newest first', function () {
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $customer = Customer::factory()->create();
     $product = Product::factory()->create(['warranty_months' => 12]);
 
     // Seven transactions on ascending dates; the newest must lead and only six show.
     foreach (range(1, 7) as $i) {
         Transaction::factory()->create([
             'customer_id' => $customer->id,
-            'reseller_id' => $reseller->id,
             'product_id' => $product->id,
             'purchased_at' => now()->subDays(10 - $i)->toDateString(),
         ]);
@@ -116,24 +107,23 @@ it('lists the six most recent transactions, newest first', function () {
 });
 
 it('surfaces active warranties expiring within 30 days, soonest first', function () {
-    $reseller = Reseller::factory()->create();
     $product = Product::factory()->create(['warranty_months' => 12]);
 
-    $soon = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Segera Berakhir']);
-    $later = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Menyusul']);
-    $far = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Masih Lama']);
+    $soon = Customer::factory()->create(['name' => 'Segera Berakhir']);
+    $later = Customer::factory()->create(['name' => 'Menyusul']);
+    $far = Customer::factory()->create(['name' => 'Masih Lama']);
 
     // 12-month warranty expires ~= purchase + 12 months.
     Transaction::factory()->create([ // expires in ~6 days
-        'customer_id' => $soon->id, 'reseller_id' => $reseller->id, 'product_id' => $product->id,
+        'customer_id' => $soon->id, 'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12)->addDays(6),
     ]);
     Transaction::factory()->create([ // expires in ~25 days
-        'customer_id' => $later->id, 'reseller_id' => $reseller->id, 'product_id' => $product->id,
+        'customer_id' => $later->id, 'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12)->addDays(25),
     ]);
     Transaction::factory()->create([ // expires in ~9 months — excluded
-        'customer_id' => $far->id, 'reseller_id' => $reseller->id, 'product_id' => $product->id,
+        'customer_id' => $far->id, 'product_id' => $product->id,
         'purchased_at' => now()->subMonths(3),
     ]);
 
@@ -172,14 +162,12 @@ it('ranks the top sales by customer count, only actual reps', function () {
 });
 
 it('keeps a warranty active through the end of its expiry day (endOfDay boundary)', function () {
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $customer = Customer::factory()->create();
     $product = Product::factory()->create(['warranty_months' => 12]);
 
     // Purchased exactly 12 months ago → the 12-month warranty expires TODAY.
     $expiresToday = Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12),
     ]);
@@ -187,7 +175,6 @@ it('keeps a warranty active through the end of its expiry day (endOfDay boundary
     // Purchased a year and a day ago → expired yesterday.
     $expiredYesterday = Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12)->subDay(),
     ]);
@@ -198,13 +185,11 @@ it('keeps a warranty active through the end of its expiry day (endOfDay boundary
 });
 
 it('sums revenue all-time and per month, ignoring null amounts', function () {
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id]);
+    $customer = Customer::factory()->create();
     $product = Product::factory()->create();
 
     $tx = fn ($amount, $purchasedAt) => Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'amount' => $amount,
         'purchased_at' => $purchasedAt,
@@ -249,16 +234,14 @@ it('ranks the top sales by revenue, excluding those with none', function () {
 });
 
 it('lists recent calls (any source) newest first, calls only, flagging CTI leads', function () {
-    $reseller = Reseller::factory()->create();
     $agent = userWithRole('cs');
 
     $lead = Customer::factory()->create([
-        'reseller_id' => null,
         'name' => 'Penelepon Baru',
         'status' => CustomerStatus::Lead,
         'source' => CustomerSource::Cti,
     ]);
-    $known = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Customer Lama']);
+    $known = Customer::factory()->create(['name' => 'Customer Lama']);
 
     // A non-call interaction must be excluded from the feed.
     Interaction::factory()->forCustomer($known)->create([
@@ -308,14 +291,12 @@ it('caps the recent calls feed at ten', function () {
 });
 
 it('counts a warranty expiring today as active and surfaces it in expiringSoon with zero days left', function () {
-    $reseller = Reseller::factory()->create();
-    $customer = Customer::factory()->create(['reseller_id' => $reseller->id, 'name' => 'Kadaluarsa Hari Ini']);
+    $customer = Customer::factory()->create(['name' => 'Kadaluarsa Hari Ini']);
     $product = Product::factory()->create(['warranty_months' => 12]);
 
     // Expires exactly today (endOfDay boundary) → must bucket as active, not expired.
     Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12),
     ]);
@@ -323,7 +304,6 @@ it('counts a warranty expiring today as active and surfaces it in expiringSoon w
     // Expired yesterday → must bucket as expired and stay out of the watchlist.
     Transaction::factory()->create([
         'customer_id' => $customer->id,
-        'reseller_id' => $reseller->id,
         'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12)->subDay(),
     ]);

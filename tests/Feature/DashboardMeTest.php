@@ -3,7 +3,6 @@
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -63,26 +62,25 @@ it('counts only my interactions dated today', function () {
 
 it('counts my expiring warranties from owned customers only, reusing the 30-day rule', function () {
     $me = userWithRole('supervisor');
-    $reseller = Reseller::factory()->create();
     $product = Product::factory()->create(['warranty_months' => 12]);
 
-    $mineSoon = Customer::factory()->create(['assigned_to' => $me->id, 'reseller_id' => $reseller->id]);
-    $mineFar = Customer::factory()->create(['assigned_to' => $me->id, 'reseller_id' => $reseller->id]);
-    $othersSoon = Customer::factory()->create(['assigned_to' => User::factory()->create()->id, 'reseller_id' => $reseller->id]);
+    $mineSoon = Customer::factory()->create(['assigned_to' => $me->id]);
+    $mineFar = Customer::factory()->create(['assigned_to' => $me->id]);
+    $othersSoon = Customer::factory()->create(['assigned_to' => User::factory()->create()->id]);
 
     // Mine, expiring in ~6 days → counts.
     Transaction::factory()->create([
-        'customer_id' => $mineSoon->id, 'reseller_id' => $reseller->id, 'product_id' => $product->id,
+        'customer_id' => $mineSoon->id, 'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12)->addDays(6),
     ]);
     // Mine, expiring in ~9 months → excluded (beyond 30 days).
     Transaction::factory()->create([
-        'customer_id' => $mineFar->id, 'reseller_id' => $reseller->id, 'product_id' => $product->id,
+        'customer_id' => $mineFar->id, 'product_id' => $product->id,
         'purchased_at' => now()->subMonths(3),
     ]);
     // Another owner's, expiring soon → excluded (not mine).
     Transaction::factory()->create([
-        'customer_id' => $othersSoon->id, 'reseller_id' => $reseller->id, 'product_id' => $product->id,
+        'customer_id' => $othersSoon->id, 'product_id' => $product->id,
         'purchased_at' => now()->subMonths(12)->addDays(6),
     ]);
 

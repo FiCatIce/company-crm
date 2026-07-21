@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Enums\CustomerSource;
 use App\Enums\CustomerStatus;
 use App\Models\Customer;
-use App\Models\Reseller;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -22,7 +21,6 @@ class CustomerFactory extends Factory
     public function definition(): array
     {
         return [
-            'reseller_id' => Reseller::factory(),
             'assigned_to' => null,
             'name' => fake()->name(),
             // Realistic Indonesian mobile so the phone_normalized mutator resolves.

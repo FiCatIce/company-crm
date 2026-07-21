@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
- * @property int|null $reseller_id
+ * @property string|null $reseller_name_legacy
  * @property int|null $assigned_to
  * @property int|null $created_by
  * @property string $name
@@ -36,10 +36,9 @@ class Customer extends Model
     // created_by is deliberately NOT fillable: it is the immutable "who entered
     // this customer" attribution, set server-side on create so it cannot be
     // forged via mass assignment (DESIGN_RBAC.md §4.1).
-    protected $fillable = ['reseller_id', 'assigned_to', 'name', 'phone', 'email', 'address', 'status', 'source'];
+    protected $fillable = ['assigned_to', 'name', 'phone', 'email', 'address', 'status', 'source'];
 
     protected $casts = [
-        'reseller_id' => 'integer',
         'assigned_to' => 'integer',
         'created_by' => 'integer',
         'status' => CustomerStatus::class,
@@ -60,14 +59,6 @@ class Customer extends Model
                 'phone_normalized' => PhoneNormalizer::e164($value),
             ],
         );
-    }
-
-    /**
-     * @return BelongsTo<Reseller, $this>
-     */
-    public function reseller(): BelongsTo
-    {
-        return $this->belongsTo(Reseller::class);
     }
 
     /**

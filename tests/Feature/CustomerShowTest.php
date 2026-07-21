@@ -5,7 +5,6 @@ use App\Enums\InteractionType;
 use App\Models\Customer;
 use App\Models\Interaction;
 use App\Models\Product;
-use App\Models\Reseller;
 use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -18,12 +17,13 @@ beforeEach(function () {
 
 it('renders the customer 360 page with the expected props', function () {
     $owner = User::factory()->create(['name' => 'Agen Satu']);
-    $reseller = Reseller::factory()->create(['name' => 'Reseller A']);
     $customer = Customer::factory()->create([
-        'reseller_id' => $reseller->id,
         'assigned_to' => $owner->id,
         'name' => 'Budi',
     ]);
+    // L2-D: the archived distributor name is surfaced as read-only history.
+    \DB::table('customers')->where('id', $customer->id)
+        ->update(['reseller_name_legacy' => 'Distributor Lama']);
 
     Interaction::factory()->forCustomer($customer)->count(3)->create();
 
@@ -35,6 +35,7 @@ it('renders the customer 360 page with the expected props', function () {
             ->where('customer.id', $customer->id)
             ->where('customer.name', 'Budi')
             ->where('customer.owner.name', 'Agen Satu')
+            ->where('customer.reseller_name_legacy', 'Distributor Lama')
             ->where('stats.interactionsCount', 3)
             ->has('timeline.data', 3)
             ->has('can', fn (Assert $can) => $can->hasAll(['update', 'delete', 'logInteraction'])));

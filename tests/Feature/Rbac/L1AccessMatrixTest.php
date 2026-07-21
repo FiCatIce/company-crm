@@ -109,7 +109,6 @@ it('refuses every role a WRITE on another team customer', function (string $role
 
     $this->actingAs($actor)
         ->put("/customers/{$foreign->id}", [
-            'reseller_id' => $foreign->reseller_id,
             'name' => 'HACKED',
         ])->assertForbidden();
 
@@ -175,7 +174,6 @@ it('refuses handing a customer to another team, on both write paths', function (
 
     $this->actingAs($manager)
         ->put("/customers/{$customer->id}", [
-            'reseller_id' => $customer->reseller_id,
             'name' => $customer->name,
             'assigned_to' => $outsider->id,
         ])->assertSessionHasErrors('assigned_to');

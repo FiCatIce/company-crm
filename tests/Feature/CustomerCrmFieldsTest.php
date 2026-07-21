@@ -25,7 +25,6 @@ it('casts status/source to enums and defaults status to active', function () {
 
     // Column default applies when not provided (raw insert, bypassing the model).
     $id = DB::table('customers')->insertGetId([
-        'reseller_id' => Customer::factory()->create()->reseller_id,
         'name' => 'Tanpa Status',
     ]);
 

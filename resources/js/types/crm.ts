@@ -50,6 +50,8 @@ export type CustomerDetail = {
     status_label: string;
     source: string | null;
     source_label: string | null;
+    // Historical distributor name (L2-D archive); null when the account never had one.
+    reseller_name_legacy: string | null;
     owner: { id: number; name: string } | null;
     created_at: string | null;
 };
