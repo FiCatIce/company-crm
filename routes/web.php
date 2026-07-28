@@ -35,7 +35,7 @@ Route::middleware(['auth'])->group(function () {
     // Service tickets (DESIGN_MAINTENANCE.md M2) — scoped CRUD; status moves via
     // the explicit transition endpoints below, never through update.
     Route::resource('service-tickets', ServiceTicketController::class)
-        ->only(['index', 'show', 'store', 'update', 'destroy']);
+        ->only(['index', 'create', 'show', 'store', 'update', 'destroy']);
     Route::post('service-tickets/{service_ticket}/claim', [ServiceTicketController::class, 'claim'])->name('service-tickets.claim');
     Route::post('service-tickets/{service_ticket}/start', [ServiceTicketController::class, 'start'])->name('service-tickets.start');
     Route::post('service-tickets/{service_ticket}/complete', [ServiceTicketController::class, 'complete'])->name('service-tickets.complete');

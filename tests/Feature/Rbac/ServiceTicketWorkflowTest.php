@@ -311,8 +311,7 @@ it('scopes the sales view to their own book', function () {
         ->get('/service-tickets')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            // Page component ships in M3 — skip the file-existence check.
-            ->component('ServiceTickets/Index', shouldExist: false)
+            ->component('ServiceTickets/Index')
             ->where('tickets.total', 1));
 });
 
@@ -327,6 +326,81 @@ it('denies admin every ticket surface', function () {
     $this->actingAs($admin)->delete("/service-tickets/{$ticket->id}")->assertForbidden();
 
     expect(ServiceTicket::query()->visibleTo($admin)->count())->toBe(0);
+});
+
+// --- Page props (M3) ------------------------------------------------------------
+
+it('offers the intake form only in-scope customers and their own purchases', function () {
+    $w = ticketWorld();
+    $ownTxn = Transaction::factory()->forCustomer($w['c1'])->create();
+
+    // The customer picker is scoped to the creator.
+    $this->actingAs($w['cs'])
+        ->get('/service-tickets/create')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('ServiceTickets/Create')
+            ->where('customers', fn ($customers) => collect($customers)->pluck('value')->contains((string) $w['c1']->id)
+                && ! collect($customers)->pluck('value')->contains((string) $w['c2']->id)));
+
+    // Anchors load for a picked IN-scope customer…
+    $this->actingAs($w['cs'])
+        ->get('/service-tickets/create?customer_id='.$w['c1']->id)
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('transactions', fn ($transactions) => collect($transactions)->pluck('value')->contains((string) $ownTxn->id)));
+
+    // …and never for an out-of-scope one.
+    $this->actingAs($w['cs'])
+        ->get('/service-tickets/create?customer_id='.$w['c2']->id)
+        ->assertInertia(fn (Assert $page) => $page->where('transactions', []));
+});
+
+it('bounds the routing picker to the supervisor team and hides it from a technician', function () {
+    $w = ticketWorld();
+    $outsideTech = userWithRole('maintenance'); // teamless — never offered
+    $ticket = poolTicket($w['c1']);
+
+    $this->actingAs($w['manager'])
+        ->get("/service-tickets/{$ticket->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('assignableTechnicians', function ($technicians) use ($w, $outsideTech) {
+                $ids = collect($technicians)->pluck('value');
+
+                return $ids->contains((string) $w['tech1']->id)
+                    && $ids->contains((string) $w['tech2']->id)
+                    && ! $ids->contains((string) $outsideTech->id)
+                    && ! $ids->contains((string) $w['cs']->id); // cannot WORK tickets
+            }));
+
+    $this->actingAs($w['tech1'])
+        ->get("/service-tickets/{$ticket->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('can.assign', false)
+            ->where('assignableTechnicians', []));
+});
+
+it('flags pool rows claimable and hides the customer link outside the axis (D3)', function () {
+    $w = ticketWorld();
+    poolTicket($w['c1']);
+    // Assigned to tech1 but on an OUT-of-scope customer: ticket visible, 360 not.
+    ServiceTicket::factory()->create([
+        'customer_id' => $w['c2']->id, 'assigned_to' => $w['tech1']->id,
+    ]);
+
+    $this->actingAs($w['tech1'])
+        ->get('/service-tickets')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('tickets.data', function ($rows) use ($w) {
+                $rows = collect($rows);
+                $pool = $rows->firstWhere('assignee', null);
+                $foreign = $rows->firstWhere('customer.id', $w['c2']->id);
+
+                return $rows->count() === 2
+                    && $pool !== null && $pool['can_claim'] === true
+                    && $pool['customer_viewable'] === true
+                    && $foreign !== null && $foreign['can_claim'] === false
+                    && $foreign['customer_viewable'] === false;
+            }));
 });
 
 it('refuses hard delete for every preset (D9: explicit grant only)', function (string $role) {

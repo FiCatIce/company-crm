@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PermissionName;
 use App\Enums\TicketCoverage;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
@@ -12,6 +13,8 @@ use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\ServiceTicket;
 use App\Models\Transaction;
+use App\Models\User;
+use App\Support\HierarchyResolver;
 use App\Support\TicketFlow;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -36,8 +39,12 @@ class ServiceTicketController extends Controller
 
         $user = $request->user();
 
+        // customer carries created_by/assigned_to: the policy verdicts below
+        // (claim / customer_viewable) resolve hierarchy sight from those columns —
+        // trimming them made every verdict read null ownership and fail closed
+        // (same eager-load trap as the /team is_active badge).
         $query = ServiceTicket::query()->visibleTo($user)
-            ->with(['customer:id,name', 'product:id,name', 'transaction:id,product_id', 'transaction.product:id,name', 'assignee:id,name'])
+            ->with(['customer:id,name,created_by,assigned_to', 'product:id,name', 'transaction:id,product_id', 'transaction.product:id,name', 'assignee:id,name'])
             ->latest('received_at');
 
         if (($status = $request->string('status')->toString()) !== '' && TicketStatus::tryFrom($status) !== null) {
@@ -68,10 +75,58 @@ class ServiceTicketController extends Controller
 
         return Inertia::render('ServiceTickets/Index', [
             'tickets' => $query->paginate(10)->withQueryString()
-                ->through(fn (ServiceTicket $ticket) => $this->ticketRow($ticket)),
+                ->through(fn (ServiceTicket $ticket) => $this->ticketRow($ticket) + [
+                    // Per-row verdicts (same idiom as Customers/Index): claim is
+                    // row-scoped policy; the customer link renders only when the
+                    // viewer can actually open the 360 behind it (D3).
+                    'can_claim' => $user->can('claim', $ticket),
+                    'customer_viewable' => $ticket->customer !== null
+                        && $user->can('view', $ticket->customer),
+                ]),
             'stats' => $stats,
             'filters' => $request->only(['status', 'priority', 'assigned', 'search']),
+            'statusOptions' => $this->enumOptions(TicketStatus::cases()),
+            'priorityOptions' => $this->enumOptions(TicketPriority::cases()),
             'can' => ['create' => $user->can('create', ServiceTicket::class)],
+        ]);
+    }
+
+    public function create(Request $request): Response
+    {
+        $this->authorize('create', ServiceTicket::class);
+
+        $user = $request->user();
+
+        // The intake form only ever offers what the CREATOR can reach (D3/§3.3):
+        // scoped customers, and the picked customer's own purchases as anchors
+        // (fetched via partial reload on ?customer_id — never another book's).
+        $customers = Customer::query()->visibleTo($user)->orderBy('name')->get(['id', 'name'])
+            ->map(fn (Customer $customer): array => [
+                'value' => (string) $customer->id,
+                'label' => $customer->name,
+            ])->values()->all();
+
+        $transactions = [];
+        $customerId = (int) $request->query('customer_id');
+
+        if ($customerId > 0) {
+            $picked = Customer::query()->visibleTo($user)->whereKey($customerId)->first();
+
+            $transactions = $picked?->transactions()->with('product:id,name,warranty_months')
+                ->orderByDesc('purchased_at')->get()
+                ->map(fn (Transaction $transaction): array => [
+                    'value' => (string) $transaction->id,
+                    'label' => $transaction->product->name.' · '.$transaction->purchased_at->translatedFormat('d M Y'),
+                    'under_warranty' => $transaction->is_under_warranty,
+                ])->values()->all() ?? [];
+        }
+
+        return Inertia::render('ServiceTickets/Create', [
+            'customers' => $customers,
+            'transactions' => $transactions,
+            'pickedCustomerId' => $customerId > 0 ? (string) $customerId : '',
+            'priorities' => $this->enumOptions(TicketPriority::cases()),
+            'coverages' => $this->enumOptions(TicketCoverage::cases()),
         ]);
     }
 
@@ -79,8 +134,10 @@ class ServiceTicketController extends Controller
     {
         $this->authorize('view', $serviceTicket);
 
+        // created_by/assigned_to must ride along: the can.* verdicts resolve
+        // hierarchy sight from the customer's ownership columns.
         $serviceTicket->load([
-            'customer:id,name,phone', 'product:id,name,warranty_months',
+            'customer:id,name,phone,created_by,assigned_to', 'product:id,name,warranty_months',
             'transaction:id,product_id,purchased_at', 'transaction.product:id,name,warranty_months',
             'assignee:id,name', 'creator:id,name',
         ]);
@@ -102,6 +159,12 @@ class ServiceTicketController extends Controller
                 'claim' => $user->can('claim', $serviceTicket),
                 'assign' => $user->can('assign', $serviceTicket),
             ],
+            // Routing choices for a ticket.assign holder — bounded to THEIR team
+            // (HierarchyResolver), so the picker never discloses another team's
+            // roster. TicketFlow re-checks eligibility as the backstop.
+            'assignableTechnicians' => $user->can('assign', $serviceTicket)
+                ? $this->assignableTechnicians($user)
+                : [],
         ]);
     }
 
@@ -243,6 +306,37 @@ class ServiceTicketController extends Controller
         return $hasWarranty && $receivedAt->lte($transaction->warranty_expires_at->endOfDay())
             ? TicketCoverage::Warranty
             : TicketCoverage::Paid;
+    }
+
+    /**
+     * @param  list<TicketStatus|TicketCoverage|TicketPriority>  $cases
+     * @return list<array{value: string, label: string}>
+     */
+    private function enumOptions(array $cases): array
+    {
+        return array_map(fn ($case): array => [
+            'value' => $case->value,
+            'label' => $case->label(),
+        ], $cases);
+    }
+
+    /**
+     * Active team members who can WORK a ticket (hold ticket.update) — the
+     * supervisor's routing pool, never the whole org.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function assignableTechnicians(User $user): array
+    {
+        $memberIds = HierarchyResolver::teamMemberIds($user);
+
+        return array_values(User::query()->whereIn('id', $memberIds)
+            ->where('is_active', true)->orderBy('name')->get(['id', 'name'])
+            ->filter(fn (User $member): bool => $member->can(PermissionName::TicketUpdate->value))
+            ->map(fn (User $member): array => [
+                'value' => (string) $member->id,
+                'label' => $member->name,
+            ])->all());
     }
 
     /**

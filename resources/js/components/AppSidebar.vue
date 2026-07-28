@@ -9,6 +9,7 @@ import {
     UserCog,
     Users,
     UsersRound,
+    Wrench,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -55,6 +56,14 @@ const allNavItems: NavItem[] = [
         href: '/transactions',
         icon: Receipt,
         permission: ['transaction.view.all', 'transaction.view.own'],
+    },
+    {
+        title: 'Servis',
+        href: '/service-tickets',
+        icon: Wrench,
+        // M3 (DESIGN_MAINTENANCE.md): every data role holds ticket.view — rows are
+        // scoped by ServiceTicket::visibleTo. Admin holds none, so no menu (B4).
+        permission: 'ticket.view',
     },
     {
         title: 'Tim Saya',
