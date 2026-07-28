@@ -73,6 +73,16 @@ enum PermissionName: string
     case UserAssign = 'user.assign';
     case TeamView = 'team.view';
 
+    // Service tickets (dormant in M1 — DESIGN_MAINTENANCE.md §2.1; no preset holds
+    // these and no route/gate reads them until M2). ONE view permission, not
+    // .all/.own: row scope is delegated to customer visibility (the L1 axis), so
+    // WHO sees WHICH rows is already decided there.
+    case TicketView = 'ticket.view';
+    case TicketCreate = 'ticket.create';
+    case TicketUpdate = 'ticket.update';
+    case TicketAssign = 'ticket.assign';
+    case TicketDelete = 'ticket.delete';
+
     /**
      * All permission strings.
      *
@@ -104,6 +114,8 @@ enum PermissionName: string
             self::UserView, self::UserCreate, self::UserUpdate, self::UserDelete,
             self::RoleAssign, self::PermissionAssign, self::RoleManage => 'User & Access',
             self::UserAssign, self::TeamView => 'Tim',
+            self::TicketView, self::TicketCreate, self::TicketUpdate,
+            self::TicketAssign, self::TicketDelete => 'Servis',
         };
     }
 
@@ -181,6 +193,11 @@ enum PermissionName: string
             self::RoleManage => 'Kelola role & izin',
             self::UserAssign => 'Assign CS/maintenance ke sales',
             self::TeamView => 'Lihat menu Tim Saya',
+            self::TicketView => 'Lihat tiket servis',
+            self::TicketCreate => 'Buat tiket servis',
+            self::TicketUpdate => 'Kerjakan/edit tiket servis',
+            self::TicketAssign => 'Routing tiket ke teknisi',
+            self::TicketDelete => 'Hapus tiket servis',
         };
     }
 }
