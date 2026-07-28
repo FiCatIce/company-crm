@@ -111,7 +111,7 @@ function unscopedSensitiveQueries(string $code): array
 {
     $lines = explode("\n", $code);
     // Eloquent read entry points on a sensitive model — NOT ::class, NOT ::create.
-    $trigger = '/\b(Customer|Transaction|Interaction)::(query|where\w*|find|first\w*|get|all|with|has|latest|paginate)\b/';
+    $trigger = '/\b(Customer|Transaction|Interaction|ServiceTicket)::(query|where\w*|find|first\w*|get|all|with|has|latest|paginate)\b/';
     // Terminals that return a scalar (never rows) — safe to leave unscoped.
     // `value(` is deliberately NOT here: value('amount') returns a real money figure
     // off an unscoped query, which is a leak wearing an aggregate's clothes.

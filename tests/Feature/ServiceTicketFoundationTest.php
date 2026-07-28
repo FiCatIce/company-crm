@@ -65,6 +65,16 @@ it('round-trips a ticket with enum casts and resolves every relation', function 
         ->and($ticket->creator->is($frontDesk))->toBeTrue();
 });
 
+it('defaults a fresh unsaved ticket to received/unknown/normal in memory', function () {
+    // Dev-pgsql smoke caught this: DB defaults do not exist in memory, so a
+    // just-created ticket read status NULL and every TicketFlow guard refused it.
+    $ticket = new ServiceTicket;
+
+    expect($ticket->status)->toBe(TicketStatus::Received)
+        ->and($ticket->coverage)->toBe(TicketCoverage::Unknown)
+        ->and($ticket->priority)->toBe(TicketPriority::Normal);
+});
+
 it('marks only received and in_progress as active work', function () {
     expect(TicketStatus::Received->isActive())->toBeTrue()
         ->and(TicketStatus::InProgress->isActive())->toBeTrue()
@@ -72,22 +82,22 @@ it('marks only received and in_progress as active work', function () {
         ->and(TicketStatus::Cancelled->isActive())->toBeFalse();
 });
 
-// --- Dormancy (the M1 no-op promise) --------------------------------------------
+// --- Admin stays ticket-free (B4 — the M2 activation must not reach admin) ------
 
-it('keeps every ticket permission out of every system role preset', function (string $role) {
-    $preset = RolePresets::permissions(RoleName::from($role));
+it('keeps every ticket permission out of the admin preset', function () {
+    $preset = RolePresets::permissions(RoleName::Admin);
 
     foreach ([P::TicketView, P::TicketCreate, P::TicketUpdate, P::TicketAssign, P::TicketDelete] as $permission) {
         expect($preset)->not->toContain($permission->value);
     }
-})->with(['admin', 'supervisor', 'sales', 'maintenance', 'cs']);
+});
 
-it('resolves zero rows for every role while dormant — even on their own work', function (string $role) {
-    $user = userWithRole($role);
-    ServiceTicket::factory()->create(['assigned_to' => $user->id, 'created_by' => $user->id]);
+it('resolves zero rows for admin — even on tickets naming them', function () {
+    $admin = userWithRole('admin');
+    ServiceTicket::factory()->create(['assigned_to' => $admin->id, 'created_by' => $admin->id]);
 
-    expect(ServiceTicket::query()->visibleTo($user)->count())->toBe(0);
-})->with(['admin', 'supervisor', 'sales', 'maintenance', 'cs']);
+    expect(ServiceTicket::query()->visibleTo($admin)->count())->toBe(0);
+});
 
 // --- scopeVisibleTo (D3: delegation ∪ own work, customer axis never widens) -----
 
@@ -133,7 +143,9 @@ it('unions in assigned-to-me and created-by-me without widening the customer axi
 });
 
 it('resolves zero rows without ticket.view even when the customer is visible', function () {
-    $sales = userWithRole('sales'); // preset has NO ticket.view
+    $sales = userWithRole('sales');
+    $sales->revokePermissionTo(P::TicketView->value); // strip the M2 preset grant
+
     $customer = Customer::factory()->createdBy($sales)->create();
     ServiceTicket::factory()->create(['customer_id' => $customer->id, 'assigned_to' => $sales->id]);
 

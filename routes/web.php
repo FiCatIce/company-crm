@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InteractionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ServiceTicketController;
 use App\Http\Controllers\SupportAssignmentController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamMemberController;
@@ -30,6 +31,16 @@ Route::middleware(['auth'])->group(function () {
     Route::post('customers/{customer}/interactions', [InteractionController::class, 'store'])->name('interactions.store');
     Route::put('interactions/{interaction}', [InteractionController::class, 'update'])->name('interactions.update');
     Route::delete('interactions/{interaction}', [InteractionController::class, 'destroy'])->name('interactions.destroy');
+
+    // Service tickets (DESIGN_MAINTENANCE.md M2) — scoped CRUD; status moves via
+    // the explicit transition endpoints below, never through update.
+    Route::resource('service-tickets', ServiceTicketController::class)
+        ->only(['index', 'show', 'store', 'update', 'destroy']);
+    Route::post('service-tickets/{service_ticket}/claim', [ServiceTicketController::class, 'claim'])->name('service-tickets.claim');
+    Route::post('service-tickets/{service_ticket}/start', [ServiceTicketController::class, 'start'])->name('service-tickets.start');
+    Route::post('service-tickets/{service_ticket}/complete', [ServiceTicketController::class, 'complete'])->name('service-tickets.complete');
+    Route::post('service-tickets/{service_ticket}/cancel', [ServiceTicketController::class, 'cancel'])->name('service-tickets.cancel');
+    Route::post('service-tickets/{service_ticket}/assign', [ServiceTicketController::class, 'assign'])->name('service-tickets.assign');
 
     // Admin user management (RBAC B5) — gated per-action by UserPolicy.
     Route::resource('users', UserController::class)->except(['show']);

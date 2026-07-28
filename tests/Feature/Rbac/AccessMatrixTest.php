@@ -104,3 +104,41 @@ it('grants a roleless user nothing at all', function () {
         expect($user->can($permission))->toBeFalse();
     }
 });
+
+// M2 (DESIGN_MAINTENANCE.md §2.3) — the service-ticket block of the matrix:
+// admin none (B4 stays), sales read-only, cs intake, maintenance works its bench,
+// supervisor routes. ticket.delete (D9) is held by NO preset — explicit grant only.
+it('applies the service-ticket matrix per role', function () {
+    $admin = userWithRole('admin');
+    foreach ([P::TicketView, P::TicketCreate, P::TicketUpdate, P::TicketAssign, P::TicketDelete] as $permission) {
+        expect($admin->can($permission->value))->toBeFalse();
+    }
+
+    $sales = userWithRole('sales');
+    expect($sales->can(P::TicketView->value))->toBeTrue()
+        ->and($sales->can(P::TicketCreate->value))->toBeFalse()
+        ->and($sales->can(P::TicketUpdate->value))->toBeFalse()
+        ->and($sales->can(P::TicketAssign->value))->toBeFalse();
+
+    $cs = userWithRole('cs');
+    expect($cs->can(P::TicketView->value))->toBeTrue()
+        ->and($cs->can(P::TicketCreate->value))->toBeTrue()
+        ->and($cs->can(P::TicketUpdate->value))->toBeFalse()
+        ->and($cs->can(P::TicketAssign->value))->toBeFalse();
+
+    $maintenance = userWithRole('maintenance');
+    expect($maintenance->can(P::TicketView->value))->toBeTrue()
+        ->and($maintenance->can(P::TicketCreate->value))->toBeTrue()
+        ->and($maintenance->can(P::TicketUpdate->value))->toBeTrue()
+        ->and($maintenance->can(P::TicketAssign->value))->toBeFalse();
+
+    $supervisor = userWithRole('supervisor');
+    expect($supervisor->can(P::TicketView->value))->toBeTrue()
+        ->and($supervisor->can(P::TicketCreate->value))->toBeTrue()
+        ->and($supervisor->can(P::TicketUpdate->value))->toBeTrue()
+        ->and($supervisor->can(P::TicketAssign->value))->toBeTrue();
+
+    foreach (['supervisor', 'sales', 'maintenance', 'cs'] as $role) {
+        expect(userWithRole($role)->can(P::TicketDelete->value))->toBeFalse();
+    }
+});

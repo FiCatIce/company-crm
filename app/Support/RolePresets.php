@@ -141,6 +141,10 @@ final class RolePresets
             // H6: the "Tim Saya" overview — the manager variant lists their team's
             // reps and who supports each of them.
             P::TeamView,
+            // M2 (DESIGN_MAINTENANCE.md): full ticket reach within the team scope —
+            // intake, work-override, and routing. NO ticket.delete (D9: that stays
+            // an explicit per-user grant, held by no preset).
+            P::TicketView, P::TicketCreate, P::TicketUpdate, P::TicketAssign,
         ];
     }
 
@@ -186,6 +190,9 @@ final class RolePresets
             P::DashboardView, P::DashboardStatsAggregate,
             // H6: "Tim Saya" — the support variant lists the reps they serve.
             P::TeamView,
+            // M2 (DESIGN_MAINTENANCE.md): front-desk intake — CS creates tickets
+            // into the pool and reads them; it never works or routes them.
+            P::TicketView, P::TicketCreate,
         ];
     }
 
@@ -215,6 +222,9 @@ final class RolePresets
             P::UserAssign,
             // H6: "Tim Saya" — the sales variant lists the support helping them.
             P::TeamView,
+            // M2 (DESIGN_MAINTENANCE.md D10): read-only — a rep follows the repairs
+            // on their own book; intake stays with CS/maintenance/supervisor.
+            P::TicketView,
         ];
     }
 
@@ -236,6 +246,11 @@ final class RolePresets
             P::DashboardView, P::DashboardStatsAggregate,
             // H6: "Tim Saya" — the support variant lists the reps they serve.
             P::TeamView,
+            // M2 (DESIGN_MAINTENANCE.md): the module this role was promised in D8 —
+            // create tickets, claim from the pool, and WORK them (transitions +
+            // notes on tickets assigned to them). Never routing (ticket.assign) or
+            // deletion: a technician's reach ends at their own bench.
+            P::TicketView, P::TicketCreate, P::TicketUpdate,
         ];
     }
 }

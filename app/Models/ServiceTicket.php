@@ -40,6 +40,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property-read Customer|null $customer
+ * @property-read Transaction|null $transaction
+ * @property-read Product|null $product
+ * @property-read User|null $assignee
+ * @property-read User|null $creator
  */
 class ServiceTicket extends Model
 {
@@ -60,6 +65,19 @@ class ServiceTicket extends Model
         'received_at',
         // status / assigned_to / created_by / lifecycle stamps are deliberately
         // NOT mass-assignable: they move through explicit transitions (M2).
+    ];
+
+    /**
+     * In-memory defaults mirroring the DB column defaults — without these a
+     * freshly instantiated (unsaved/unrefreshed) ticket reads status NULL and
+     * the TicketFlow guards refuse it. Values are the enums' backing strings.
+     *
+     * @var array<string, string>
+     */
+    protected $attributes = [
+        'status' => 'received',
+        'coverage' => 'unknown',
+        'priority' => 'normal',
     ];
 
     protected $casts = [
