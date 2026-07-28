@@ -31,6 +31,12 @@ const heldItems = computed(() =>
         { label: 'Support yang ditugaskan', value: props.holdings.assignees },
         { label: 'Sales yang dilayani', value: props.holdings.reps },
         { label: 'Tim yang dipimpin', value: props.holdings.teams_led },
+        {
+            // Non-manager seats only (led teams have their own row). A plain
+            // seat still blocks delete, so it must be visible here too.
+            label: 'Keanggotaan tim',
+            value: props.holdings.teams - props.holdings.teams_led,
+        },
     ].filter((item) => item.value > 0),
 );
 

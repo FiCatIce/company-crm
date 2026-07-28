@@ -435,8 +435,11 @@ const formatDate = (iso: string | null) =>
                                                 </Form>
                                             </DialogContent>
                                         </Dialog>
+                                        <!-- Same as /users: never gate offboard on
+                                        is_active — a deactivated member may still
+                                        hold work that only offboard can hand over. -->
                                         <Button
-                                            v-if="m.can_offboard && m.is_active"
+                                            v-if="m.can_offboard"
                                             as-child
                                             variant="ghost"
                                             size="sm"

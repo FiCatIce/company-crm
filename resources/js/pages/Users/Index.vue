@@ -298,8 +298,13 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
                                             </DialogContent>
                                         </Dialog>
 
+                                        <!-- Not gated on is_active: a deactivated
+                                        user can still HOLD things (book, team
+                                        seat), and offboard is the only path that
+                                        clears them — hiding it left such an
+                                        account permanently undeletable. -->
                                         <Button
-                                            v-if="u.can_offboard && u.is_active"
+                                            v-if="u.can_offboard"
                                             as-child
                                             variant="ghost"
                                             size="sm"

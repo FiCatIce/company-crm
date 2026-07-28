@@ -282,6 +282,61 @@ it('allows deleting once the user has been offboarded', function () {
     expect(User::find($leaver->id))->toBeNull();
 });
 
+it('lets an admin delete a manager-created user who holds nothing', function () {
+    $manager = userWithRole('supervisor');
+    $target = userWithRole('sales');
+    $target->forceFill(['created_by_user' => $manager->id])->save();
+
+    $this->actingAs(userWithRole('admin'))
+        ->delete("/users/{$target->id}")
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect(User::find($target->id))->toBeNull();
+});
+
+it('offboards a DEACTIVATED holder through the admin flow, then allows the delete', function () {
+    // The reported trap: deactivate (H7b) happened first, holdings remained —
+    // delete says "pilih pengganti", and offboard is the only way to comply.
+    [, $leaver, $successor] = offboardFixture();
+    customerFor($leaver);
+    $leaver->forceFill(['is_active' => false])->save();
+
+    $admin = userWithRole('admin');
+
+    $this->actingAs($admin)
+        ->post("/users/{$leaver->id}/offboard", ['successor_id' => $successor->id])
+        ->assertRedirect();
+
+    expect(Customer::where('assigned_to', $successor->id)->count())->toBe(1)
+        ->and($leaver->fresh()->is_active)->toBeFalse();
+
+    $this->actingAs($admin)
+        ->delete("/users/{$leaver->id}")
+        ->assertRedirect();
+
+    expect(User::find($leaver->id))->toBeNull();
+});
+
+it('keeps can_offboard exposed for a deactivated holder in the admin directory', function () {
+    // The row prop the Offboard button renders from. It used to be paired with an
+    // is_active check in the template, which orphaned deactivated holders.
+    [, $leaver] = offboardFixture();
+    customerFor($leaver);
+    $leaver->forceFill(['is_active' => false])->save();
+
+    $this->actingAs(userWithRole('admin'))
+        ->get('/users')
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data', function ($rows) use ($leaver) {
+                $row = collect($rows)->firstWhere('id', $leaver->id);
+
+                return $row !== null
+                    && $row['is_active'] === false
+                    && $row['can_offboard'] === true;
+            }));
+});
+
 it('refuses a manager offboarding someone outside their reach', function () {
     [$manager] = offboardFixture();
     [, $outsider, $outsiderSuccessor] = offboardFixture();
