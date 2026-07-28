@@ -141,7 +141,11 @@ it('shows the manager their reps with book size and who supports each', function
 
                 return $rows->pluck('id')->sort()->values()->all() === collect([$t['repA']->id, $t['repB']->id])->sort()->values()->all()
                     && $a['customers_count'] === 2
-                    && collect($a['assignees'])->pluck('id')->all() === [$t['cs']->id];
+                    && collect($a['assignees'])->pluck('id')->all() === [$t['cs']->id]
+                    // Strict === true: the badge reads !is_active, so a column
+                    // dropped from the eager-load (null) rendered every active
+                    // support as "nonaktif".
+                    && $a['assignees'][0]['is_active'] === true;
             })
             ->where('agents', fn ($agents) => collect($agents)->pluck('id')->sort()->values()->all()
                 === collect([$t['cs']->id, $t['maint']->id])->sort()->values()->all()));

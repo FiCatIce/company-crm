@@ -81,7 +81,7 @@ class TeamController extends Controller
         /** @var Collection<int, User> $members */
         $members = User::query()
             ->whereIn('id', $memberIds)
-            ->with(['roles:id,name', 'assignees:id,name', 'assignees.roles:id,name'])
+            ->with(['roles:id,name', 'assignees:id,name,is_active', 'assignees.roles:id,name'])
             ->orderBy('name')
             ->get();
 

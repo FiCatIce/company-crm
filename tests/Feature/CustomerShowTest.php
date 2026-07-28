@@ -22,7 +22,7 @@ it('renders the customer 360 page with the expected props', function () {
         'name' => 'Budi',
     ]);
     // L2-D: the archived distributor name is surfaced as read-only history.
-    \DB::table('customers')->where('id', $customer->id)
+    DB::table('customers')->where('id', $customer->id)
         ->update(['reseller_name_legacy' => 'Distributor Lama']);
 
     Interaction::factory()->forCustomer($customer)->count(3)->create();

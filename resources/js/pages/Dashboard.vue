@@ -133,7 +133,7 @@ const customerCard = computed(() => {
     if (supportTeam.value) {
         return {
             label: 'Customer Dapat Diakses',
-            description: 'dari sales yang menugaskan Anda',
+            description: 'yang Anda input atau dari sales yang menugaskan Anda',
         };
     }
 
