@@ -25,7 +25,7 @@ beforeEach(function () {
 it('resolves the config default when no override exists', function () {
     expect(TeamRoleLabels::label('sales'))->toBe('Sales')
         ->and(TeamRoleLabels::label('supervisor'))->toBe('Manager')
-        ->and(TeamRoleLabels::label('cs'))->toBe('CS');
+        ->and(TeamRoleLabels::label('cs'))->toBe('Customer Service');
 });
 
 it('lets a db override win over the config default', function () {
@@ -33,7 +33,7 @@ it('lets a db override win over the config default', function () {
 
     expect(TeamRoleLabels::label('sales'))->toBe('Account Manager')
         // The others keep their defaults — the map merges, never replaces.
-        ->and(TeamRoleLabels::label('cs'))->toBe('CS');
+        ->and(TeamRoleLabels::label('cs'))->toBe('Customer Service');
 });
 
 it('headline-cases an unknown slug so a custom role never renders blank', function () {
@@ -53,16 +53,20 @@ it('never applies an override to the admin identity', function () {
 
 it('lowercases the sentence form but preserves all-caps acronyms', function () {
     expect(TeamRoleLabels::labelLower('sales'))->toBe('sales')
-        ->and(TeamRoleLabels::labelLower('cs'))->toBe('CS')
+        // Multi-word default: plain words all lowercase — no acronym involved.
+        ->and(TeamRoleLabels::labelLower('cs'))->toBe('customer service')
         ->and(TeamRoleLabels::labelLower('supervisor'))->toBe('manager');
 
     LabelOverride::create(['key' => 'sales', 'label' => 'Account Manager']);
 
     expect(TeamRoleLabels::labelLower('sales'))->toBe('account manager');
 
+    // The acronym rule: an all-caps word survives the sentence form.
+    LabelOverride::create(['key' => 'cs', 'label' => 'CS']);
     LabelOverride::create(['key' => 'maintenance', 'label' => 'IT Support']);
 
-    expect(TeamRoleLabels::labelLower('maintenance'))->toBe('IT support');
+    expect(TeamRoleLabels::labelLower('cs'))->toBe('CS')
+        ->and(TeamRoleLabels::labelLower('maintenance'))->toBe('IT support');
 });
 
 // ---------------------------------------------------------------------------
@@ -101,10 +105,10 @@ it('shares resolved labels in both forms with every inertia page', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('labels.roles.sales', 'Account Manager')
-            ->where('labels.roles.cs', 'CS')
+            ->where('labels.roles.cs', 'Customer Service')
             ->where('labels.roles.supervisor', 'Manager')
             ->where('labels.rolesLower.sales', 'account manager')
-            ->where('labels.rolesLower.cs', 'CS'));
+            ->where('labels.rolesLower.cs', 'customer service'));
 });
 
 // ---------------------------------------------------------------------------
@@ -116,7 +120,7 @@ it('carries an override into the user management pages', function () {
     LabelOverride::create(['key' => 'supervisor', 'label' => 'Kepala Cabang']);
 
     $admin = userWithRole('admin');
-    $supervisor = userWithRole('supervisor');
+    userWithRole('supervisor'); // a supervisor row must exist on the page
 
     $this->actingAs($admin)->get(route('users.index'))
         ->assertOk()

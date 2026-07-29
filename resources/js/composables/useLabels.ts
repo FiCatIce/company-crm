@@ -20,8 +20,12 @@ function headline(slug: string): string {
         .join(' ');
 }
 
-/** Lowercase each word unless it is an all-caps acronym ('CS' stays 'CS'). */
-function lowerWords(label: string): string {
+/**
+ * Lowercase each word unless it is an all-caps acronym ('CS' stays 'CS').
+ * Exported for previewing a DRAFT label (settings/Labels) — the shared maps
+ * only carry the saved state.
+ */
+export function lowerWords(label: string): string {
     return label
         .split(' ')
         .map((word) =>

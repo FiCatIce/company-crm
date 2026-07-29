@@ -89,7 +89,7 @@ final class UserOffboarding
             $parts[] = "{$h['assignees']} penugasan support";
         }
         if ($h['reps'] > 0) {
-            $parts[] = "{$h['reps']} sales yang dilayani";
+            $parts[] = "{$h['reps']} ".TeamRoleLabels::labelLower('sales').' yang dilayani';
         }
         if ($h['teams_led'] > 0) {
             $parts[] = "{$h['teams_led']} tim yang dipimpin";

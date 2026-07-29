@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\LabelController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -10,6 +11,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // L3-C white-label naming panel — setting.labels is enforced inside the
+    // controller/request (admin-only preset).
+    Route::get('settings/labels', [LabelController::class, 'edit'])->name('labels.edit');
+    Route::put('settings/labels', [LabelController::class, 'update'])->name('labels.update');
 });
 
 Route::middleware(['auth'])->group(function () {

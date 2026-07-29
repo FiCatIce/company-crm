@@ -9,9 +9,15 @@ use Illuminate\Support\Facades\File;
  *    Forbidden (case-sensitive, standalone): Sales / Maintenance / Manager /
  *    CS, plus the 'mekanik' synonym that once slipped into copy. Copy must go
  *    through TeamRoleLabels (PHP) / useLabels() (Vue). Case-sensitivity keeps
- *    slugs-as-data ('sales' keys, type unions) out of scope — which also means
- *    a lowercase mid-sentence hardcode can slip past; this is a tripwire, not
- *    a proof. Comments are stripped first (they may name roles freely).
+ *    slugs-as-data ('sales' keys, type unions) out of scope. Comments are
+ *    stripped first (they may name roles freely).
+ *
+ * 1b. LOWERCASE PROSE LAYER: the case-sensitive scan misses "hubungi sales
+ *    Anda". Closed for QUOTED prose: a case-INSENSITIVE scan that applies only
+ *    to string literals CONTAINING A SPACE — a slug never has one, a sentence
+ *    always does — with `${…}`/`{$…}` interpolations stripped first so
+ *    `${label('sales')}` inside a template string never trips it. Unquoted
+ *    Vue template text remains out of reach; still a tripwire, not a proof.
  *
  * 2. RIVAL-RESOLVER GUARD: a literal scan cannot catch a SECOND resolver like
  *    the old RoleName::label() (it hid labels behind an enum, then drifted
@@ -81,6 +87,47 @@ function labelGuardPhpStringViolations(string $code): array
     return $violations;
 }
 
+/**
+ * Layer 1b — lowercase prose: case-INSENSITIVE scan over string literals that
+ * contain a SPACE (slugs never do, sentences always do). Interpolation
+ * segments are stripped first so `${label('sales')}` / `{$var}` never trip it.
+ * Shared by the Vue/TS and PHP scans.
+ *
+ * @return list<string>
+ */
+function labelGuardSpacedLiteralViolations(string $code): array
+{
+    $code = labelGuardStripComments($code);
+
+    preg_match_all('/\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|`(?:[^`\\\\]|\\\\.)*`/', $code, $matches);
+
+    $violations = [];
+
+    foreach ($matches[0] as $literal) {
+        $content = substr($literal, 1, -1);
+        $content = (string) preg_replace('/\$\{[^}]*\}|\{\$[^}]*\}/', '', $content);
+
+        // A NESTED quote of the other style is code-in-a-string (a Vue
+        // expression attribute like "props.kind === 'manager'") — the inner
+        // slug is data, so drop it before scanning the remaining prose.
+        $content = match ($literal[0]) {
+            '"' => (string) preg_replace("/'[^']*'/", '', $content),
+            "'" => (string) preg_replace('/"[^"]*"/', '', $content),
+            default => (string) preg_replace('/\'[^\']*\'|"[^"]*"/', '', $content),
+        };
+
+        if (! str_contains($content, ' ')) {
+            continue;
+        }
+
+        if (preg_match('/\b(sales|maintenance|manager|cs)\b|mekanik/i', $content) === 1) {
+            $violations[] = $literal;
+        }
+    }
+
+    return $violations;
+}
+
 // Reviewed exceptions: file suffix => substrings allowed to stay.
 const LABEL_GUARD_ALLOWLIST = [
     // A custom-role NAME example in the role builder, not a label of an
@@ -109,7 +156,16 @@ it('has no hardcoded role label in vue/ts source', function () {
             }
         }
 
-        $found = labelGuardViolations($file->getContents(), $allowed);
+        $source = $file->getContents();
+
+        foreach ($allowed as $exception) {
+            $source = str_replace($exception, '', $source);
+        }
+
+        $found = [
+            ...labelGuardViolations($source),
+            ...labelGuardSpacedLiteralViolations($source),
+        ];
 
         if ($found !== []) {
             $offenders[$relative] = $found;
@@ -127,7 +183,12 @@ it('has no hardcoded role label in backend strings', function () {
             continue;
         }
 
-        $found = labelGuardPhpStringViolations($file->getContents());
+        $source = $file->getContents();
+
+        $found = [
+            ...labelGuardPhpStringViolations($source),
+            ...labelGuardSpacedLiteralViolations($source),
+        ];
 
         if ($found !== []) {
             $offenders[str_replace('\\', '/', $file->getRelativePathname())] = $found;
@@ -172,4 +233,15 @@ it('flags hardcoded labels but accepts registry reads and comments', function ()
     expect(labelGuardPhpStringViolations("case Sales = 'sales'; RoleName::Sales => self::sales(),"))->toBe([])
         ->and(labelGuardPhpStringViolations("return 'Assign CS/maintenance ke sales';"))->not->toBe([])
         ->and(labelGuardPhpStringViolations("'Lihat customer dari '.TeamRoleLabels::labelLower(RoleName::Sales->value)"))->toBe([]);
+
+    // Layer 1b — lowercase prose in spaced literals trips; slugs and
+    // interpolated template strings never do.
+    expect(labelGuardSpacedLiteralViolations("'hubungi sales Anda'"))->not->toBe([])
+        ->and(labelGuardSpacedLiteralViolations('"belum ada cs di tim"'))->not->toBe([])
+        ->and(labelGuardSpacedLiteralViolations("'sales'"))->toBe([])
+        // Vue expression attribute: the slug is nested code, not prose.
+        ->and(labelGuardSpacedLiteralViolations('v-if="props.kind === \'manager\'"'))->toBe([])
+        ->and(labelGuardSpacedLiteralViolations('`akun ${labelLower(\'sales\')} yang aktif`'))->toBe([])
+        ->and(labelGuardSpacedLiteralViolations('"Role {$role->name} berhasil dibuat."'))->toBe([])
+        ->and(labelGuardSpacedLiteralViolations("'Tiket sudah dipegang teknisi lain.'"))->toBe([]);
 });

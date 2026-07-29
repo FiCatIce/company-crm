@@ -92,7 +92,7 @@ it('records who created a user (delegated trail)', function () {
 it('resolves every team-role label from one place', function () {
     expect(TeamRoleLabels::label('sales'))->toBe('Sales')
         ->and(TeamRoleLabels::label('supervisor'))->toBe('Manager')
-        ->and(TeamRoleLabels::label('cs'))->toBe('CS')
+        ->and(TeamRoleLabels::label('cs'))->toBe('Customer Service')
         ->and(TeamRoleLabels::label('maintenance'))->toBe('Maintenance')
         ->and(TeamRoleLabels::label('admin'))->toBe('Admin')
         // Unknown/custom slug never renders blank — headline fallback.

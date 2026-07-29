@@ -26,7 +26,9 @@ return [
         RoleName::Admin->value => 'Admin',
         RoleName::Supervisor->value => 'Manager',
         RoleName::Sales->value => 'Sales',
-        RoleName::Cs->value => 'CS',
+        // Spelled out as the white-label DEFAULT (more readable out of the
+        // box); a company that prefers the acronym overrides it to 'CS'.
+        RoleName::Cs->value => 'Customer Service',
         RoleName::Maintenance->value => 'Maintenance',
     ],
 

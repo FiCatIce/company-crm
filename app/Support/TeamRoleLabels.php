@@ -86,6 +86,33 @@ final class TeamRoleLabels
     }
 
     /**
+     * The slugs an admin may rename — every configured role except admin (D2).
+     * The settings panel and its request validation both read THIS list, so
+     * the offered rows and the accepted keys can never drift apart.
+     *
+     * @return list<string>
+     */
+    public static function overridableSlugs(): array
+    {
+        /** @var array<string, string> $defaults */
+        $defaults = config('hierarchy.role_labels', []);
+
+        return array_values(array_diff(array_keys($defaults), [RoleName::Admin->value]));
+    }
+
+    /**
+     * The config DEFAULT for a slug — deliberately ignoring any override, for
+     * surfaces that show "default vs override" side by side (settings panel).
+     */
+    public static function defaultLabel(string $roleSlug): string
+    {
+        /** @var array<string, string> $defaults */
+        $defaults = config('hierarchy.role_labels', []);
+
+        return $defaults[$roleSlug] ?? Str::headline($roleSlug);
+    }
+
+    /**
      * Drop the cached override map (both the request memo and the store).
      * Called by every LabelOverride write, and by tests.
      */
