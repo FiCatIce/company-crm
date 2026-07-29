@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import SupportAssignmentController from '@/actions/App/Http/Controllers/SupportAssignmentController';
 import TeamController from '@/actions/App/Http/Controllers/TeamController';
 import { Button } from '@/components/ui/button';
+import { useLabels } from '@/composables/useLabels';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import type { TeamAgentRow, TeamRepRow } from '@/types/crm';
@@ -22,6 +23,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const initial = (name: string) => name.trim().charAt(0).toUpperCase();
 
+// L3 white-label: every role word in this page's copy resolves through the
+// registry (D3 template style), so an admin rename shows up here untouched.
+const { label, labelLower } = useLabels();
+
 const typeStyles: Record<string, string> = {
     sales: 'border-blue-200 bg-blue-50 text-blue-700',
     cs: 'border-violet-200 bg-violet-50 text-violet-700',
@@ -32,26 +37,26 @@ const typeBadge = (value?: string) =>
 
 const subtitle = computed(() => {
     if (props.kind === 'manager') {
-        return 'Sales di tim Anda, ukuran buku mereka, dan siapa yang membantu menangani customer masing-masing.';
+        return `${label('sales')} di tim Anda, ukuran buku mereka, dan siapa yang membantu menangani customer masing-masing.`;
     }
 
     if (props.kind === 'sales') {
-        return 'CS & Maintenance yang membantu menangani customer Anda.';
+        return `${label('cs')} & ${label('maintenance')} yang membantu menangani customer Anda.`;
     }
 
-    return 'Sales yang menugaskan Anda — customer merekalah yang bisa Anda akses.';
+    return `${label('sales')} yang menugaskan Anda — customer merekalah yang bisa Anda akses.`;
 });
 
 const agentsHeading = computed(() => {
     if (props.kind === 'manager') {
-        return 'CS & Maintenance di tim';
+        return `${label('cs')} & ${label('maintenance')} di tim`;
     }
 
     if (props.kind === 'sales') {
         return 'Support Saya';
     }
 
-    return 'Sales yang Anda layani';
+    return `${label('sales')} yang Anda layani`;
 });
 </script>
 
@@ -91,8 +96,8 @@ const agentsHeading = computed(() => {
                 v-if="!props.team"
                 class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
             >
-                Anda belum tergabung dalam tim. Hubungi manager Anda untuk
-                didaftarkan.
+                Anda belum tergabung dalam tim. Hubungi
+                {{ labelLower('supervisor') }} Anda untuk didaftarkan.
             </div>
 
             <!-- Manager: reps + who supports each of them -->
@@ -102,7 +107,7 @@ const agentsHeading = computed(() => {
             >
                 <div class="border-b border-border px-6 py-4">
                     <h2 class="text-sm font-semibold text-foreground">
-                        Sales di tim
+                        {{ label('sales') }} di tim
                     </h2>
                     <p class="text-xs text-muted-foreground">
                         {{ props.reps.length }} orang — beserta support yang
@@ -186,7 +191,7 @@ const agentsHeading = computed(() => {
                     v-else
                     class="px-6 py-10 text-center text-sm text-muted-foreground"
                 >
-                    Belum ada sales di tim Anda.
+                    Belum ada {{ labelLower('sales') }} di tim Anda.
                 </div>
             </section>
 
@@ -270,10 +275,10 @@ const agentsHeading = computed(() => {
                         <p class="text-sm text-muted-foreground">
                             {{
                                 props.kind === 'support'
-                                    ? 'Belum ada sales yang menugaskan Anda.'
+                                    ? `Belum ada ${labelLower('sales')} yang menugaskan Anda.`
                                     : props.kind === 'sales'
                                       ? 'Belum ada support yang Anda tugaskan.'
-                                      : 'Belum ada CS/Maintenance di tim Anda.'
+                                      : `Belum ada ${label('cs')}/${label('maintenance')} di tim Anda.`
                             }}
                         </p>
                     </div>

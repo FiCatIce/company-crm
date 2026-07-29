@@ -11,9 +11,9 @@ use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\RolePresets;
+use App\Support\TeamRoleLabels;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -253,11 +253,11 @@ class RoleController extends Controller
     }
 
     /**
-     * UI label — the enum's label for a system role, a headline-cased name for a
-     * custom one.
+     * UI label — the ONE registry (override → config default → headline for a
+     * custom role), so an admin rename shows up in role management too.
      */
     private function roleLabel(string $name): string
     {
-        return RoleName::tryFrom($name)?->label() ?? Str::headline($name);
+        return TeamRoleLabels::label($name);
     }
 }

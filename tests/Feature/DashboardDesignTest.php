@@ -39,7 +39,8 @@ test('the expiring warranty card uses an amber watchlist pill', function () {
 
 test('the top sales card ranks with a proportional bar', function () {
     expect(dashSource('components/TopSalesCard.vue'))
-        ->toContain('Sales Teratas')
+        // L3-B: the role word resolves through the registry, never a literal.
+        ->toContain("{{ label('sales') }} Teratas")
         ->toContain('bg-primary') // blue proportion fill
         ->toContain('bg-muted'); // track
 });

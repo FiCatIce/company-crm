@@ -2,6 +2,7 @@
 import { Users } from '@lucide/vue';
 import { computed } from 'vue';
 import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
+import { useLabels } from '@/composables/useLabels';
 
 type TopSales = {
     id: number;
@@ -15,6 +16,8 @@ const props = defineProps<{
     // The backend has already bounded the numbers; this only labels the card.
     scope: 'org' | 'team';
 }>();
+
+const { label, labelLower } = useLabels();
 
 const subtitle = computed(() =>
     props.scope === 'team'
@@ -38,14 +41,16 @@ const barWidth = (count: number) =>
         <div
             class="flex items-baseline justify-between gap-4 border-b border-border p-5"
         >
-            <h2 class="text-sm font-semibold text-foreground">Sales Teratas</h2>
+            <h2 class="text-sm font-semibold text-foreground">
+                {{ label('sales') }} Teratas
+            </h2>
             <p class="text-xs text-muted-foreground">{{ subtitle }}</p>
         </div>
 
         <WidgetEmptyState
             v-if="items.length === 0"
             :icon="Users"
-            message="Belum ada sales dengan customer."
+            :message="`Belum ada ${labelLower('sales')} dengan customer.`"
         />
 
         <ul v-else class="divide-y divide-border">

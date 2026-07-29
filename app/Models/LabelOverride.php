@@ -13,6 +13,12 @@ use Illuminate\Support\Carbon;
  * this model flushes that cache, so an update is visible on the next request
  * without any deploy.
  *
+ * ⚠️ Cache invalidation rides on MODEL EVENTS (saved/deleted below): writes
+ * MUST go through model instances — create()/update()/delete() on an instance.
+ * Query-builder bulk paths (LabelOverride::query()->update()/->delete(),
+ * upsert(), DB::table()) bypass Eloquent events and leave the cached map
+ * STALE until someone else writes. The L3-C settings UI must respect this.
+ *
  * @property int $id
  * @property string $key
  * @property string $label

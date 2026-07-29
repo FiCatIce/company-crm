@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useLabels } from '@/composables/useLabels';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import type { OffboardHoldings, OffboardUser } from '@/types/crm';
@@ -19,6 +20,9 @@ const props = defineProps<{
 
 const form = useForm({ successor_id: null as number | null });
 
+// L3 white-label: role words resolve through the registry (D3).
+const { label } = useLabels();
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Offboard', href: props.cancelUrl },
 ];
@@ -29,7 +33,10 @@ const heldItems = computed(() =>
     [
         { label: 'Customer yang ditangani', value: props.holdings.customers },
         { label: 'Support yang ditugaskan', value: props.holdings.assignees },
-        { label: 'Sales yang dilayani', value: props.holdings.reps },
+        {
+            label: `${label('sales')} yang dilayani`,
+            value: props.holdings.reps,
+        },
         { label: 'Tim yang dipimpin', value: props.holdings.teams_led },
         {
             // Non-manager seats only (led teams have their own row). A plain

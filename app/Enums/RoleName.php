@@ -7,8 +7,12 @@ namespace App\Enums;
  * presets, and tests reference this enum rather than bare strings.
  *
  * A role is a preset/label only: runtime authorization checks PERMISSIONS
- * (never role names — see DESIGN_RBAC.md §3.1). "Manager" is the UI label for
- * the `supervisor` slug (kept to avoid a data rename — DESIGN_RBAC.md D5).
+ * (never role names — see DESIGN_RBAC.md §3.1).
+ *
+ * Deliberately NO label() here (L3-B): display labels resolve through
+ * App\Support\TeamRoleLabels alone, so an admin override (label_overrides)
+ * reaches every page. A second resolver on this enum is exactly the drift the
+ * consolidation removed — it disagreed with the registry over 'cs'.
  */
 enum RoleName: string
 {
@@ -17,20 +21,6 @@ enum RoleName: string
     case Sales = 'sales';
     case Maintenance = 'maintenance';
     case Cs = 'cs';
-
-    /**
-     * Human label for the role (Indonesian UI copy).
-     */
-    public function label(): string
-    {
-        return match ($this) {
-            self::Admin => 'Admin',
-            self::Supervisor => 'Manager',
-            self::Sales => 'Sales',
-            self::Maintenance => 'Maintenance',
-            self::Cs => 'Customer Service',
-        };
-    }
 
     /**
      * All role slugs.

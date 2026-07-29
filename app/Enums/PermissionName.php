@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Support\TeamRoleLabels;
+
 /**
  * Granular permissions gating every CRM capability. Single source of truth:
  * PermissionSeeder seeds exactly these, policies check them, RolePresets maps
@@ -156,7 +158,10 @@ enum PermissionName: string
     }
 
     /**
-     * Short human label (Indonesian UI copy) for the permission toggle.
+     * Short human label (Indonesian UI copy) for the permission toggle. Role
+     * words resolve through TeamRoleLabels (L3-B), so the role-builder
+     * checklist follows an admin rename; 'teknisi' stays literal — it names the
+     * ticket-working FUNCTION, not the maintenance role (ketok D3).
      */
     public function label(): string
     {
@@ -164,7 +169,7 @@ enum PermissionName: string
             self::CustomerViewAll => 'Lihat semua customer',
             self::CustomerViewOwn => 'Lihat customer sendiri',
             self::CustomerViewTeam => 'Lihat customer tim',
-            self::CustomerViewAssigned => 'Lihat customer dari sales yang di-assign',
+            self::CustomerViewAssigned => 'Lihat customer dari '.TeamRoleLabels::labelLower(RoleName::Sales->value).' yang di-assign',
             self::CustomerViewProducts => 'Lihat produk yang dibeli',
             self::CustomerCreate => 'Tambah customer',
             self::CustomerUpdateAll => 'Edit semua customer',
@@ -196,7 +201,7 @@ enum PermissionName: string
             self::RoleAssign => 'Assign role',
             self::PermissionAssign => 'Atur izin per user',
             self::RoleManage => 'Kelola role & izin',
-            self::UserAssign => 'Assign CS/maintenance ke sales',
+            self::UserAssign => 'Assign '.TeamRoleLabels::label(RoleName::Cs->value).'/'.TeamRoleLabels::labelLower(RoleName::Maintenance->value).' ke '.TeamRoleLabels::labelLower(RoleName::Sales->value),
             self::TeamView => 'Lihat menu Tim Saya',
             self::TicketView => 'Lihat tiket servis',
             self::TicketCreate => 'Buat tiket servis',

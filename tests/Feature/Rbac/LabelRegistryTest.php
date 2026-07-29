@@ -108,6 +108,43 @@ it('shares resolved labels in both forms with every inertia page', function () {
 });
 
 // ---------------------------------------------------------------------------
+// Consolidation (L3-B): user + role management read the SAME registry — the
+// old RoleName::label() rival resolver is gone, so an override reaches them.
+// ---------------------------------------------------------------------------
+
+it('carries an override into the user management pages', function () {
+    LabelOverride::create(['key' => 'supervisor', 'label' => 'Kepala Cabang']);
+
+    $admin = userWithRole('admin');
+    $supervisor = userWithRole('supervisor');
+
+    $this->actingAs($admin)->get(route('users.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('users.data', fn ($users) => collect($users)
+                ->contains(fn ($row) => ($row['role']['value'] ?? null) === 'supervisor'
+                    && $row['role']['label'] === 'Kepala Cabang')));
+
+    // The create form's role dropdown resolves through the registry too.
+    $this->actingAs($admin)->get(route('users.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('roles', fn ($roles) => collect($roles)
+                ->contains(['value' => 'supervisor', 'label' => 'Kepala Cabang'])));
+});
+
+it('carries an override into role management', function () {
+    LabelOverride::create(['key' => 'cs', 'label' => 'Layanan Pelanggan']);
+
+    $this->actingAs(userWithRole('admin'))->get(route('roles.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('roles', fn ($roles) => collect($roles)
+                ->contains(fn ($row) => $row['name'] === 'cs'
+                    && $row['label'] === 'Layanan Pelanggan')));
+});
+
+// ---------------------------------------------------------------------------
 // setting.labels — dormant: seeded, admin-only, gating nothing yet
 // ---------------------------------------------------------------------------
 

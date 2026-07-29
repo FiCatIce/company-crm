@@ -26,6 +26,7 @@ import StatCard from '@/components/StatCard.vue';
 import TopSalesCard from '@/components/TopSalesCard.vue';
 import TransactionTrendChart from '@/components/TransactionTrendChart.vue';
 import WarrantyDonut from '@/components/WarrantyDonut.vue';
+import { useLabels } from '@/composables/useLabels';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatIdr } from '@/lib/format';
 import { dashboard } from '@/routes';
@@ -126,6 +127,10 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
 ];
 
+// L3 white-label: role words in card labels/descriptions resolve through the
+// registry (D3), so an admin rename reaches the dashboard untouched.
+const { label, labelLower } = useLabels();
+
 // Narrowed views of the union, so the template never touches a field the current
 // variant lacks.
 const managerTeam = computed(() =>
@@ -185,7 +190,7 @@ const customerCard = computed(() => {
     if (supportTeam.value) {
         return {
             label: 'Customer Dapat Diakses',
-            description: 'yang Anda input atau dari sales yang menugaskan Anda',
+            description: `yang Anda input atau dari ${labelLower('sales')} yang menugaskan Anda`,
         };
     }
 
@@ -299,14 +304,14 @@ const revenueDelta = computed(() => {
                     <!-- Hierarchy band (H6) — the people around the viewer. -->
                     <StatCard
                         v-if="managerTeam"
-                        label="Sales di Tim"
+                        :label="`${label('sales')} di Tim`"
                         :value="managerTeam?.repCount ?? 0"
                         :icon="Users"
                         description="anggota tim Anda"
                     />
                     <StatCard
                         v-if="managerTeam"
-                        label="CS & Maintenance"
+                        :label="`${label('cs')} & ${label('maintenance')}`"
                         :value="managerTeam?.supportCount ?? 0"
                         :icon="UserCog"
                         description="support di tim Anda"
@@ -316,11 +321,11 @@ const revenueDelta = computed(() => {
                         label="Support Saya"
                         :value="salesTeam?.supportCount ?? 0"
                         :icon="UserCog"
-                        description="CS/Maintenance yang Anda tugaskan"
+                        :description="`${label('cs')}/${label('maintenance')} yang Anda tugaskan`"
                     />
                     <StatCard
                         v-if="supportTeam"
-                        label="Sales yang Dilayani"
+                        :label="`${label('sales')} yang Dilayani`"
                         :value="supportTeam?.repCount ?? 0"
                         :icon="Users"
                         description="yang menugaskan Anda"
@@ -447,10 +452,10 @@ const revenueDelta = computed(() => {
                 />
                 <StatCard
                     v-if="stats?.activeSales !== undefined"
-                    label="Sales Aktif"
+                    :label="`${label('sales')} Aktif`"
                     :value="stats.activeSales"
                     :icon="Users"
-                    description="akun sales yang aktif"
+                    :description="`akun ${labelLower('sales')} yang aktif`"
                 />
             </div>
 

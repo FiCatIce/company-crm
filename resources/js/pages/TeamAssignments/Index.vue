@@ -14,6 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { useLabels } from '@/composables/useLabels';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import type { SupportAssigneeRow, SupportCandidateRow } from '@/types/crm';
@@ -33,6 +34,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const initial = (name: string) => name.trim().charAt(0).toUpperCase();
+
+// L3 white-label: role words in copy resolve through the registry (D3).
+const { label, labelLower } = useLabels();
 
 const typeStyles: Record<string, string> = {
     cs: 'border-violet-200 bg-violet-50 text-violet-700',
@@ -83,9 +87,10 @@ const selectedCount = computed(() => form.assignee_ids.length);
                         Support Saya
                     </h1>
                     <p class="text-sm text-muted-foreground">
-                        CS &amp; Maintenance yang Anda tugaskan untuk membantu
-                        menangani customer Anda. Begitu di-assign, mereka
-                        langsung bisa melihat customer Anda.
+                        {{ label('cs') }} &amp; {{ label('maintenance') }} yang
+                        Anda tugaskan untuk membantu menangani customer Anda.
+                        Begitu di-assign, mereka langsung bisa melihat customer
+                        Anda.
                     </p>
                 </div>
             </div>
@@ -181,8 +186,9 @@ const selectedCount = computed(() => form.assignee_ids.length);
                                             <strong>{{ a.name }}</strong> tidak
                                             akan bisa melihat customer Anda lagi
                                             setelah dilepas. Akun mereka tetap
-                                            aktif dan penugasan dari sales lain
-                                            tidak terpengaruh.
+                                            aktif dan penugasan dari
+                                            {{ labelLower('sales') }} lain tidak
+                                            terpengaruh.
                                         </DialogDescription>
                                     </DialogHeader>
 
@@ -219,7 +225,10 @@ const selectedCount = computed(() => form.assignee_ids.length);
                             <UserCog class="size-5" />
                         </div>
                         <p class="text-sm font-medium text-foreground">
-                            Belum ada CS/mekanik yang Anda assign
+                            Belum ada {{ label('cs') }}/{{
+                                label('maintenance')
+                            }}
+                            yang Anda assign
                         </p>
                         <p class="text-sm text-muted-foreground">
                             Pilih dari tim Anda di bawah untuk mulai berbagi
@@ -238,7 +247,8 @@ const selectedCount = computed(() => form.assignee_ids.length);
                         Tambah dari tim Anda
                     </h2>
                     <p class="text-xs text-muted-foreground">
-                        Hanya CS &amp; Maintenance dari tim Anda yang bisa
+                        Hanya {{ label('cs') }} &amp;
+                        {{ label('maintenance') }} dari tim Anda yang bisa
                         ditugaskan.
                     </p>
                 </div>
@@ -252,7 +262,8 @@ const selectedCount = computed(() => form.assignee_ids.length);
                     />
                     <span>
                         Anda belum tergabung dalam tim, jadi belum ada kandidat
-                        yang bisa ditugaskan. Hubungi manager Anda.
+                        yang bisa ditugaskan. Hubungi
+                        {{ labelLower('supervisor') }} Anda.
                     </span>
                 </div>
 
@@ -260,7 +271,8 @@ const selectedCount = computed(() => form.assignee_ids.length);
                     v-else-if="!props.candidates.length"
                     class="px-6 py-8 text-center text-sm text-muted-foreground"
                 >
-                    Semua CS &amp; Maintenance di tim Anda sudah ditugaskan.
+                    Semua {{ label('cs') }} &amp; {{ label('maintenance') }} di
+                    tim Anda sudah ditugaskan.
                 </div>
 
                 <form v-else @submit.prevent="submit">

@@ -13,11 +13,11 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\AccountStatus;
 use App\Support\RolePresets;
+use App\Support\TeamRoleLabels;
 use App\Support\UserOffboarding;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -318,12 +318,12 @@ class UserController extends Controller
     }
 
     /**
-     * UI label for a role slug — the enum's label for a system role (e.g.
-     * supervisor → "Manager"), a headline-cased name for a custom role.
+     * UI label for a role slug — the ONE registry (override → config default →
+     * headline for a custom role), so an admin rename reaches this page too.
      */
     private function roleLabel(string $slug): string
     {
-        return RoleName::tryFrom($slug)?->label() ?? Str::headline($slug);
+        return TeamRoleLabels::label($slug);
     }
 
     /**

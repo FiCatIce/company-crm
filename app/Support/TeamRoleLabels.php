@@ -27,6 +27,11 @@ final class TeamRoleLabels
     /**
      * Per-request memo of the override map (null = not read yet this request).
      *
+     * Safe under PHP-FPM (process state dies with the request). Under a
+     * long-running worker (Octane/queue) it goes stale after another process
+     * writes an override, until this worker recycles or writes one itself —
+     * acceptable for display labels; revisit if the app ever moves to Octane.
+     *
      * @var array<string, string>|null
      */
     private static ?array $overrides = null;
