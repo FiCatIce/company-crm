@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { PackageCheck, Wallet } from '@lucide/vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { PackageCheck, Wallet, Wrench } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
+import ServiceTicketController from '@/actions/App/Http/Controllers/ServiceTicketController';
 import CustomerHeader from '@/components/CustomerHeader.vue';
 import InteractionTimeline from '@/components/InteractionTimeline.vue';
 import LogInteractionModal from '@/components/LogInteractionModal.vue';
+import TicketStatusBadge from '@/components/TicketStatusBadge.vue';
 import WarrantyBadge from '@/components/WarrantyBadge.vue';
 import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -22,6 +24,16 @@ import type {
     SelectOption,
 } from '@/types/crm';
 
+// Riwayat Servis row (M4): the money-free service history of this customer.
+type ServiceHistoryRow = {
+    id: number;
+    item: string | null;
+    status: { value: string; label: string };
+    received_at: string;
+    finished_at: string | null;
+    assignee: { id: number; name: string } | null;
+};
+
 const props = defineProps<{
     customer: CustomerDetail;
     timeline: Paginated<InteractionRow>;
@@ -30,6 +42,9 @@ const props = defineProps<{
     // present — see DESIGN_RBAC.md §4.3.
     transactions?: CustomerTransactionRow[];
     purchasedProducts?: PurchasedProductRow[];
+    // Absent (not empty) for viewers without ticket.view — the section only
+    // renders when the key exists, mirroring the transactions/products split.
+    serviceTickets?: ServiceHistoryRow[];
     warrantySummary: { active: number; expired: number; none: number };
     stats: CustomerStats;
     statuses: SelectOption[];
@@ -114,6 +129,22 @@ const productSectionTitle = computed(() =>
 const productEmptyMessage = computed(() =>
     showsMoney.value ? 'Belum ada transaksi.' : 'Belum ada produk dibeli.',
 );
+
+const serviceDateFormat = new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+});
+
+// "masuk → selesai" for a service row; an unfinished ticket shows an open end.
+function serviceDates(row: ServiceHistoryRow): string {
+    const from = serviceDateFormat.format(new Date(row.received_at));
+    const to = row.finished_at
+        ? serviceDateFormat.format(new Date(row.finished_at))
+        : '…';
+
+    return `${from} → ${to}`;
+}
 
 // Price label for a row: null when the row carries no amount (the backend omits
 // it for money-less viewers), so the caller hides the price; '—' for a
@@ -284,6 +315,74 @@ function amountText(
                                             t.warranty_months ?? 0
                                         "
                                     />
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Riwayat Servis (M4) — rendered only when the backend sent
+                         the section (ticket.view holders); sits next to the
+                         product/warranty card because a repair is the follow-up
+                         story of a purchase. -->
+                    <div
+                        v-if="serviceTickets !== undefined"
+                        class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+                    >
+                        <div class="border-b border-border p-5">
+                            <h2 class="text-sm font-semibold text-foreground">
+                                Riwayat Servis
+                            </h2>
+                        </div>
+
+                        <WidgetEmptyState
+                            v-if="serviceTickets.length === 0"
+                            :icon="Wrench"
+                            message="Belum pernah servis."
+                        />
+
+                        <ul v-else class="divide-y divide-border">
+                            <li
+                                v-for="ticket in serviceTickets"
+                                :key="ticket.id"
+                                class="space-y-2 p-4"
+                            >
+                                <div
+                                    class="flex items-start justify-between gap-3"
+                                >
+                                    <div class="min-w-0 space-y-0.5">
+                                        <Link
+                                            :href="
+                                                ServiceTicketController.show(
+                                                    ticket.id,
+                                                )
+                                            "
+                                            class="text-sm font-medium text-primary hover:underline"
+                                        >
+                                            #{{ ticket.id }}
+                                        </Link>
+                                        <p
+                                            class="truncate text-sm text-foreground"
+                                        >
+                                            {{ ticket.item ?? '—' }}
+                                        </p>
+                                    </div>
+                                    <TicketStatusBadge
+                                        class="shrink-0"
+                                        :status="ticket.status.value"
+                                        :label="ticket.status.label"
+                                    />
+                                </div>
+                                <div
+                                    class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"
+                                >
+                                    <span class="tabular-nums">{{
+                                        serviceDates(ticket)
+                                    }}</span>
+                                    <span>{{
+                                        ticket.assignee
+                                            ? ticket.assignee.name
+                                            : 'Belum ada teknisi'
+                                    }}</span>
                                 </div>
                             </li>
                         </ul>

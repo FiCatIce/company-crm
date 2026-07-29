@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import {
+    Check,
+    ClipboardList,
+    Inbox,
     MessageSquare,
     Receipt,
     ShieldAlert,
@@ -10,8 +13,10 @@ import {
     UserCog,
     Users,
     Wallet,
+    Wrench,
 } from '@lucide/vue';
 import { computed } from 'vue';
+import ServiceTicketController from '@/actions/App/Http/Controllers/ServiceTicketController';
 import ExpiringWarrantyCard from '@/components/ExpiringWarrantyCard.vue';
 import MyInteractionsCard from '@/components/MyInteractionsCard.vue';
 import RecentCallsCard from '@/components/RecentCallsCard.vue';
@@ -48,6 +53,14 @@ type ExpiringRow = {
 };
 
 type TopSales = { id: number; name: string; customers_count: number };
+
+// Service-ticket band (M4) — one variant per capability tier, mirroring the
+// backend's ticketStats. Which keys exist depends on `kind`.
+type TicketBand =
+    | { kind: 'span'; active: number; doneThisMonth: number }
+    | { kind: 'worker'; mine: number; pool: number }
+    | { kind: 'intake'; myActiveIntakes: number }
+    | { kind: 'watch'; active: number };
 
 type RevenueSales = { id: number; name: string; revenue: number };
 
@@ -90,6 +103,13 @@ const props = defineProps<{
     revenueBySales?: RevenueSales[];
     salesScope?: 'org' | 'team';
     recentCalls?: RecentCallRow[];
+    // Ticket band (M4): `tickets` for ticket.view holders (every number is
+    // ServiceTicket::visibleTo-scoped and each card links to the pre-filtered
+    // list it was counted from); `ticketsAggregate` only for the aggregate-only
+    // viewer (admin) — bare org counts, deliberately NOT clickable because
+    // /service-tickets is 403 for them. At most one of the two is present.
+    tickets?: TicketBand;
+    ticketsAggregate?: { active: number; doneThisMonth: number };
     me: {
         myCustomers: number;
         myInteractionsToday: number;
@@ -117,6 +137,38 @@ const salesTeam = computed(() =>
 const supportTeam = computed(() =>
     props.team?.kind === 'support' ? props.team : null,
 );
+
+// Narrowed ticket-band variants (same idiom as the team band above).
+const spanTickets = computed(() =>
+    props.tickets?.kind === 'span' ? props.tickets : null,
+);
+const workerTickets = computed(() =>
+    props.tickets?.kind === 'worker' ? props.tickets : null,
+);
+const intakeTickets = computed(() =>
+    props.tickets?.kind === 'intake' ? props.tickets : null,
+);
+const watchTickets = computed(() =>
+    props.tickets?.kind === 'watch' ? props.tickets : null,
+);
+
+// Card click-throughs carry the SAME filters the backend counted with, so the
+// number on a card equals the total of the list it opens (H7d anti-mismatch).
+const ticketLinks = {
+    active: ServiceTicketController.index.url({
+        query: { status: 'active' },
+    }),
+    done: ServiceTicketController.index.url({ query: { status: 'done' } }),
+    mine: ServiceTicketController.index.url({
+        query: { assigned: 'me', status: 'active' },
+    }),
+    pool: ServiceTicketController.index.url({
+        query: { assigned: 'pool', status: 'received' },
+    }),
+    intake: ServiceTicketController.index.url({
+        query: { created: 'me', status: 'active' },
+    }),
+};
 
 // `me.myCustomers` IS the hierarchy-scoped Customer::visibleTo count — the very
 // number /customers lists — but what it MEANS differs per tier: a rep's own book,
@@ -275,6 +327,94 @@ const revenueDelta = computed(() => {
                     />
                 </div>
                 <MyInteractionsCard :items="me.myRecentInteractions" />
+            </section>
+
+            <!-- Band 0b — service tickets (M4). One variant per capability tier;
+                 every number is ServiceTicket::visibleTo-scoped and each card
+                 opens the /service-tickets list pre-filtered with the exact
+                 bounds it was counted with. -->
+            <section v-if="tickets" class="flex flex-col gap-4">
+                <h2 class="text-sm font-semibold text-foreground">Servis</h2>
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <!-- Supervisor: the team's workload -->
+                    <StatCard
+                        v-if="spanTickets"
+                        label="Tiket Aktif"
+                        :value="spanTickets.active"
+                        :icon="Wrench"
+                        description="diterima / dikerjakan, seluruh cakupan Anda"
+                        :href="ticketLinks.active"
+                    />
+                    <StatCard
+                        v-if="spanTickets"
+                        label="Servis Selesai Bulan Ini"
+                        :value="spanTickets.doneThisMonth"
+                        :icon="Check"
+                        description="tiket rampung bulan berjalan"
+                        :href="ticketLinks.done"
+                    />
+
+                    <!-- Technician: my bench + the pool -->
+                    <StatCard
+                        v-if="workerTickets"
+                        label="Kerjaan Saya"
+                        :value="workerTickets.mine"
+                        :icon="Wrench"
+                        description="tiket aktif di tangan Anda"
+                        :href="ticketLinks.mine"
+                    />
+                    <StatCard
+                        v-if="workerTickets"
+                        label="Pool"
+                        :value="workerTickets.pool"
+                        :icon="Inbox"
+                        description="belum diklaim — siap diambil"
+                        :href="ticketLinks.pool"
+                    />
+
+                    <!-- CS: follow-up on my intakes -->
+                    <StatCard
+                        v-if="intakeTickets"
+                        label="Intake Saya Masih Aktif"
+                        :value="intakeTickets.myActiveIntakes"
+                        :icon="ClipboardList"
+                        description="tiket yang Anda buat, belum selesai"
+                        :href="ticketLinks.intake"
+                    />
+
+                    <!-- Sales (read-only): repairs across their book -->
+                    <StatCard
+                        v-if="watchTickets"
+                        label="Servis Aktif"
+                        :value="watchTickets.active"
+                        :icon="Wrench"
+                        description="unit customer Anda sedang diservis"
+                        :href="ticketLinks.active"
+                    />
+                </div>
+            </section>
+
+            <!-- Band 0b (aggregate variant) — admin (B4): bare org counts, no
+                 drill-down (/service-tickets is 403 for a viewer without
+                 ticket.view), so the cards are deliberately not links. -->
+            <section v-if="ticketsAggregate" class="flex flex-col gap-4">
+                <h2 class="text-sm font-semibold text-foreground">
+                    Servis (Organisasi)
+                </h2>
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <StatCard
+                        label="Tiket Aktif"
+                        :value="ticketsAggregate.active"
+                        :icon="Wrench"
+                        description="seluruh organisasi"
+                    />
+                    <StatCard
+                        label="Selesai Bulan Ini"
+                        :value="ticketsAggregate.doneThisMonth"
+                        :icon="Check"
+                        description="seluruh organisasi"
+                    />
+                </div>
             </section>
 
             <!-- Band 1 — org-wide KPI row. Absent for scoped (Sales) viewers; each

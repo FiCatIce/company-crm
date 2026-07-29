@@ -43,6 +43,7 @@ const props = defineProps<{
         status?: string | null;
         priority?: string | null;
         assigned?: string | null;
+        created?: string | null;
         search?: string | null;
     };
     statusOptions: SelectOption[];
@@ -61,7 +62,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 const search = ref(props.filters.search ?? '');
 const status = ref(props.filters.status ?? '');
 const priority = ref(props.filters.priority ?? '');
-const assigned = ref(props.filters.assigned ?? '');
+// One select spans two query params: assigned=me|pool and created=me ("Intake
+// Saya", the CS dashboard card's bound) — 'intake' is the select's encoding of
+// the latter.
+const ownership = ref(
+    props.filters.created === 'me' ? 'intake' : (props.filters.assigned ?? ''),
+);
 
 function applyFilters() {
     router.get(
@@ -70,7 +76,11 @@ function applyFilters() {
             search: search.value || undefined,
             status: status.value || undefined,
             priority: priority.value || undefined,
-            assigned: assigned.value || undefined,
+            assigned:
+                ownership.value === 'intake'
+                    ? undefined
+                    : ownership.value || undefined,
+            created: ownership.value === 'intake' ? 'me' : undefined,
         },
         { preserveState: true, preserveScroll: true, replace: true },
     );
@@ -79,7 +89,7 @@ function applyFilters() {
 watchDebounced(search, applyFilters, { debounce: 300 });
 watch(status, applyFilters);
 watch(priority, applyFilters);
-watch(assigned, applyFilters);
+watch(ownership, applyFilters);
 
 const claiming = ref<number | null>(null);
 
@@ -189,6 +199,9 @@ const selectClasses =
                     </div>
                     <select v-model="status" :class="selectClasses">
                         <option value="">Semua status</option>
+                        <!-- Virtual bucket (M4): diterima + dikerjakan — the
+                             dashboard's "aktif" cards land here. -->
+                        <option value="active">Aktif</option>
                         <option
                             v-for="s in statusOptions"
                             :key="s.value"
@@ -207,10 +220,11 @@ const selectClasses =
                             {{ p.label }}
                         </option>
                     </select>
-                    <select v-model="assigned" :class="selectClasses">
+                    <select v-model="ownership" :class="selectClasses">
                         <option value="">Semua tiket</option>
                         <option value="me">Kerjaan Saya</option>
                         <option value="pool">Pool (belum dipegang)</option>
+                        <option value="intake">Intake Saya</option>
                     </select>
                 </div>
 

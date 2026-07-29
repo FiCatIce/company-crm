@@ -33,4 +33,16 @@ enum TicketStatus: string
     {
         return $this === self::Received || $this === self::InProgress;
     }
+
+    /**
+     * The active bucket as a whereIn-able list. Every "tiket aktif" figure
+     * (dashboard cards, /service-tickets stats, the ?status=active filter)
+     * counts through this one definition, so the numbers cannot drift apart.
+     *
+     * @return list<self>
+     */
+    public static function active(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $status): bool => $status->isActive()));
+    }
 }

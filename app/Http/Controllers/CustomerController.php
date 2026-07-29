@@ -14,6 +14,7 @@ use App\Http\Requests\UpdateCustomerOwnerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Interaction;
+use App\Models\ServiceTicket;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\HierarchyResolver;
@@ -288,6 +289,36 @@ class CustomerController extends Controller
             default => [],
         };
 
+        // Riwayat Servis (M4) — through ServiceTicket::visibleTo, NOT the raw
+        // relation, for the same reason the timeline above goes through
+        // Interaction::visibleTo: opening the 360 does not by itself grant ticket
+        // sight (the role builder can mint customer view without ticket.view).
+        // Without the permission the key is ABSENT — never an empty list — so the
+        // section cannot render at all.
+        $ticketSection = [];
+
+        if ($user->can(PermissionName::TicketView->value)) {
+            $ticketSection = ['serviceTickets' => ServiceTicket::query()
+                ->visibleTo($user)
+                ->where('customer_id', $customer->id)
+                // product/transaction.product feed the unit label; assignee is the
+                // technician column — every column the mapper reads rides along
+                // (the eager-load-trim trap from /team and the ticket Index).
+                ->with(['product:id,name', 'transaction:id,product_id', 'transaction.product:id,name', 'assignee:id,name'])
+                ->latest('received_at')
+                ->latest('id')
+                ->get()
+                ->map(fn (ServiceTicket $ticket): array => [
+                    'id' => $ticket->id,
+                    'item' => ($ticket->product ?? $ticket->transaction?->product)->name
+                        ?? $ticket->item_description,
+                    'status' => ['value' => $ticket->status->value, 'label' => $ticket->status->label()],
+                    'received_at' => $ticket->received_at->toDateString(),
+                    'finished_at' => $ticket->finished_at?->toDateString(),
+                    'assignee' => $ticket->assignee?->only(['id', 'name']),
+                ])->all()];
+        }
+
         return Inertia::render('Customers/Show', [
             'customer' => [
                 'id' => $customer->id,
@@ -310,6 +341,7 @@ class CustomerController extends Controller
             ],
             'timeline' => $timeline,
             ...$productSection,
+            ...$ticketSection,
             'warrantySummary' => $warrantySummary,
             'stats' => [
                 'interactionsCount' => $timeline->total(),

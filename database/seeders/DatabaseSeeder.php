@@ -37,5 +37,10 @@ class DatabaseSeeder extends Seeder
         // capability defaults + wires the seeded agents into an example team and
         // sales<->support assignments. Behavior-neutral (nothing reads it yet).
         $this->call(HierarchySeeder::class);
+
+        // M4 (DESIGN_MAINTENANCE.md): demo service tickets over the customers and
+        // agents seeded above — a realistic mix of resolved history, a working
+        // queue, and an unclaimed pool. Idempotent (tops up, never duplicates).
+        $this->call(DemoServiceTicketSeeder::class);
     }
 }

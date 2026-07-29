@@ -6,8 +6,10 @@ use App\Enums\CustomerSource;
 use App\Enums\CustomerStatus;
 use App\Enums\InteractionType;
 use App\Enums\PermissionName;
+use App\Enums\TicketStatus;
 use App\Models\Customer;
 use App\Models\Interaction;
+use App\Models\ServiceTicket;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\HierarchyResolver;
@@ -154,6 +156,22 @@ class DashboardController extends Controller
         // only their own customers' calls for Sales.
         if ($canViewCalls) {
             $props['recentCalls'] = $this->recentCalls($user);
+        }
+
+        // Service-ticket band (M4). A ticket.view holder gets the variant their
+        // capability tier earns (ticketStats); the aggregate-only viewer (admin,
+        // B4) instead gets bare org counts with no rows behind them —
+        // /service-tickets stays 403 for them, so there is nothing to drill into.
+        if (($tickets = $this->ticketStats($user)) !== null) {
+            $props['tickets'] = $tickets;
+        } elseif ($canSeeOrgStats) {
+            $props['ticketsAggregate'] = [
+                'active' => ServiceTicket::query()
+                    ->whereIn('status', TicketStatus::active())->count(),
+                'doneThisMonth' => ServiceTicket::query()
+                    ->where('status', TicketStatus::Done)
+                    ->where('finished_at', '>=', now()->startOfMonth())->count(),
+            ];
         }
 
         // Revenue band — its OWN prop, deliberately not inside `stats`: `stats` is
@@ -356,6 +374,66 @@ class DashboardController extends Controller
             'myExpiringWarranties' => $myExpiringWarranties,
             'myRecentInteractions' => $this->myRecentInteractions($userId),
         ];
+    }
+
+    /**
+     * The service-ticket band (M4) — variant picked by CAPABILITY, not role name
+     * (same idiom as teamStats), so a custom role lands on the closest fit:
+     *
+     *   ticket.assign → span:   active across the viewer's sight + done this month
+     *                           (supervisor: their team's workload)
+     *   ticket.update → worker: my active bench + the unclaimed pool
+     *                           (technician: what's mine, what's up for grabs)
+     *   ticket.create → intake: my still-active intakes (CS follow-up)
+     *   ticket.view   → watch:  active repairs across the viewer's book (sales)
+     *
+     * Every figure runs through ServiceTicket::visibleTo — the SAME scope the
+     * /service-tickets list applies — and each card links to that list carrying
+     * the very filters it counted with, so a card can never disagree with the
+     * page it opens (the H7d anti-mismatch rule). Null without ticket.view.
+     *
+     * @return array<string, int|string>|null
+     */
+    private function ticketStats(User $user): ?array
+    {
+        if (! $user->can(PermissionName::TicketView->value)) {
+            return null;
+        }
+
+        $active = fn () => ServiceTicket::query()->visibleTo($user)
+            ->whereIn('status', TicketStatus::active());
+
+        if ($user->can(PermissionName::TicketAssign->value)) {
+            return [
+                'kind' => 'span',
+                'active' => $active()->count(),
+                'doneThisMonth' => ServiceTicket::query()->visibleTo($user)
+                    ->where('status', TicketStatus::Done)
+                    ->where('finished_at', '>=', now()->startOfMonth())->count(),
+            ];
+        }
+
+        if ($user->can(PermissionName::TicketUpdate->value)) {
+            return [
+                'kind' => 'worker',
+                'mine' => $active()->where('assigned_to', $user->id)->count(),
+                // Pool = claimable work: unassigned AND still `received` (an
+                // unassigned cancelled ticket is not up for grabs) — the same
+                // bound the card's ?assigned=pool&status=received link applies.
+                'pool' => ServiceTicket::query()->visibleTo($user)
+                    ->where('status', TicketStatus::Received)
+                    ->whereNull('assigned_to')->count(),
+            ];
+        }
+
+        if ($user->can(PermissionName::TicketCreate->value)) {
+            return [
+                'kind' => 'intake',
+                'myActiveIntakes' => $active()->where('created_by', $user->id)->count(),
+            ];
+        }
+
+        return ['kind' => 'watch', 'active' => $active()->count()];
     }
 
     /**

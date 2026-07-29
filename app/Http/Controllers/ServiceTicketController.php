@@ -47,7 +47,13 @@ class ServiceTicketController extends Controller
             ->with(['customer:id,name,created_by,assigned_to', 'product:id,name', 'transaction:id,product_id', 'transaction.product:id,name', 'assignee:id,name'])
             ->latest('received_at');
 
-        if (($status = $request->string('status')->toString()) !== '' && TicketStatus::tryFrom($status) !== null) {
+        $status = $request->string('status')->toString();
+
+        if ($status === 'active') {
+            // Virtual bucket (M4): the dashboard's "aktif" cards link here, so the
+            // filter must count through the same definition the card used.
+            $query->whereIn('status', TicketStatus::active());
+        } elseif ($status !== '' && TicketStatus::tryFrom($status) !== null) {
             $query->where('status', $status);
         }
 
@@ -61,13 +67,19 @@ class ServiceTicketController extends Controller
             default => null,
         };
 
+        // Intake follow-up (M4): the CS dashboard card counts created-by-me tickets,
+        // and its click-through lands here with the same bound.
+        if ($request->string('created')->toString() === 'me') {
+            $query->where('created_by', $user->id);
+        }
+
         if (($search = $request->string('search')->toString()) !== '') {
             $query->whereHas('customer', fn ($customer) => $customer->where('name', 'like', "%{$search}%"));
         }
 
         $stats = [
             'active' => ServiceTicket::query()->visibleTo($user)
-                ->whereIn('status', [TicketStatus::Received, TicketStatus::InProgress])->count(),
+                ->whereIn('status', TicketStatus::active())->count(),
             'doneThisMonth' => ServiceTicket::query()->visibleTo($user)
                 ->where('status', TicketStatus::Done)
                 ->where('finished_at', '>=', now()->startOfMonth())->count(),
@@ -84,7 +96,7 @@ class ServiceTicketController extends Controller
                         && $user->can('view', $ticket->customer),
                 ]),
             'stats' => $stats,
-            'filters' => $request->only(['status', 'priority', 'assigned', 'search']),
+            'filters' => $request->only(['status', 'priority', 'assigned', 'created', 'search']),
             'statusOptions' => $this->enumOptions(TicketStatus::cases()),
             'priorityOptions' => $this->enumOptions(TicketPriority::cases()),
             'can' => ['create' => $user->can('create', ServiceTicket::class)],

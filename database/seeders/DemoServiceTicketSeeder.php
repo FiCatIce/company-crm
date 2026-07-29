@@ -9,9 +9,9 @@ use Illuminate\Database\Seeder;
 
 /**
  * M1 (DESIGN_MAINTENANCE.md) — demo service tickets over EXISTING demo customers
- * and maintenance agents. DORMANT: deliberately NOT wired into DatabaseSeeder
- * until the module has a surface (M4) — until then it is only ever run by hand.
- * Idempotent: tops up to the target count, never duplicates.
+ * and maintenance agents. Wired into DatabaseSeeder since M4, when the module
+ * grew its surface (dashboard cards + 360 Riwayat Servis) and demo data became
+ * worth having. Idempotent: tops up to the target count, never duplicates.
  */
 class DemoServiceTicketSeeder extends Seeder
 {
