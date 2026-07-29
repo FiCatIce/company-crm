@@ -83,6 +83,10 @@ enum PermissionName: string
     case TicketAssign = 'ticket.assign';
     case TicketDelete = 'ticket.delete';
 
+    // White-label naming (dormant in L3-A — no route/gate reads it until the
+    // L3-C admin UI). Gates editing the role display labels (label_overrides).
+    case SettingLabels = 'setting.labels';
+
     /**
      * All permission strings.
      *
@@ -116,6 +120,7 @@ enum PermissionName: string
             self::UserAssign, self::TeamView => 'Tim',
             self::TicketView, self::TicketCreate, self::TicketUpdate,
             self::TicketAssign, self::TicketDelete => 'Servis',
+            self::SettingLabels => 'User & Access',
         };
     }
 
@@ -198,6 +203,7 @@ enum PermissionName: string
             self::TicketUpdate => 'Kerjakan/edit tiket servis',
             self::TicketAssign => 'Routing tiket ke teknisi',
             self::TicketDelete => 'Hapus tiket servis',
+            self::SettingLabels => 'Ubah label tampilan role (white-label)',
         };
     }
 }

@@ -164,6 +164,9 @@ final class RolePresets
             P::InteractionViewAll,
             P::UserView, P::UserCreate, P::UserUpdate, P::UserDelete,
             P::RoleAssign, P::PermissionAssign, P::RoleManage,
+            // L3 white-label (dormant until the L3-C settings UI ships): admin
+            // may rename the role display labels — a naming power, not data.
+            P::SettingLabels,
         ];
     }
 

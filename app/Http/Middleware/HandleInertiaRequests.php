@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\TeamRoleLabels;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -52,6 +53,14 @@ class HandleInertiaRequests extends Middleware
                 'can' => [
                     'manageTeamMembers' => $request->user()?->can('manageTeamMembers', User::class) ?? false,
                 ],
+            ],
+            // L3 white-label: resolved role labels (override → default), in Title
+            // Case + the sentence-context lower form. Vue copy reads these via
+            // useLabels() instead of hardcoding 'Sales'/'CS' — an admin override
+            // is then visible on the very next request, everywhere at once.
+            'labels' => [
+                'roles' => TeamRoleLabels::all(),
+                'rolesLower' => TeamRoleLabels::allLower(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [

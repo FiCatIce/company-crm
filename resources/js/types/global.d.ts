@@ -18,6 +18,12 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            // L3 white-label: resolved role labels (slug → label), Title Case +
+            // sentence-context lower form. Read via useLabels(), not directly.
+            labels: {
+                roles: Record<string, string>;
+                rolesLower: Record<string, string>;
+            };
             sidebarOpen: boolean;
             flash: { success?: string | null; error?: string | null };
             [key: string]: unknown;
