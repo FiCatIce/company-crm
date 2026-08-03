@@ -13,9 +13,15 @@ export const badgeVariants = cva(
         secondary:
           "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
         destructive:
-         "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20",
+          "border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        // Status vocabulary — soft fill + strong text from the locked
+        // --state-* tokens; never affected by tenant theming.
+        ok: "border-transparent bg-state-ok-soft text-state-ok-strong",
+        warn: "border-transparent bg-state-warn-soft text-state-warn-strong",
+        busy: "border-transparent bg-state-busy-soft text-state-busy-strong",
+        idle: "border-transparent bg-state-idle-soft text-state-idle-strong",
       },
     },
     defaultVariants: {

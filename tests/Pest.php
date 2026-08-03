@@ -106,6 +106,53 @@ function supportAssignedToOwnerOf(Customer $customer, string $role = 'cs'): arra
 }
 
 /**
+ * Parse every custom-property declaration inside the :root block of
+ * resources/css/app.css into ['--token' => 'raw value'] (comments stripped).
+ * Raw values keep their var() references — resolve with resolveDesignToken().
+ */
+function designTokenMap(): array
+{
+    $css = file_get_contents(resource_path('css/app.css'));
+
+    if (! preg_match('/:root\s*\{(.*?)\}/s', $css, $m)) {
+        throw new RuntimeException('No :root block found in app.css');
+    }
+
+    $block = preg_replace('~/\*.*?\*/~s', '', $m[1]);
+
+    preg_match_all('/(--[\w-]+)\s*:\s*([^;]+);/', $block, $decls, PREG_SET_ORDER);
+
+    $map = [];
+    foreach ($decls as $decl) {
+        $map[$decl[1]] = trim($decl[2]);
+    }
+
+    return $map;
+}
+
+/**
+ * Follow a token's var() chain through the :root map until it lands on a
+ * concrete literal. Throws on dangling references or cycles so tests fail
+ * loudly when a semantic token stops resolving.
+ */
+function resolveDesignToken(string $token): string
+{
+    $map = designTokenMap();
+    $value = $map[$token] ?? throw new RuntimeException("Token {$token} is not defined in :root");
+
+    $depth = 0;
+    while (preg_match('/^var\((--[\w-]+)\)$/', $value, $m)) {
+        if (++$depth > 10) {
+            throw new RuntimeException("Token {$token} does not resolve (cycle or chain too deep)");
+        }
+
+        $value = $map[$m[1]] ?? throw new RuntimeException("Token {$token} references undefined {$m[1]}");
+    }
+
+    return $value;
+}
+
+/**
  * A supervisor (manager) leading a team that contains $sales — so a team roll-up
  * viewer can see that sales rep's customers.
  */

@@ -1,3 +1,5 @@
+@import './fonts.css';
+
 @import 'tailwindcss';
 
 @import 'tw-animate-css';
@@ -6,9 +8,12 @@
 
 @theme inline {
     --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
+        'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+    --font-mono:
+        'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
+        'Liberation Mono', monospace;
 
     /* 8px corporate radius scale */
     --radius-lg: var(--radius);
@@ -50,11 +55,30 @@
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
 
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
+    /*
+      Compat: the `accent` utilities keep their shadcn meaning — a subtle
+      tinted interaction state — and therefore map to the soft accent pair,
+      while the raw --accent token is the solid brand color.
+    */
+    --color-accent: var(--accent-soft);
+    --color-accent-foreground: var(--accent-soft-foreground);
 
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
+
+    /* Status vocabulary (ok/warn/busy/idle) — never themeable */
+    --color-state-ok: var(--state-ok);
+    --color-state-ok-soft: var(--state-ok-soft);
+    --color-state-ok-strong: var(--state-ok-strong);
+    --color-state-warn: var(--state-warn);
+    --color-state-warn-soft: var(--state-warn-soft);
+    --color-state-warn-strong: var(--state-warn-strong);
+    --color-state-busy: var(--state-busy);
+    --color-state-busy-soft: var(--state-busy-soft);
+    --color-state-busy-strong: var(--state-busy-strong);
+    --color-state-idle: var(--state-idle);
+    --color-state-idle-soft: var(--state-idle-soft);
+    --color-state-idle-strong: var(--state-idle-strong);
 
     --color-border: var(--border);
     --color-input: var(--input);
@@ -98,7 +122,7 @@
     body,
     html {
         --font-sans:
-            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+            'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif,
             'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
             'Noto Color Emoji';
     }
@@ -111,63 +135,128 @@
   White canvas, off-white surfaces, a single corporate-blue accent reserved
   for primary actions / links / active states / key metrics, neutral slate
   text, thin slate-200 borders, an 8px radius and subtle soft shadows.
+
+  Two-layer token model:
+
+  LAYER 1 — raw palette (--p-*). The only place hex values may appear.
+  Never referenced by components or pages; DesignTokenGuardTest enforces
+  this statically.
+
+  LAYER 2 — semantic tokens. Everything below the palette block. Components
+  read these (via the Tailwind utilities mapped in @theme above).
+
+  THEMEABLE (per-tenant runtime override targets exactly these five):
+      --accent, --accent-hover, --accent-foreground,
+      --accent-soft, --accent-soft-foreground
+  Every other token — surfaces, borders, text, destructive, the state
+  vocabulary — is locked: status colors are product vocabulary, not
+  branding.
 */
 :root {
+    /* ---- LAYER 1 · raw palette — do not use outside this block ---- */
+    --p-white: #ffffff;
+
+    --p-slate-50: #f8fafc;
+    --p-slate-100: #f1f5f9;
+    --p-slate-200: #e2e8f0;
+    --p-slate-500: #64748b;
+    --p-slate-700: #334155;
+    --p-slate-900: #0f172a;
+
+    --p-blue-50: #eff6ff;
+    --p-blue-300: #93c5fd;
+    --p-blue-400: #60a5fa;
+    --p-blue-500: #3b82f6;
+    --p-blue-600: #2563eb;
+    --p-blue-700: #1d4ed8;
+    --p-blue-800: #1e40af;
+
+    --p-red-50: #fef2f2;
+    --p-red-600: #dc2626;
+    --p-red-700: #b91c1c;
+
+    --p-green-50: #f0fdf4;
+    --p-green-600: #16a34a;
+    --p-green-700: #15803d;
+
+    --p-amber-50: #fffbeb;
+    --p-amber-600: #d97706;
+    --p-amber-700: #b45309;
+
+    /* ---- LAYER 2 · semantic tokens ---- */
+
+    /* Brand accent — the ONLY themeable group */
+    --accent: var(--p-blue-600);
+    --accent-hover: var(--p-blue-700);
+    --accent-foreground: var(--p-white);
+    --accent-soft: var(--p-blue-50); /* tinted hover/active/selected */
+    --accent-soft-foreground: var(--p-blue-700);
+
     /* Canvas + primary text */
-    --background: #ffffff; /* white */
-    --foreground: #0f172a; /* slate-900 — primary text */
+    --background: var(--p-white);
+    --foreground: var(--p-slate-900); /* slate-900 — primary text */
 
     /* Off-white surfaces */
-    --card: #f8fafc; /* slate-50 — panels & cards */
-    --card-foreground: #0f172a;
-    --popover: #ffffff; /* crisp white for floating menus */
-    --popover-foreground: #0f172a;
+    --card: var(--p-slate-50); /* panels & cards */
+    --card-foreground: var(--p-slate-900);
+    --popover: var(--p-white); /* crisp white for floating menus */
+    --popover-foreground: var(--p-slate-900);
 
-    /* Corporate blue accent — primary actions, links, focus */
-    --primary: #2563eb; /* blue-600 */
-    --primary-foreground: #ffffff;
-    --primary-hover: #1d4ed8; /* blue-700 */
+    /* Primary actions, links, focus — derived from the accent */
+    --primary: var(--accent);
+    --primary-foreground: var(--accent-foreground);
+    --primary-hover: var(--accent-hover);
 
     /* Neutral secondary surface */
-    --secondary: #f1f5f9; /* slate-100 */
-    --secondary-foreground: #0f172a;
+    --secondary: var(--p-slate-100);
+    --secondary-foreground: var(--p-slate-900);
 
     /* Muted fills + secondary text */
-    --muted: #f1f5f9; /* slate-100 */
-    --muted-foreground: #64748b; /* slate-500 — secondary text */
+    --muted: var(--p-slate-100);
+    --muted-foreground: var(--p-slate-500); /* secondary text */
 
-    /* Subtle blue tint for hover / active / selected states */
-    --accent: #eff6ff; /* blue-50 */
-    --accent-foreground: #1d4ed8; /* blue-700 */
+    /* Destructive actions — locked, not part of tenant branding */
+    --destructive: var(--p-red-600);
+    --destructive-foreground: var(--p-white);
 
-    /* Status */
-    --destructive: #dc2626; /* red-600 */
-    --destructive-foreground: #ffffff;
+    /* Status vocabulary — ok/warn/busy/idle, locked */
+    --state-ok: var(--p-green-600);
+    --state-ok-soft: var(--p-green-50);
+    --state-ok-strong: var(--p-green-700);
+    --state-warn: var(--p-amber-600);
+    --state-warn-soft: var(--p-amber-50);
+    --state-warn-strong: var(--p-amber-700);
+    --state-busy: var(--p-red-600);
+    --state-busy-soft: var(--p-red-50);
+    --state-busy-strong: var(--p-red-700);
+    --state-idle: var(--p-slate-500);
+    --state-idle-soft: var(--p-slate-100);
+    --state-idle-strong: var(--p-slate-700);
 
     /* Lines & focus */
-    --border: #e2e8f0; /* slate-200 — thin borders */
-    --input: #e2e8f0;
-    --ring: #2563eb; /* focus ring = corporate blue */
+    --border: var(--p-slate-200); /* thin borders */
+    --input: var(--p-slate-200);
+    --ring: var(--accent); /* focus ring follows the accent */
 
-    /* Data-viz ramp (blue-centric) */
-    --chart-1: #2563eb;
-    --chart-2: #60a5fa;
-    --chart-3: #1e40af;
-    --chart-4: #93c5fd;
-    --chart-5: #3b82f6;
+    /* Data-viz ramp (blue-centric, locked) */
+    --chart-1: var(--p-blue-600);
+    --chart-2: var(--p-blue-400);
+    --chart-3: var(--p-blue-800);
+    --chart-4: var(--p-blue-300);
+    --chart-5: var(--p-blue-500);
 
     --radius: 0.5rem; /* 8px */
 
-    /* Sidebar — off-white surface with a blue active state */
-    --sidebar-background: #f8fafc; /* off-white */
-    --sidebar: #f8fafc;
-    --sidebar-foreground: #334155; /* slate-700 */
-    --sidebar-primary: #2563eb; /* logo mark + accents */
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #eff6ff; /* blue-50 — active/hover nav */
-    --sidebar-accent-foreground: #1d4ed8; /* blue-700 */
-    --sidebar-border: #e2e8f0;
-    --sidebar-ring: #2563eb;
+    /* Sidebar — off-white surface with an accent-tinted active state */
+    --sidebar-background: var(--p-slate-50);
+    --sidebar: var(--p-slate-50);
+    --sidebar-foreground: var(--p-slate-700);
+    --sidebar-primary: var(--accent);
+    --sidebar-primary-foreground: var(--accent-foreground);
+    --sidebar-accent: var(--accent-soft); /* active/hover nav */
+    --sidebar-accent-foreground: var(--accent-soft-foreground);
+    --sidebar-border: var(--p-slate-200);
+    --sidebar-ring: var(--accent);
 }
 
 @layer base {
