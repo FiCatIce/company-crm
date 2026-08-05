@@ -16,6 +16,12 @@ export default defineConfig({
     server: {
         // Bind every interface so the tunnel (and other devices) can reach Vite.
         host: '0.0.0.0',
+        // public/hot and the tunnel config both hardcode 5173; if another dev
+        // server already holds the port (e.g. on [::1] only), fail loudly
+        // instead of silently moving to 5174 while the browser hits the wrong
+        // project.
+        port: 5173,
+        strictPort: true,
         ...(tunnelHost
             ? {
                   // Absolute origin for asset URLs Laravel injects from `public/hot`.
@@ -29,7 +35,16 @@ export default defineConfig({
                       clientPort: 443,
                   },
               }
-            : {}),
+            : {
+                  // No tunnel: keep binding 0.0.0.0 (LAN devices can still reach
+                  // the dev server directly), but write a dialable address to
+                  // public/hot — 0.0.0.0 is a listen address, browsers refuse it
+                  // (ERR_ADDRESS_INVALID). The Apache-served page (:80/:8000) and
+                  // the assets (:5173) are cross-origin, hence cors.
+                  origin: 'http://localhost:5173',
+                  cors: true,
+                  hmr: { host: 'localhost' },
+              }),
     },
     plugins: [
         laravel({
