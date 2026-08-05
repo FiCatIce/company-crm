@@ -132,8 +132,11 @@ function designTokenMap(): array
 
 /**
  * Follow a token's var() chain through the :root map until it lands on a
- * concrete literal. Throws on dangling references or cycles so tests fail
- * loudly when a semantic token stops resolving.
+ * concrete literal, computing color-mix(in srgb, …) steps the way the
+ * browser does (per-channel linear interpolation of the gamma-encoded
+ * sRGB components) so pins stay concrete hex. Throws on dangling
+ * references or cycles so tests fail loudly when a semantic token stops
+ * resolving.
  */
 function resolveDesignToken(string $token): string
 {
@@ -149,7 +152,40 @@ function resolveDesignToken(string $token): string
         $value = $map[$m[1]] ?? throw new RuntimeException("Token {$token} references undefined {$m[1]}");
     }
 
+    if (str_starts_with($value, 'color-mix(')) {
+        if (! preg_match('/^color-mix\(in srgb,\s*(.+?)\s+(\d+(?:\.\d+)?)%,\s*(.+?)\)$/', $value, $m)) {
+            throw new RuntimeException("Token {$token} carries an unsupported color-mix form: {$value}");
+        }
+
+        [$a, $b, $pct] = [designTokenRgb($m[1]), designTokenRgb($m[3]), (float) $m[2]];
+
+        return sprintf('#%02x%02x%02x', ...array_map(
+            fn (int $ca, int $cb) => (int) round(($ca * $pct + $cb * (100 - $pct)) / 100),
+            $a,
+            $b,
+        ));
+    }
+
     return $value;
+}
+
+/**
+ * Resolve a color-mix argument — a var() reference or a #rrggbb literal —
+ * to its [r, g, b] channels.
+ *
+ * @return array{0: int, 1: int, 2: int}
+ */
+function designTokenRgb(string $color): array
+{
+    if (preg_match('/^var\((--[\w-]+)\)$/', $color, $m)) {
+        $color = resolveDesignToken($m[1]);
+    }
+
+    if (! preg_match('/^#([0-9a-fA-F]{6})$/', $color, $m)) {
+        throw new RuntimeException("Cannot resolve {$color} to an #rrggbb color");
+    }
+
+    return array_map(hexdec(...), str_split($m[1], 2));
 }
 
 /**

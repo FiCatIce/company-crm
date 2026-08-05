@@ -14,12 +14,12 @@ function appCss(): string
     return file_get_contents(resource_path('css/app.css'));
 }
 
-test('the corporate blue accent and exact hover are defined', function () {
-    expect(resolveDesignToken('--accent'))->toBe('#2563eb') // blue-600
-        ->and(resolveDesignToken('--accent-hover'))->toBe('#1d4ed8') // blue-700
-        ->and(resolveDesignToken('--primary'))->toBe('#2563eb') // derived from accent
-        ->and(resolveDesignToken('--primary-hover'))->toBe('#1d4ed8')
-        ->and(resolveDesignToken('--ring'))->toBe('#2563eb'); // focus ring = accent
+test('the teal signal accent and exact hover are defined', function () {
+    expect(resolveDesignToken('--accent'))->toBe('#0f6e8c') // signal teal
+        ->and(resolveDesignToken('--accent-hover'))->toBe('#0d5e77') // signal 85% + black
+        ->and(resolveDesignToken('--primary'))->toBe('#0f6e8c') // derived from accent
+        ->and(resolveDesignToken('--primary-hover'))->toBe('#0d5e77')
+        ->and(resolveDesignToken('--ring'))->toBe('#0f6e8c'); // focus ring = accent
 });
 
 test('the primary tokens are derived from the themeable accent', function () {
@@ -34,25 +34,37 @@ test('the primary tokens are derived from the themeable accent', function () {
         ->and($map['--sidebar-accent'])->toBe('var(--accent-soft)');
 });
 
-test('the canvas is white with off-white surfaces', function () {
-    expect(resolveDesignToken('--background'))->toBe('#ffffff')
-        ->and(resolveDesignToken('--card'))->toBe('#f8fafc') // off-white surface
-        ->and(resolveDesignToken('--sidebar-background'))->toBe('#f8fafc');
+test('the canvas is field-gray with paper surfaces', function () {
+    expect(resolveDesignToken('--background'))->toBe('#f2f4f7') // field canvas
+        ->and(resolveDesignToken('--card'))->toBe('#ffffff') // paper surface
+        ->and(resolveDesignToken('--sidebar-background'))->toBe('#ffffff');
 });
 
-test('neutral slate text and thin borders are defined', function () {
-    expect(resolveDesignToken('--foreground'))->toBe('#0f172a') // slate-900 primary text
-        ->and(resolveDesignToken('--muted-foreground'))->toBe('#64748b') // slate-500 secondary text
-        ->and(resolveDesignToken('--border'))->toBe('#e2e8f0'); // slate-200 thin borders
+test('neutral ink text and thin borders are defined', function () {
+    expect(resolveDesignToken('--foreground'))->toBe('#14181f') // ink primary text
+        ->and(resolveDesignToken('--muted-foreground'))->toBe('#5a6472') // slate secondary text
+        ->and(resolveDesignToken('--border'))->toBe('#dde1e7'); // line thin borders
 });
 
 test('the status vocabulary is defined and never accent-derived', function () {
     $map = designTokenMap();
 
-    expect(resolveDesignToken('--state-ok'))->toBe('#16a34a') // green-600
-        ->and(resolveDesignToken('--state-warn'))->toBe('#d97706') // amber-600
-        ->and(resolveDesignToken('--state-busy'))->toBe('#dc2626') // red-600
-        ->and(resolveDesignToken('--state-idle'))->toBe('#64748b'); // slate-500
+    expect(resolveDesignToken('--state-ok'))->toBe('#1e9e6a')
+        ->and(resolveDesignToken('--state-warn'))->toBe('#d98a0b')
+        ->and(resolveDesignToken('--state-busy'))->toBe('#c4402f')
+        ->and(resolveDesignToken('--state-idle'))->toBe('#9aa3ae');
+
+    // The derived badge steps are pinned too: soft is the 10-12% tint the
+    // badges sit on, strong is the text step that has to clear WCAG AA on
+    // that tint (the raw hues don't — that's the whole point of strong).
+    expect(resolveDesignToken('--state-ok-soft'))->toBe('#e9f5f0')
+        ->and(resolveDesignToken('--state-ok-strong'))->toBe('#156f4a')
+        ->and(resolveDesignToken('--state-warn-soft'))->toBe('#fbf3e7')
+        ->and(resolveDesignToken('--state-warn-strong'))->toBe('#986108')
+        ->and(resolveDesignToken('--state-busy-soft'))->toBe('#f9ecea')
+        ->and(resolveDesignToken('--state-busy-strong'))->toBe('#892d21')
+        ->and(resolveDesignToken('--state-idle-soft'))->toBe('#f3f4f5')
+        ->and(resolveDesignToken('--state-idle-strong'))->toBe('#363c44');
 
     // Status colors are product vocabulary, not branding: none of them may
     // reference the themeable accent group.
@@ -63,17 +75,17 @@ test('the status vocabulary is defined and never accent-derived', function () {
     }
 });
 
-test('an 8px radius and soft shadow tokens are defined', function () {
-    expect(resolveDesignToken('--radius'))->toBe('0.5rem'); // 8px
+test('a 4px radius and soft shadow tokens are defined', function () {
+    expect(resolveDesignToken('--radius'))->toBe('0.25rem'); // 4px
 
     expect(appCss())
         ->toContain('--shadow-sm:')
         ->toContain('rgb(15 23 42 /'); // slate-tinted soft shadows
 });
 
-test('active states use a blue tint in the sidebar', function () {
-    expect(resolveDesignToken('--sidebar-accent'))->toBe('#eff6ff') // blue-50 active/hover
-        ->and(resolveDesignToken('--sidebar-accent-foreground'))->toBe('#1d4ed8'); // blue-700
+test('active states use a signal tint in the sidebar', function () {
+    expect(resolveDesignToken('--sidebar-accent'))->toBe('#e7f1f4') // signal-soft active/hover
+        ->and(resolveDesignToken('--sidebar-accent-foreground'))->toBe('#0d5e77'); // signal-strong
 });
 
 test('the theme is light-only with no dark variant', function () {

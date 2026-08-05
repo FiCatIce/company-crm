@@ -15,7 +15,7 @@
         'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
         'Liberation Mono', monospace;
 
-    /* 8px corporate radius scale */
+    /* 4px operator-console radius scale */
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
@@ -130,11 +130,12 @@
 
 /*
   ------------------------------------------------------------------------
-  Company CRM — modern-minimal corporate design system
+  Company CRM — modern-minimal corporate design system (R-A′ palette)
   ------------------------------------------------------------------------
-  White canvas, off-white surfaces, a single corporate-blue accent reserved
-  for primary actions / links / active states / key metrics, neutral slate
-  text, thin slate-200 borders, an 8px radius and subtle soft shadows.
+  Field-gray canvas, white paper surfaces, a single teal signal accent
+  reserved for primary actions / links / active states / key metrics,
+  near-black ink text, thin cool-gray borders, a 4px radius and subtle
+  soft shadows.
 
   Two-layer token model:
 
@@ -153,54 +154,61 @@
   branding.
 */
 :root {
-    /* ---- LAYER 1 · raw palette — do not use outside this block ---- */
-    --p-white: #ffffff;
+    /* ---- LAYER 1 · raw palette — do not use outside this block ----
+       R-A′: six base stops + four state hues. Every hover/soft/strong step
+       and the chart ramp is color-mix'd FROM a base stop, so swapping the
+       palette stays a one-place change (mix percentages verified against
+       WCAG AA — see DesignSystemTest pins). */
+    --p-paper: #ffffff; /* surfaces: cards, popovers, sidebar */
+    --p-field: #f2f4f7; /* page canvas, table headers, muted fills */
+    --p-line: #dde1e7; /* borders */
+    --p-ink: #14181f; /* primary text */
+    --p-slate: #5a6472; /* secondary text */
+    --p-slate-strong: color-mix(in srgb, var(--p-slate) 60%, #000000);
 
-    --p-slate-50: #f8fafc;
-    --p-slate-100: #f1f5f9;
-    --p-slate-200: #e2e8f0;
-    --p-slate-500: #64748b;
-    --p-slate-700: #334155;
-    --p-slate-900: #0f172a;
+    --p-signal: #0f6e8c; /* THE brand accent — operator-console teal */
+    --p-signal-strong: color-mix(in srgb, var(--p-signal) 85%, #000000);
+    --p-signal-soft: color-mix(in srgb, var(--p-signal) 10%, #ffffff);
 
-    --p-blue-50: #eff6ff;
-    --p-blue-300: #93c5fd;
-    --p-blue-400: #60a5fa;
-    --p-blue-500: #3b82f6;
-    --p-blue-600: #2563eb;
-    --p-blue-700: #1d4ed8;
-    --p-blue-800: #1e40af;
+    /* Data-viz ramp — lightness steps of the signal */
+    --p-signal-2: color-mix(in srgb, var(--p-signal) 55%, #ffffff);
+    --p-signal-3: color-mix(in srgb, var(--p-signal) 65%, #000000);
+    --p-signal-4: color-mix(in srgb, var(--p-signal) 35%, #ffffff);
+    --p-signal-5: color-mix(in srgb, var(--p-signal) 80%, #ffffff);
 
-    --p-red-50: #fef2f2;
-    --p-red-600: #dc2626;
-    --p-red-700: #b91c1c;
-
-    --p-green-50: #f0fdf4;
-    --p-green-600: #16a34a;
-    --p-green-700: #15803d;
-
-    --p-amber-50: #fffbeb;
-    --p-amber-600: #d97706;
-    --p-amber-700: #b45309;
+    /* State hues: soft = 10% tint on white (badge bg), strong = 70% toward
+       black (badge text — the raw hues don't clear 4.5:1 on white). */
+    --p-state-ok: #1e9e6a;
+    --p-state-ok-soft: color-mix(in srgb, var(--p-state-ok) 10%, #ffffff);
+    --p-state-ok-strong: color-mix(in srgb, var(--p-state-ok) 70%, #000000);
+    --p-state-warn: #d98a0b;
+    --p-state-warn-soft: color-mix(in srgb, var(--p-state-warn) 10%, #ffffff);
+    --p-state-warn-strong: color-mix(in srgb, var(--p-state-warn) 70%, #000000);
+    --p-state-busy: #c4402f;
+    --p-state-busy-soft: color-mix(in srgb, var(--p-state-busy) 10%, #ffffff);
+    --p-state-busy-strong: color-mix(in srgb, var(--p-state-busy) 70%, #000000);
+    --p-state-idle: #9aa3ae;
+    --p-state-idle-soft: color-mix(in srgb, var(--p-state-idle) 12%, #ffffff);
+    /* idle-strong shares --p-slate-strong: readable gray text, one step */
 
     /* ---- LAYER 2 · semantic tokens ---- */
 
     /* Brand accent — the ONLY themeable group */
-    --accent: var(--p-blue-600);
-    --accent-hover: var(--p-blue-700);
-    --accent-foreground: var(--p-white);
-    --accent-soft: var(--p-blue-50); /* tinted hover/active/selected */
-    --accent-soft-foreground: var(--p-blue-700);
+    --accent: var(--p-signal);
+    --accent-hover: var(--p-signal-strong);
+    --accent-foreground: var(--p-paper);
+    --accent-soft: var(--p-signal-soft); /* tinted hover/active/selected */
+    --accent-soft-foreground: var(--p-signal-strong);
 
-    /* Canvas + primary text */
-    --background: var(--p-white);
-    --foreground: var(--p-slate-900); /* slate-900 — primary text */
+    /* Canvas + primary text — field-gray page, ink text */
+    --background: var(--p-field);
+    --foreground: var(--p-ink);
 
-    /* Off-white surfaces */
-    --card: var(--p-slate-50); /* panels & cards */
-    --card-foreground: var(--p-slate-900);
-    --popover: var(--p-white); /* crisp white for floating menus */
-    --popover-foreground: var(--p-slate-900);
+    /* Paper surfaces on the field canvas */
+    --card: var(--p-paper); /* panels & cards */
+    --card-foreground: var(--p-ink);
+    --popover: var(--p-paper);
+    --popover-foreground: var(--p-ink);
 
     /* Primary actions, links, focus — derived from the accent */
     --primary: var(--accent);
@@ -208,54 +216,54 @@
     --primary-hover: var(--accent-hover);
 
     /* Neutral secondary surface */
-    --secondary: var(--p-slate-100);
-    --secondary-foreground: var(--p-slate-900);
+    --secondary: var(--p-field);
+    --secondary-foreground: var(--p-ink);
 
     /* Muted fills + secondary text */
-    --muted: var(--p-slate-100);
-    --muted-foreground: var(--p-slate-500); /* secondary text */
+    --muted: var(--p-field);
+    --muted-foreground: var(--p-slate); /* secondary text */
 
-    /* Destructive actions — locked, not part of tenant branding */
-    --destructive: var(--p-red-600);
-    --destructive-foreground: var(--p-white);
+    /* Destructive actions — locked; rides the busy red (one red stop) */
+    --destructive: var(--p-state-busy);
+    --destructive-foreground: var(--p-paper);
 
     /* Status vocabulary — ok/warn/busy/idle, locked */
-    --state-ok: var(--p-green-600);
-    --state-ok-soft: var(--p-green-50);
-    --state-ok-strong: var(--p-green-700);
-    --state-warn: var(--p-amber-600);
-    --state-warn-soft: var(--p-amber-50);
-    --state-warn-strong: var(--p-amber-700);
-    --state-busy: var(--p-red-600);
-    --state-busy-soft: var(--p-red-50);
-    --state-busy-strong: var(--p-red-700);
-    --state-idle: var(--p-slate-500);
-    --state-idle-soft: var(--p-slate-100);
-    --state-idle-strong: var(--p-slate-700);
+    --state-ok: var(--p-state-ok);
+    --state-ok-soft: var(--p-state-ok-soft);
+    --state-ok-strong: var(--p-state-ok-strong);
+    --state-warn: var(--p-state-warn);
+    --state-warn-soft: var(--p-state-warn-soft);
+    --state-warn-strong: var(--p-state-warn-strong);
+    --state-busy: var(--p-state-busy);
+    --state-busy-soft: var(--p-state-busy-soft);
+    --state-busy-strong: var(--p-state-busy-strong);
+    --state-idle: var(--p-state-idle);
+    --state-idle-soft: var(--p-state-idle-soft);
+    --state-idle-strong: var(--p-slate-strong);
 
     /* Lines & focus */
-    --border: var(--p-slate-200); /* thin borders */
-    --input: var(--p-slate-200);
+    --border: var(--p-line); /* thin borders */
+    --input: var(--p-line);
     --ring: var(--accent); /* focus ring follows the accent */
 
-    /* Data-viz ramp (blue-centric, locked) */
-    --chart-1: var(--p-blue-600);
-    --chart-2: var(--p-blue-400);
-    --chart-3: var(--p-blue-800);
-    --chart-4: var(--p-blue-300);
-    --chart-5: var(--p-blue-500);
+    /* Data-viz ramp (signal-centric, locked) */
+    --chart-1: var(--p-signal);
+    --chart-2: var(--p-signal-2);
+    --chart-3: var(--p-signal-3);
+    --chart-4: var(--p-signal-4);
+    --chart-5: var(--p-signal-5);
 
-    --radius: 0.5rem; /* 8px */
+    --radius: 0.25rem; /* 4px */
 
-    /* Sidebar — off-white surface with an accent-tinted active state */
-    --sidebar-background: var(--p-slate-50);
-    --sidebar: var(--p-slate-50);
-    --sidebar-foreground: var(--p-slate-700);
+    /* Sidebar — paper surface with an accent-tinted active state */
+    --sidebar-background: var(--p-paper);
+    --sidebar: var(--p-paper);
+    --sidebar-foreground: var(--p-slate-strong);
     --sidebar-primary: var(--accent);
     --sidebar-primary-foreground: var(--accent-foreground);
     --sidebar-accent: var(--accent-soft); /* active/hover nav */
     --sidebar-accent-foreground: var(--accent-soft-foreground);
-    --sidebar-border: var(--p-slate-200);
+    --sidebar-border: var(--p-line);
     --sidebar-ring: var(--accent);
 }
 
