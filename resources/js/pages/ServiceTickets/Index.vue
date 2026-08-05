@@ -8,6 +8,15 @@ import IndexStatCard from '@/components/IndexStatCard.vue';
 import TicketStatusBadge from '@/components/TicketStatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { setBreadcrumbs } from '@/composables/useBreadcrumbs';
 import type { BreadcrumbItem } from '@/types';
 import type { SelectOption } from '@/types/crm';
@@ -229,148 +238,101 @@ setBreadcrumbs(() => breadcrumbs);
             </div>
 
             <!-- Table -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-border">
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+            <Table>
+                <TableHeader>
+                    <TableHead>Tiket</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Barang</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Prioritas</TableHead>
+                    <TableHead>Teknisi</TableHead>
+                    <TableHead>Masuk</TableHead>
+                    <TableHead>
+                        <span class="sr-only">Aksi</span>
+                    </TableHead>
+                </TableHeader>
+                <TableBody>
+                    <TableRow v-for="ticket in tickets.data" :key="ticket.id">
+                        <TableCell kind="mono">
+                            <Link
+                                :href="ServiceTicketController.show(ticket.id)"
+                                class="font-medium text-primary hover:underline"
                             >
-                                Tiket
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
+                                #{{ ticket.id }}
+                            </Link>
+                        </TableCell>
+                        <TableCell>
+                            <!-- Link only when the viewer can OPEN the 360
+                                behind it (D3: an assigned ticket may sit on an
+                                out-of-scope customer). -->
+                            <Link
+                                v-if="
+                                    ticket.customer && ticket.customer_viewable
+                                "
+                                :href="`/customers/${ticket.customer.id}`"
+                                class="hover:underline"
                             >
-                                Customer
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Barang
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Status
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Prioritas
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Teknisi
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Masuk
-                            </th>
-                            <th class="px-6 py-3.5">
-                                <span class="sr-only">Aksi</span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="ticket in tickets.data"
-                            :key="ticket.id"
-                            class="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/40"
+                                {{ ticket.customer.name }}
+                            </Link>
+                            <span v-else>{{
+                                ticket.customer?.name ?? '—'
+                            }}</span>
+                        </TableCell>
+                        <TableCell
+                            class="max-w-48 truncate text-muted-foreground"
                         >
-                            <td class="px-6 py-4">
-                                <Link
-                                    :href="
-                                        ServiceTicketController.show(ticket.id)
-                                    "
-                                    class="font-medium text-primary hover:underline"
-                                >
-                                    #{{ ticket.id }}
-                                </Link>
-                            </td>
-                            <td class="px-6 py-4">
-                                <!-- Link only when the viewer can OPEN the 360
-                                    behind it (D3: an assigned ticket may sit on an
-                                    out-of-scope customer). -->
-                                <Link
-                                    v-if="
-                                        ticket.customer &&
-                                        ticket.customer_viewable
-                                    "
-                                    :href="`/customers/${ticket.customer.id}`"
-                                    class="hover:underline"
-                                >
-                                    {{ ticket.customer.name }}
-                                </Link>
-                                <span v-else>{{
-                                    ticket.customer?.name ?? '—'
-                                }}</span>
-                            </td>
-                            <td
-                                class="max-w-48 truncate px-6 py-4 text-muted-foreground"
+                            {{ ticket.item ?? '—' }}
+                        </TableCell>
+                        <TableCell>
+                            <TicketStatusBadge
+                                :status="ticket.status.value"
+                                :label="ticket.status.label"
+                            />
+                        </TableCell>
+                        <TableCell class="text-muted-foreground">
+                            {{ ticket.priority.label }}
+                        </TableCell>
+                        <TableCell>
+                            <span v-if="ticket.assignee">{{
+                                ticket.assignee.name
+                            }}</span>
+                            <span
+                                v-else
+                                class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+                                >Pool</span
                             >
-                                {{ ticket.item ?? '—' }}
-                            </td>
-                            <td class="px-6 py-4">
-                                <TicketStatusBadge
-                                    :status="ticket.status.value"
-                                    :label="ticket.status.label"
-                                />
-                            </td>
-                            <td class="px-6 py-4 text-muted-foreground">
-                                {{ ticket.priority.label }}
-                            </td>
-                            <td class="px-6 py-4">
-                                <span v-if="ticket.assignee">{{
-                                    ticket.assignee.name
-                                }}</span>
-                                <span
-                                    v-else
-                                    class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
-                                    >Pool</span
-                                >
-                            </td>
-                            <td class="px-6 py-4 text-muted-foreground">
-                                {{ formatDate(ticket.received_at) }}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <Button
-                                    v-if="ticket.can_claim"
-                                    size="sm"
-                                    variant="outline"
-                                    :disabled="claiming === ticket.id"
-                                    @click="claim(ticket)"
-                                >
-                                    Klaim
-                                </Button>
-                            </td>
-                        </tr>
+                        </TableCell>
+                        <TableCell kind="mono" class="text-muted-foreground">
+                            {{ formatDate(ticket.received_at) }}
+                        </TableCell>
+                        <TableCell class="text-right">
+                            <Button
+                                v-if="ticket.can_claim"
+                                size="sm"
+                                variant="outline"
+                                :disabled="claiming === ticket.id"
+                                @click="claim(ticket)"
+                            >
+                                Klaim
+                            </Button>
+                        </TableCell>
+                    </TableRow>
 
-                        <tr v-if="tickets.data.length === 0">
-                            <td colspan="8" class="px-6 py-16 text-center">
-                                <div
-                                    class="mx-auto flex max-w-sm flex-col items-center gap-2"
-                                >
-                                    <div
-                                        class="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                                    >
-                                        <Wrench class="size-6" />
-                                    </div>
-                                    <p
-                                        class="text-sm font-medium text-foreground"
-                                    >
-                                        Belum ada tiket servis
-                                    </p>
-                                    <p class="text-sm text-muted-foreground">
-                                        Tiket yang masuk akan tampil di sini.
-                                    </p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <TableEmpty v-if="tickets.data.length === 0" :colspan="8">
+                        <div
+                            class="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                        >
+                            <Wrench class="size-6" />
+                        </div>
+                        <p class="text-sm font-medium text-foreground">
+                            Belum ada tiket servis
+                        </p>
+                        <p class="text-sm text-muted-foreground">
+                            Tiket yang masuk akan tampil di sini.
+                        </p>
+                    </TableEmpty>
+                </TableBody>
+            </Table>
 
             <!-- Pagination -->
             <div

@@ -27,7 +27,7 @@ test('the recent transactions card reuses the warranty badge', function () {
     expect(dashSource('components/RecentTransactionsCard.vue'))
         ->toContain('WarrantyBadge') // domain badge reused, not reimplemented
         ->toContain('Transaksi Terbaru')
-        ->toContain('hover:bg-accent/50'); // shared table row hover
+        ->toContain("from '@/components/ui/table'"); // shared table primitive (R-C)
 });
 
 test('the expiring warranty card uses an amber watchlist pill', function () {

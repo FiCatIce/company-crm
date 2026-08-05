@@ -6,9 +6,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 /*
  * Guards that Products / Transactions / Resellers index pages share the
  * corporate card/table pattern established on the Customers index (page
- * header, off-white card, uppercase muted headers, subtle blue row hover)
- * and no longer carry the old starter-kit table styling. Assertions use
- * single Tailwind class tokens so they survive prettier class sorting.
+ * header, off-white card, shared ui/table primitive) and no longer carry the
+ * old starter-kit table styling. Since R-C the table pattern itself
+ * (uppercase muted headers, row hover, density) lives in ui/table and is
+ * guarded by TableGuardTest — pages are asserted to consume the primitive.
  */
 
 function pageSource(string $relative): string
@@ -20,8 +21,7 @@ test('the products index adopts the corporate card/table pattern', function () {
     expect(pageSource('Products/Index.vue'))
         ->toContain('text-2xl') // page header hierarchy
         ->toContain('bg-card') // cohesive content card
-        ->toContain('uppercase') // uppercase muted headers
-        ->toContain('hover:bg-accent/50') // subtle blue row hover
+        ->toContain("from '@/components/ui/table'") // shared table primitive
         ->toContain('border-t') // card pagination footer
         ->not->toContain('bg-muted/50') // old filled thead
         ->not->toContain('hover:bg-muted/40') // old neutral row hover
@@ -31,8 +31,7 @@ test('the products index adopts the corporate card/table pattern', function () {
 test('the transactions index adopts the pattern and keeps the warranty badge', function () {
     expect(pageSource('Transactions/Index.vue'))
         ->toContain('text-2xl')
-        ->toContain('uppercase')
-        ->toContain('hover:bg-accent/50')
+        ->toContain("from '@/components/ui/table'")
         ->toContain('border-t')
         ->toContain('WarrantyBadge') // domain logic preserved
         ->not->toContain('bg-muted/50')

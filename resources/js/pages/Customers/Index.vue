@@ -19,6 +19,15 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { setBreadcrumbs } from '@/composables/useBreadcrumbs';
 import type { BreadcrumbItem } from '@/types';
 import type { SelectOption } from '@/types/crm';
@@ -191,194 +200,150 @@ setBreadcrumbs(() => breadcrumbs);
             </div>
 
             <!-- Table -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-border">
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Nama
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Telepon
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Email
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Alamat
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Status
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Owner
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Aksi
-                            </th>
-                        </tr>
-                    </thead>
+            <Table>
+                <TableHeader>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Telepon</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Alamat</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead align="right">Aksi</TableHead>
+                </TableHeader>
 
-                    <tbody class="divide-y divide-border">
-                        <tr
-                            v-for="c in customers.data"
-                            :key="c.id"
-                            class="transition-colors hover:bg-accent/50"
+                <TableBody>
+                    <TableRow v-for="c in customers.data" :key="c.id">
+                        <TableCell>
+                            <div
+                                class="flex items-center gap-3 whitespace-nowrap"
+                            >
+                                <div
+                                    class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary"
+                                >
+                                    {{ initial(c.name) }}
+                                </div>
+                                <Link
+                                    :href="CustomerController.show(c.id)"
+                                    class="font-medium text-foreground hover:text-primary hover:underline"
+                                    >{{ c.name }}</Link
+                                >
+                            </div>
+                        </TableCell>
+                        <TableCell kind="mono" class="text-muted-foreground">
+                            {{ c.phone ?? '—' }}
+                        </TableCell>
+                        <TableCell
+                            class="max-w-[12rem] truncate text-muted-foreground"
+                            :title="c.email ?? ''"
                         >
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
-                                    >
-                                        {{ initial(c.name) }}
-                                    </div>
-                                    <Link
-                                        :href="CustomerController.show(c.id)"
-                                        class="font-medium text-foreground hover:text-primary hover:underline"
-                                        >{{ c.name }}</Link
-                                    >
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-muted-foreground">
-                                {{ c.phone ?? '—' }}
-                            </td>
-                            <td class="px-6 py-4 text-muted-foreground">
-                                {{ c.email ?? '—' }}
-                            </td>
-                            <td
-                                class="max-w-[16rem] truncate px-6 py-4 text-muted-foreground"
-                                :title="c.address ?? ''"
-                            >
-                                {{ c.address ?? '—' }}
-                            </td>
-                            <td class="px-6 py-4">
-                                <CustomerStatusBadge
-                                    :status="c.status"
-                                    :label="c.status_label"
-                                />
-                            </td>
-                            <td class="px-6 py-4">
-                                <OwnerBadge :owner="c.owner" />
-                            </td>
-                            <td class="px-6 py-4">
-                                <div
-                                    class="flex items-center justify-end gap-1"
+                            {{ c.email ?? '—' }}
+                        </TableCell>
+                        <TableCell
+                            class="max-w-[12rem] truncate text-muted-foreground"
+                            :title="c.address ?? ''"
+                        >
+                            {{ c.address ?? '—' }}
+                        </TableCell>
+                        <TableCell>
+                            <CustomerStatusBadge
+                                :status="c.status"
+                                :label="c.status_label"
+                            />
+                        </TableCell>
+                        <TableCell>
+                            <OwnerBadge :owner="c.owner" />
+                        </TableCell>
+                        <TableCell>
+                            <div class="flex items-center justify-end gap-1">
+                                <Button
+                                    v-if="c.can_edit"
+                                    as-child
+                                    variant="ghost"
+                                    size="sm"
                                 >
-                                    <Button
-                                        v-if="c.can_edit"
-                                        as-child
-                                        variant="ghost"
-                                        size="sm"
+                                    <Link :href="CustomerController.edit(c.id)"
+                                        >Edit</Link
                                     >
-                                        <Link
-                                            :href="
-                                                CustomerController.edit(c.id)
-                                            "
-                                            >Edit</Link
+                                </Button>
+
+                                <Dialog v-if="c.can_delete">
+                                    <DialogTrigger as-child>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                         >
-                                    </Button>
+                                            Hapus
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <Form
+                                            v-bind="
+                                                CustomerController.destroy.form(
+                                                    c.id,
+                                                )
+                                            "
+                                            :options="{
+                                                preserveScroll: true,
+                                            }"
+                                            class="space-y-6"
+                                            v-slot="{ processing }"
+                                        >
+                                            <DialogHeader class="space-y-3">
+                                                <DialogTitle
+                                                    >Hapus
+                                                    customer?</DialogTitle
+                                                >
+                                                <DialogDescription>
+                                                    Data
+                                                    <strong>{{
+                                                        c.name
+                                                    }}</strong>
+                                                    akan dihapus permanen.
+                                                    Tindakan ini tidak dapat
+                                                    dibatalkan.
+                                                </DialogDescription>
+                                            </DialogHeader>
 
-                                    <Dialog v-if="c.can_delete">
-                                        <DialogTrigger as-child>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                            >
-                                                Hapus
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <Form
-                                                v-bind="
-                                                    CustomerController.destroy.form(
-                                                        c.id,
-                                                    )
-                                                "
-                                                :options="{
-                                                    preserveScroll: true,
-                                                }"
-                                                class="space-y-6"
-                                                v-slot="{ processing }"
-                                            >
-                                                <DialogHeader class="space-y-3">
-                                                    <DialogTitle
-                                                        >Hapus
-                                                        customer?</DialogTitle
-                                                    >
-                                                    <DialogDescription>
-                                                        Data
-                                                        <strong>{{
-                                                            c.name
-                                                        }}</strong>
-                                                        akan dihapus permanen.
-                                                        Tindakan ini tidak dapat
-                                                        dibatalkan.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-
-                                                <DialogFooter class="gap-2">
-                                                    <DialogClose as-child>
-                                                        <Button
-                                                            variant="secondary"
-                                                            type="button"
-                                                        >
-                                                            Batal
-                                                        </Button>
-                                                    </DialogClose>
+                                            <DialogFooter class="gap-2">
+                                                <DialogClose as-child>
                                                     <Button
-                                                        type="submit"
-                                                        variant="destructive"
-                                                        :disabled="processing"
+                                                        variant="secondary"
+                                                        type="button"
                                                     >
-                                                        Hapus
+                                                        Batal
                                                     </Button>
-                                                </DialogFooter>
-                                            </Form>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </td>
-                        </tr>
+                                                </DialogClose>
+                                                <Button
+                                                    type="submit"
+                                                    variant="destructive"
+                                                    :disabled="processing"
+                                                >
+                                                    Hapus
+                                                </Button>
+                                            </DialogFooter>
+                                        </Form>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        </TableCell>
+                    </TableRow>
 
-                        <tr v-if="customers.data.length === 0">
-                            <td colspan="7" class="px-6 py-16 text-center">
-                                <div
-                                    class="mx-auto flex max-w-sm flex-col items-center gap-2"
-                                >
-                                    <div
-                                        class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                                    >
-                                        <Users class="size-5" />
-                                    </div>
-                                    <p
-                                        class="text-sm font-medium text-foreground"
-                                    >
-                                        Belum ada data customer
-                                    </p>
-                                    <p class="text-sm text-muted-foreground">
-                                        Tambahkan customer pertama untuk mulai.
-                                    </p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <TableEmpty v-if="customers.data.length === 0" :colspan="7">
+                        <div
+                            class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                        >
+                            <Users class="size-5" />
+                        </div>
+                        <p class="text-sm font-medium text-foreground">
+                            Belum ada data customer
+                        </p>
+                        <p class="text-sm text-muted-foreground">
+                            Tambahkan customer pertama untuk mulai.
+                        </p>
+                    </TableEmpty>
+                </TableBody>
+            </Table>
 
             <!-- Footer / pagination -->
             <div

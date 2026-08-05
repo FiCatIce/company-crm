@@ -14,6 +14,15 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { setBreadcrumbs } from '@/composables/useBreadcrumbs';
 import type { BreadcrumbItem } from '@/types';
 import type { UserRow } from '@/types/crm';
@@ -86,306 +95,266 @@ setBreadcrumbs(() => breadcrumbs);
         <div
             class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
         >
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-border">
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Nama
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Role
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Extension
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Aksi
-                            </th>
-                        </tr>
-                    </thead>
+            <Table>
+                <TableHeader>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Extension</TableHead>
+                    <TableHead align="right">Aksi</TableHead>
+                </TableHeader>
 
-                    <tbody class="divide-y divide-border">
-                        <tr
-                            v-for="u in users.data"
-                            :key="u.id"
-                            class="transition-colors hover:bg-accent/50"
-                        >
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
+                <TableBody>
+                    <TableRow v-for="u in users.data" :key="u.id">
+                        <TableCell>
+                            <div
+                                class="flex items-center gap-3 whitespace-nowrap"
+                            >
+                                <div
+                                    class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary"
+                                >
+                                    {{ initial(u.name) }}
+                                </div>
+                                <div class="min-w-0">
                                     <div
-                                        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+                                        class="flex items-center gap-2 font-medium text-foreground"
                                     >
-                                        {{ initial(u.name) }}
+                                        {{ u.name }}
+                                        <span
+                                            v-if="u.is_self"
+                                            class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                                            >Anda</span
+                                        >
                                     </div>
-                                    <div class="min-w-0">
-                                        <div
-                                            class="flex items-center gap-2 font-medium text-foreground"
-                                        >
-                                            {{ u.name }}
-                                            <span
-                                                v-if="u.is_self"
-                                                class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                                                >Anda</span
-                                            >
-                                        </div>
-                                        <div
-                                            class="truncate text-xs text-muted-foreground"
-                                        >
-                                            {{ u.email }}
-                                        </div>
+                                    <div
+                                        class="truncate text-xs text-muted-foreground"
+                                    >
+                                        {{ u.email }}
                                     </div>
                                 </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div
-                                    class="flex flex-wrap items-center gap-1.5"
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span
+                                    v-if="u.role"
+                                    class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
+                                    >{{ u.role.label }}</span
                                 >
-                                    <span
-                                        v-if="u.role"
-                                        class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                                        >{{ u.role.label }}</span
-                                    >
-                                    <span v-else class="text-muted-foreground"
-                                        >—</span
-                                    >
-                                    <span
-                                        v-if="!u.is_active"
-                                        class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
-                                        >Nonaktif</span
-                                    >
-                                </div>
-                            </td>
-                            <td
-                                class="px-6 py-4 text-muted-foreground tabular-nums"
-                            >
-                                {{ u.extension ?? '—' }}
-                            </td>
-                            <td class="px-6 py-4">
-                                <div
-                                    class="flex items-center justify-end gap-1"
+                                <span v-else class="text-muted-foreground"
+                                    >—</span
                                 >
-                                    <Button
-                                        v-if="can.update"
-                                        as-child
-                                        variant="ghost"
-                                        size="sm"
+                                <span
+                                    v-if="!u.is_active"
+                                    class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                                    >Nonaktif</span
+                                >
+                            </div>
+                        </TableCell>
+                        <TableCell kind="mono" class="text-muted-foreground">
+                            {{ u.extension ?? '—' }}
+                        </TableCell>
+                        <TableCell>
+                            <div class="flex items-center justify-end gap-1">
+                                <Button
+                                    v-if="can.update"
+                                    as-child
+                                    variant="ghost"
+                                    size="sm"
+                                >
+                                    <Link :href="UserController.edit(u.id)"
+                                        >Edit</Link
                                     >
-                                        <Link :href="UserController.edit(u.id)"
-                                            >Edit</Link
+                                </Button>
+
+                                <Dialog v-if="u.can_set_status">
+                                    <DialogTrigger as-child>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            :class="
+                                                u.is_active
+                                                    ? 'text-muted-foreground'
+                                                    : 'text-emerald-700'
+                                            "
                                         >
-                                    </Button>
-
-                                    <Dialog v-if="u.can_set_status">
-                                        <DialogTrigger as-child>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                :class="
+                                            {{
+                                                u.is_active
+                                                    ? 'Nonaktifkan'
+                                                    : 'Aktifkan'
+                                            }}
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <Form
+                                            v-bind="
+                                                UserController.updateStatus.form(
+                                                    u.id,
+                                                )
+                                            "
+                                            :options="{
+                                                preserveScroll: true,
+                                            }"
+                                            class="space-y-6"
+                                            v-slot="{ processing }"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="is_active"
+                                                :value="u.is_active ? 0 : 1"
+                                            />
+                                            <DialogHeader class="space-y-3">
+                                                <DialogTitle>{{
                                                     u.is_active
-                                                        ? 'text-muted-foreground'
-                                                        : 'text-emerald-700'
-                                                "
-                                            >
-                                                {{
-                                                    u.is_active
-                                                        ? 'Nonaktifkan'
-                                                        : 'Aktifkan'
-                                                }}
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <Form
-                                                v-bind="
-                                                    UserController.updateStatus.form(
-                                                        u.id,
-                                                    )
-                                                "
-                                                :options="{
-                                                    preserveScroll: true,
-                                                }"
-                                                class="space-y-6"
-                                                v-slot="{ processing }"
-                                            >
-                                                <input
-                                                    type="hidden"
-                                                    name="is_active"
-                                                    :value="u.is_active ? 0 : 1"
-                                                />
-                                                <DialogHeader class="space-y-3">
-                                                    <DialogTitle>{{
-                                                        u.is_active
-                                                            ? 'Nonaktifkan akun?'
-                                                            : 'Aktifkan kembali akun?'
-                                                    }}</DialogTitle>
-                                                    <DialogDescription
-                                                        v-if="u.is_active"
-                                                    >
-                                                        <strong>{{
-                                                            u.name
-                                                        }}</strong>
-                                                        tidak akan bisa login
-                                                        lagi dan sesinya
-                                                        langsung berakhir.
-                                                        <strong
-                                                            >Data dan
-                                                            penugasannya tetap
-                                                            utuh</strong
-                                                        >, dan akun bisa
-                                                        diaktifkan kembali kapan
-                                                        saja.
-                                                    </DialogDescription>
-                                                    <DialogDescription v-else>
-                                                        <strong>{{
-                                                            u.name
-                                                        }}</strong>
-                                                        bisa login lagi dengan
-                                                        akses yang sama seperti
-                                                        sebelumnya.
-                                                    </DialogDescription>
-                                                </DialogHeader>
+                                                        ? 'Nonaktifkan akun?'
+                                                        : 'Aktifkan kembali akun?'
+                                                }}</DialogTitle>
+                                                <DialogDescription
+                                                    v-if="u.is_active"
+                                                >
+                                                    <strong>{{
+                                                        u.name
+                                                    }}</strong>
+                                                    tidak akan bisa login lagi
+                                                    dan sesinya langsung
+                                                    berakhir.
+                                                    <strong
+                                                        >Data dan penugasannya
+                                                        tetap utuh</strong
+                                                    >, dan akun bisa diaktifkan
+                                                    kembali kapan saja.
+                                                </DialogDescription>
+                                                <DialogDescription v-else>
+                                                    <strong>{{
+                                                        u.name
+                                                    }}</strong>
+                                                    bisa login lagi dengan akses
+                                                    yang sama seperti
+                                                    sebelumnya.
+                                                </DialogDescription>
+                                            </DialogHeader>
 
-                                                <DialogFooter class="gap-2">
-                                                    <DialogClose as-child>
-                                                        <Button
-                                                            variant="secondary"
-                                                            type="button"
-                                                        >
-                                                            Batal
-                                                        </Button>
-                                                    </DialogClose>
+                                            <DialogFooter class="gap-2">
+                                                <DialogClose as-child>
                                                     <Button
-                                                        type="submit"
-                                                        :variant="
-                                                            u.is_active
-                                                                ? 'destructive'
-                                                                : 'default'
-                                                        "
-                                                        :disabled="processing"
+                                                        variant="secondary"
+                                                        type="button"
                                                     >
-                                                        {{
-                                                            u.is_active
-                                                                ? 'Nonaktifkan'
-                                                                : 'Aktifkan'
-                                                        }}
+                                                        Batal
                                                     </Button>
-                                                </DialogFooter>
-                                            </Form>
-                                        </DialogContent>
-                                    </Dialog>
+                                                </DialogClose>
+                                                <Button
+                                                    type="submit"
+                                                    :variant="
+                                                        u.is_active
+                                                            ? 'destructive'
+                                                            : 'default'
+                                                    "
+                                                    :disabled="processing"
+                                                >
+                                                    {{
+                                                        u.is_active
+                                                            ? 'Nonaktifkan'
+                                                            : 'Aktifkan'
+                                                    }}
+                                                </Button>
+                                            </DialogFooter>
+                                        </Form>
+                                    </DialogContent>
+                                </Dialog>
 
-                                    <!-- Not gated on is_active: a deactivated
+                                <!-- Not gated on is_active: a deactivated
                                         user can still HOLD things (book, team
                                         seat), and offboard is the only path that
                                         clears them — hiding it left such an
                                         account permanently undeletable. -->
-                                    <Button
-                                        v-if="u.can_offboard"
-                                        as-child
-                                        variant="ghost"
-                                        size="sm"
-                                        class="text-muted-foreground"
+                                <Button
+                                    v-if="u.can_offboard"
+                                    as-child
+                                    variant="ghost"
+                                    size="sm"
+                                    class="text-muted-foreground"
+                                >
+                                    <Link
+                                        :href="
+                                            UserController.showOffboard(u.id)
+                                        "
+                                        >Offboard</Link
                                     >
-                                        <Link
-                                            :href="
-                                                UserController.showOffboard(
+                                </Button>
+
+                                <Dialog v-if="u.can_delete">
+                                    <DialogTrigger as-child>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        >
+                                            Hapus
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <Form
+                                            v-bind="
+                                                UserController.destroy.form(
                                                     u.id,
                                                 )
                                             "
-                                            >Offboard</Link
+                                            :options="{
+                                                preserveScroll: true,
+                                            }"
+                                            class="space-y-6"
+                                            v-slot="{ processing }"
                                         >
-                                    </Button>
+                                            <DialogHeader class="space-y-3">
+                                                <DialogTitle
+                                                    >Hapus
+                                                    pengguna?</DialogTitle
+                                                >
+                                                <DialogDescription>
+                                                    Akun
+                                                    <strong>{{
+                                                        u.name
+                                                    }}</strong>
+                                                    akan dihapus permanen.
+                                                </DialogDescription>
+                                            </DialogHeader>
 
-                                    <Dialog v-if="u.can_delete">
-                                        <DialogTrigger as-child>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                            >
-                                                Hapus
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <Form
-                                                v-bind="
-                                                    UserController.destroy.form(
-                                                        u.id,
-                                                    )
-                                                "
-                                                :options="{
-                                                    preserveScroll: true,
-                                                }"
-                                                class="space-y-6"
-                                                v-slot="{ processing }"
-                                            >
-                                                <DialogHeader class="space-y-3">
-                                                    <DialogTitle
-                                                        >Hapus
-                                                        pengguna?</DialogTitle
-                                                    >
-                                                    <DialogDescription>
-                                                        Akun
-                                                        <strong>{{
-                                                            u.name
-                                                        }}</strong>
-                                                        akan dihapus permanen.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-
-                                                <DialogFooter class="gap-2">
-                                                    <DialogClose as-child>
-                                                        <Button
-                                                            variant="secondary"
-                                                            type="button"
-                                                        >
-                                                            Batal
-                                                        </Button>
-                                                    </DialogClose>
+                                            <DialogFooter class="gap-2">
+                                                <DialogClose as-child>
                                                     <Button
-                                                        type="submit"
-                                                        variant="destructive"
-                                                        :disabled="processing"
+                                                        variant="secondary"
+                                                        type="button"
                                                     >
-                                                        Hapus
+                                                        Batal
                                                     </Button>
-                                                </DialogFooter>
-                                            </Form>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </td>
-                        </tr>
+                                                </DialogClose>
+                                                <Button
+                                                    type="submit"
+                                                    variant="destructive"
+                                                    :disabled="processing"
+                                                >
+                                                    Hapus
+                                                </Button>
+                                            </DialogFooter>
+                                        </Form>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        </TableCell>
+                    </TableRow>
 
-                        <tr v-if="users.data.length === 0">
-                            <td colspan="4" class="px-6 py-16 text-center">
-                                <div
-                                    class="mx-auto flex max-w-sm flex-col items-center gap-2"
-                                >
-                                    <div
-                                        class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                                    >
-                                        <UserCog class="size-5" />
-                                    </div>
-                                    <p
-                                        class="text-sm font-medium text-foreground"
-                                    >
-                                        Belum ada pengguna
-                                    </p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <TableEmpty v-if="users.data.length === 0" :colspan="4">
+                        <div
+                            class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                        >
+                            <UserCog class="size-5" />
+                        </div>
+                        <p class="text-sm font-medium text-foreground">
+                            Belum ada pengguna
+                        </p>
+                    </TableEmpty>
+                </TableBody>
+            </Table>
 
             <div
                 v-if="users.total > 0"

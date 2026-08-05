@@ -17,6 +17,15 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { setBreadcrumbs } from '@/composables/useBreadcrumbs';
 import type { BreadcrumbItem } from '@/types';
 
@@ -145,160 +154,130 @@ setBreadcrumbs(() => breadcrumbs);
             </div>
 
             <!-- Table -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-border">
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Nama
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Garansi
-                            </th>
-                            <th
-                                class="px-6 py-3.5 text-right text-xs font-medium tracking-wider text-muted-foreground uppercase"
-                            >
-                                Aksi
-                            </th>
-                        </tr>
-                    </thead>
+            <Table>
+                <TableHeader>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Garansi</TableHead>
+                    <TableHead align="right">Aksi</TableHead>
+                </TableHeader>
 
-                    <tbody class="divide-y divide-border">
-                        <tr
-                            v-for="p in products.data"
-                            :key="p.id"
-                            class="transition-colors hover:bg-accent/50"
-                        >
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
-                                    >
-                                        {{ initial(p.name) }}
-                                    </div>
-                                    <span class="font-medium text-foreground">{{
-                                        p.name
-                                    }}</span>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span
-                                    v-if="p.warranty_months > 0"
-                                    class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                                >
-                                    {{ warrantyLabel(p.warranty_months) }}
-                                </span>
-                                <span v-else class="text-muted-foreground">
-                                    {{ warrantyLabel(p.warranty_months) }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
+                <TableBody>
+                    <TableRow v-for="p in products.data" :key="p.id">
+                        <TableCell>
+                            <div
+                                class="flex items-center gap-3 whitespace-nowrap"
+                            >
                                 <div
-                                    class="flex items-center justify-end gap-1"
+                                    class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary"
                                 >
-                                    <Button
-                                        v-if="can.update"
-                                        as-child
-                                        variant="ghost"
-                                        size="sm"
+                                    {{ initial(p.name) }}
+                                </div>
+                                <span class="font-medium text-foreground">{{
+                                    p.name
+                                }}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <span
+                                v-if="p.warranty_months > 0"
+                                class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
+                            >
+                                {{ warrantyLabel(p.warranty_months) }}
+                            </span>
+                            <span v-else class="text-muted-foreground">
+                                {{ warrantyLabel(p.warranty_months) }}
+                            </span>
+                        </TableCell>
+                        <TableCell>
+                            <div class="flex items-center justify-end gap-1">
+                                <Button
+                                    v-if="can.update"
+                                    as-child
+                                    variant="ghost"
+                                    size="sm"
+                                >
+                                    <Link :href="ProductController.edit(p.id)"
+                                        >Edit</Link
                                     >
-                                        <Link
-                                            :href="ProductController.edit(p.id)"
-                                            >Edit</Link
+                                </Button>
+
+                                <Dialog v-if="can.delete">
+                                    <DialogTrigger as-child>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                         >
-                                    </Button>
+                                            Hapus
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <Form
+                                            v-bind="
+                                                ProductController.destroy.form(
+                                                    p.id,
+                                                )
+                                            "
+                                            :options="{
+                                                preserveScroll: true,
+                                            }"
+                                            class="space-y-6"
+                                            v-slot="{ processing }"
+                                        >
+                                            <DialogHeader class="space-y-3">
+                                                <DialogTitle
+                                                    >Hapus produk?</DialogTitle
+                                                >
+                                                <DialogDescription>
+                                                    Data
+                                                    <strong>{{
+                                                        p.name
+                                                    }}</strong>
+                                                    akan dihapus permanen.
+                                                    Tindakan ini tidak dapat
+                                                    dibatalkan.
+                                                </DialogDescription>
+                                            </DialogHeader>
 
-                                    <Dialog v-if="can.delete">
-                                        <DialogTrigger as-child>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                            >
-                                                Hapus
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <Form
-                                                v-bind="
-                                                    ProductController.destroy.form(
-                                                        p.id,
-                                                    )
-                                                "
-                                                :options="{
-                                                    preserveScroll: true,
-                                                }"
-                                                class="space-y-6"
-                                                v-slot="{ processing }"
-                                            >
-                                                <DialogHeader class="space-y-3">
-                                                    <DialogTitle
-                                                        >Hapus
-                                                        produk?</DialogTitle
-                                                    >
-                                                    <DialogDescription>
-                                                        Data
-                                                        <strong>{{
-                                                            p.name
-                                                        }}</strong>
-                                                        akan dihapus permanen.
-                                                        Tindakan ini tidak dapat
-                                                        dibatalkan.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-
-                                                <DialogFooter class="gap-2">
-                                                    <DialogClose as-child>
-                                                        <Button
-                                                            variant="secondary"
-                                                            type="button"
-                                                        >
-                                                            Batal
-                                                        </Button>
-                                                    </DialogClose>
+                                            <DialogFooter class="gap-2">
+                                                <DialogClose as-child>
                                                     <Button
-                                                        type="submit"
-                                                        variant="destructive"
-                                                        :disabled="processing"
+                                                        variant="secondary"
+                                                        type="button"
                                                     >
-                                                        Hapus
+                                                        Batal
                                                     </Button>
-                                                </DialogFooter>
-                                            </Form>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            </td>
-                        </tr>
+                                                </DialogClose>
+                                                <Button
+                                                    type="submit"
+                                                    variant="destructive"
+                                                    :disabled="processing"
+                                                >
+                                                    Hapus
+                                                </Button>
+                                            </DialogFooter>
+                                        </Form>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        </TableCell>
+                    </TableRow>
 
-                        <tr v-if="products.data.length === 0">
-                            <td colspan="3" class="px-6 py-16 text-center">
-                                <div
-                                    class="mx-auto flex max-w-sm flex-col items-center gap-2"
-                                >
-                                    <div
-                                        class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                                    >
-                                        <Package class="size-5" />
-                                    </div>
-                                    <p
-                                        class="text-sm font-medium text-foreground"
-                                    >
-                                        Belum ada data produk
-                                    </p>
-                                    <p class="text-sm text-muted-foreground">
-                                        Tambahkan produk pertama untuk mulai.
-                                    </p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <TableEmpty v-if="products.data.length === 0" :colspan="3">
+                        <div
+                            class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                        >
+                            <Package class="size-5" />
+                        </div>
+                        <p class="text-sm font-medium text-foreground">
+                            Belum ada data produk
+                        </p>
+                        <p class="text-sm text-muted-foreground">
+                            Tambahkan produk pertama untuk mulai.
+                        </p>
+                    </TableEmpty>
+                </TableBody>
+            </Table>
 
             <!-- Footer / pagination -->
             <div
