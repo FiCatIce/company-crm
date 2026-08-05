@@ -1,21 +1,27 @@
 <script setup lang="ts">
+import { Badge } from '@/components/ui/badge';
+import type { BadgeVariants } from '@/components/ui/badge';
+
 defineProps<{ outcome: string; label: string }>();
 
-const tones: Record<string, string> = {
-    answered: 'bg-green-100 text-green-700',
-    missed: 'bg-red-100 text-red-700',
-    no_answer: 'bg-red-100 text-red-700',
-    voicemail: 'bg-amber-100 text-amber-700',
-    busy: 'bg-amber-100 text-amber-700',
-    wrong_number: 'bg-slate-100 text-slate-600',
+// Six call outcomes fold onto the four-state vocabulary, following the exact
+// pre-R-D color grouping: answered=ok; missed & no_answer=busy (red — a call
+// that demands follow-up); voicemail & the "busy line" outcome=warn (amber —
+// partial contact); wrong_number=idle. NOTE: the OUTCOME named `busy` maps to
+// the warn VARIANT, not the busy variant — the variant names describe agent
+// state colors, not call outcomes.
+const variants: Record<string, BadgeVariants['variant']> = {
+    answered: 'ok',
+    missed: 'busy',
+    no_answer: 'busy',
+    voicemail: 'warn',
+    busy: 'warn',
+    wrong_number: 'idle',
 };
 </script>
 
 <template>
-    <span
-        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-        :class="tones[outcome] ?? 'bg-muted text-muted-foreground'"
-    >
+    <Badge :variant="variants[outcome] ?? 'idle'">
         {{ label }}
-    </span>
+    </Badge>
 </template>

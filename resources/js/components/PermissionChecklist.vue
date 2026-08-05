@@ -64,7 +64,7 @@ function toggle(name: string): void {
                     }}</span>
                     <span
                         v-if="perm.sensitive"
-                        class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                        class="inline-flex items-center gap-1 rounded-full border border-state-warn/30 bg-state-warn-soft px-1.5 py-0.5 text-[10px] font-medium text-state-warn-strong"
                     >
                         <ShieldAlert class="size-3" />
                         Sensitif

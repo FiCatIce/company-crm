@@ -112,7 +112,10 @@ setBreadcrumbs(() => breadcrumbs);
                         {{ c.label }}
                     </option>
                 </select>
-                <p v-if="form.errors.customer_id" class="text-sm text-red-600">
+                <p
+                    v-if="form.errors.customer_id"
+                    class="text-sm text-destructive"
+                >
                     {{ form.errors.customer_id }}
                 </p>
             </div>
@@ -148,8 +151,8 @@ setBreadcrumbs(() => breadcrumbs);
                         class="flex items-center gap-1.5 text-xs"
                         :class="
                             pickedTransaction.under_warranty
-                                ? 'text-green-700'
-                                : 'text-amber-700'
+                                ? 'text-state-ok-strong'
+                                : 'text-state-warn-strong'
                         "
                     >
                         <ShieldCheck class="size-3.5" />
@@ -161,7 +164,7 @@ setBreadcrumbs(() => breadcrumbs);
                     </p>
                     <p
                         v-if="form.errors.transaction_id"
-                        class="text-sm text-red-600"
+                        class="text-sm text-destructive"
                     >
                         {{ form.errors.transaction_id }}
                     </p>
@@ -178,7 +181,7 @@ setBreadcrumbs(() => breadcrumbs);
                         />
                         <p
                             v-if="form.errors.item_description"
-                            class="text-sm text-red-600"
+                            class="text-sm text-destructive"
                         >
                             {{ form.errors.item_description }}
                         </p>
@@ -207,7 +210,10 @@ setBreadcrumbs(() => breadcrumbs);
                     placeholder="Apa yang dilaporkan customer…"
                     required
                 ></textarea>
-                <p v-if="form.errors.complaint" class="text-sm text-red-600">
+                <p
+                    v-if="form.errors.complaint"
+                    class="text-sm text-destructive"
+                >
                     {{ form.errors.complaint }}
                 </p>
             </div>

@@ -5,7 +5,7 @@ const patternId = `pattern-${useId()}`;
 </script>
 
 <template>
-    <svg class="absolute inset-0 size-full stroke-neutral-900/20" fill="none">
+    <svg class="absolute inset-0 size-full stroke-foreground/20" fill="none">
         <defs>
             <pattern
                 :id="patternId"

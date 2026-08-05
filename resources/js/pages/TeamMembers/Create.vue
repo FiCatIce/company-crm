@@ -119,7 +119,7 @@ setBreadcrumbs(() => breadcrumbs);
                 </div>
 
                 <div
-                    class="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-3 text-sm text-blue-800"
+                    class="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-accent px-3.5 py-3 text-sm text-accent-foreground"
                 >
                     <ShieldCheck class="mt-0.5 size-4 shrink-0" />
                     <span>

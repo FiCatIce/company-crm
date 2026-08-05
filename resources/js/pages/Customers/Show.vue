@@ -205,7 +205,7 @@ setBreadcrumbs(() => breadcrumbs);
                                 class="inline-flex items-center gap-2 text-muted-foreground"
                             >
                                 <span
-                                    class="size-2 rounded-full bg-green-500"
+                                    class="size-2 rounded-full bg-state-ok"
                                     aria-hidden="true"
                                 />Aktif
                             </dt>
@@ -220,7 +220,7 @@ setBreadcrumbs(() => breadcrumbs);
                                 class="inline-flex items-center gap-2 text-muted-foreground"
                             >
                                 <span
-                                    class="size-2 rounded-full bg-red-500"
+                                    class="size-2 rounded-full bg-state-busy"
                                     aria-hidden="true"
                                 />Berakhir
                             </dt>
@@ -235,7 +235,7 @@ setBreadcrumbs(() => breadcrumbs);
                                 class="inline-flex items-center gap-2 text-muted-foreground"
                             >
                                 <span
-                                    class="size-2 rounded-full bg-slate-300"
+                                    class="size-2 rounded-full bg-state-idle"
                                     aria-hidden="true"
                                 />Tanpa garansi
                             </dt>

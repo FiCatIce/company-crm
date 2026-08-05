@@ -12,11 +12,13 @@ const props = defineProps<{
     none: number;
 }>();
 
-// Semantic status colours — same green/red as WarrantyBadge, slate for "no warranty".
+// Locked state tokens — same ok/busy vocabulary as WarrantyBadge, idle for
+// "no warranty". var() references resolve at paint time, so the ring follows
+// the token layer like every other surface.
 const COLORS = {
-    active: '#22c55e',
-    expired: '#ef4444',
-    none: '#cbd5e1',
+    active: 'var(--state-ok)',
+    expired: 'var(--state-busy)',
+    none: 'var(--state-idle)',
 } as const;
 
 const total = computed(() => props.active + props.expired + props.none);

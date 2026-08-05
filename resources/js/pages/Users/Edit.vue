@@ -306,7 +306,7 @@ setBreadcrumbs(() => breadcrumbs);
                                     {{ perm.label }}
                                     <span
                                         v-if="perm.sensitive"
-                                        class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                                        class="inline-flex items-center gap-1 rounded-full bg-state-warn-soft px-1.5 py-0.5 text-[10px] font-medium text-state-warn-strong"
                                     >
                                         <ShieldAlert class="size-3" />
                                         Sensitif
@@ -332,7 +332,7 @@ setBreadcrumbs(() => breadcrumbs);
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle class="inline-flex items-center gap-2">
-                            <ShieldAlert class="size-5 text-amber-600" />
+                            <ShieldAlert class="size-5 text-state-warn" />
                             Konfirmasi izin sensitif
                         </DialogTitle>
                         <DialogDescription>

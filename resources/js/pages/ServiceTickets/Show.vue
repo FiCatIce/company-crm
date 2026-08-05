@@ -256,7 +256,7 @@ setBreadcrumbs(() => breadcrumbs);
                             ></textarea>
                             <p
                                 v-if="completeForm.errors.resolution"
-                                class="text-sm text-red-600"
+                                class="text-sm text-destructive"
                             >
                                 {{ completeForm.errors.resolution }}
                             </p>
@@ -301,7 +301,7 @@ setBreadcrumbs(() => breadcrumbs);
                             ></textarea>
                             <p
                                 v-if="cancelForm.errors.reason"
-                                class="text-sm text-red-600"
+                                class="text-sm text-destructive"
                             >
                                 {{ cancelForm.errors.reason }}
                             </p>
@@ -328,14 +328,14 @@ setBreadcrumbs(() => breadcrumbs);
         <!-- Flash -->
         <div
             v-if="flashSuccess"
-            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            class="flex items-center gap-2 rounded-lg border border-state-ok/30 bg-state-ok-soft px-4 py-3 text-sm text-state-ok-strong"
         >
             <Check class="size-4 shrink-0" />
             <span>{{ flashSuccess }}</span>
         </div>
         <div
             v-if="flashError"
-            class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            class="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
             <CircleAlert class="size-4 shrink-0" />
             <span>{{ flashError }}</span>
@@ -356,8 +356,8 @@ setBreadcrumbs(() => breadcrumbs);
                         :class="
                             step.done
                                 ? step.label === 'Dibatalkan'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-green-100 text-green-700'
+                                    ? 'bg-state-busy-soft text-state-busy-strong'
+                                    : 'bg-state-ok-soft text-state-ok-strong'
                                 : 'bg-muted text-muted-foreground'
                         "
                     >
@@ -388,7 +388,7 @@ setBreadcrumbs(() => breadcrumbs);
                 >
                 <span
                     v-else
-                    class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+                    class="inline-flex items-center rounded-full bg-state-idle-soft px-2.5 py-0.5 text-xs font-medium text-state-idle-strong"
                     >Pool — belum dipegang</span
                 >
             </p>
@@ -424,7 +424,7 @@ setBreadcrumbs(() => breadcrumbs);
                 </Button>
                 <p
                     v-if="assignForm.errors.assignee_id"
-                    class="w-full text-sm text-red-600"
+                    class="w-full text-sm text-destructive"
                 >
                     {{ assignForm.errors.assignee_id }}
                 </p>
@@ -444,10 +444,12 @@ setBreadcrumbs(() => breadcrumbs);
         <!-- Resolution (done only) -->
         <div
             v-if="ticket.resolution"
-            class="rounded-xl border border-green-200 bg-green-50/50 p-4 shadow-sm sm:p-5"
+            class="rounded-xl border border-state-ok/30 bg-state-ok-soft/50 p-4 shadow-sm sm:p-5"
         >
-            <h2 class="text-sm font-semibold text-green-800">Penyelesaian</h2>
-            <p class="mt-2 text-sm whitespace-pre-line text-green-900">
+            <h2 class="text-sm font-semibold text-state-ok-strong">
+                Penyelesaian
+            </h2>
+            <p class="mt-2 text-sm whitespace-pre-line text-state-ok-strong">
                 {{ ticket.resolution }}
             </p>
         </div>
@@ -473,7 +475,7 @@ setBreadcrumbs(() => breadcrumbs);
                 ></textarea>
                 <p
                     v-if="notesForm.errors.work_notes"
-                    class="text-sm text-red-600"
+                    class="text-sm text-destructive"
                 >
                     {{ notesForm.errors.work_notes }}
                 </p>

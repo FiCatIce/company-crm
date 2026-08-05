@@ -143,7 +143,7 @@ setBreadcrumbs(() => breadcrumbs);
         <!-- Flash -->
         <div
             v-if="flashSuccess"
-            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            class="flex items-center gap-2 rounded-lg border border-state-ok/30 bg-state-ok-soft px-4 py-3 text-sm text-state-ok-strong"
         >
             <Check class="size-4 shrink-0" />
             <span>{{ flashSuccess }}</span>

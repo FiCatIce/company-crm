@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
  */
 const props = defineProps<{
   kind?: "mono" | "money"
+  priority?: "secondary"
   class?: HTMLAttributes["class"]
 }>()
 </script>
@@ -21,6 +22,7 @@ const props = defineProps<{
         'px-4 py-2',
         kind === 'mono' && 'font-mono tabular-nums whitespace-nowrap',
         kind === 'money' && 'text-right font-mono tabular-nums whitespace-nowrap',
+        priority === 'secondary' && 'hidden lg:table-cell',
         props.class,
       )
     "

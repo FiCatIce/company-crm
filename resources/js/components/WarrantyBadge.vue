@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Badge } from '@/components/ui/badge';
+import { StatusDot } from '@/components/ui/status-dot';
+
 defineProps<{
     isUnderWarranty: boolean;
     expiresAt: string | null;
@@ -7,27 +10,13 @@ defineProps<{
 </script>
 
 <template>
-    <span
-        v-if="warrantyMonths === 0"
-        class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
-    >
-        Tanpa garansi
-    </span>
-    <span
-        v-else-if="isUnderWarranty"
-        class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700"
-    >
-        <span
-            class="h-1.5 w-1.5 rounded-full bg-green-500"
-            aria-hidden="true"
-        />
+    <Badge v-if="warrantyMonths === 0" variant="idle">Tanpa garansi</Badge>
+    <Badge v-else-if="isUnderWarranty" variant="ok" class="gap-1.5">
+        <StatusDot state="ok" class="size-1.5" />
         Aktif s/d {{ expiresAt }}
-    </span>
-    <span
-        v-else
-        class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700"
-    >
-        <span class="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
+    </Badge>
+    <Badge v-else variant="busy" class="gap-1.5">
+        <StatusDot state="busy" class="size-1.5" />
         Berakhir {{ expiresAt }}
-    </span>
+    </Badge>
 </template>

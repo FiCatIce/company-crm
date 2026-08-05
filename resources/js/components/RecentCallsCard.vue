@@ -4,6 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, PhoneOff } from '@lucide/vue';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import InteractionOutcomeBadge from '@/components/InteractionOutcomeBadge.vue';
 import InteractionTypeIcon from '@/components/InteractionTypeIcon.vue';
+import { Badge } from '@/components/ui/badge';
 import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 import { formatDuration, relativeDays } from '@/lib/format';
 import type { RecentCallRow } from '@/types/crm';
@@ -39,7 +40,7 @@ defineProps<{
                 class="flex items-start gap-3 px-5 py-3"
                 :class="
                     item.is_cti_lead
-                        ? 'border-l-2 border-amber-400 bg-amber-50'
+                        ? 'border-l-2 border-state-warn bg-state-warn-soft'
                         : ''
                 "
             >
@@ -74,12 +75,9 @@ defineProps<{
                         >
                             Otomatis
                         </span>
-                        <span
-                            v-if="item.is_cti_lead"
-                            class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-                        >
+                        <Badge v-if="item.is_cti_lead" variant="warn">
                             Prospek baru
-                        </span>
+                        </Badge>
                     </div>
 
                     <div

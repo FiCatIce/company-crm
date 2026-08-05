@@ -96,7 +96,7 @@ setBreadcrumbs(() => breadcrumbs);
         <!-- Admin is locked: its preset is code-defined (RolePresets). -->
         <div
             v-if="role.is_locked"
-            class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700"
+            class="flex items-center gap-2 rounded-lg border border-primary/20 bg-accent px-4 py-3 text-sm text-accent-foreground"
         >
             <ShieldCheck class="size-4 shrink-0" />
             <span
@@ -108,7 +108,7 @@ setBreadcrumbs(() => breadcrumbs);
         <!-- Non-admin system role: editable, but warn before saving. -->
         <div
             v-else-if="role.is_system"
-            class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+            class="flex items-start gap-2 rounded-lg border border-state-warn/30 bg-state-warn-soft px-4 py-3 text-sm text-state-warn-strong"
         >
             <CircleAlert class="mt-0.5 size-4 shrink-0" />
             <span>

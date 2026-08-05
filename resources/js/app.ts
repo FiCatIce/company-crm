@@ -26,7 +26,9 @@ createInertiaApp({
         }
     },
     progress: {
-        color: '#4B5563',
+        // The injected NProgress style resolves CSS vars at runtime, so the
+        // loading bar follows the (tenant-themeable) accent.
+        color: 'var(--primary)',
     },
 });
 

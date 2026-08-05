@@ -3,6 +3,7 @@ import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import { Check, Plus, UserCog } from '@lucide/vue';
 import { computed } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/UserController';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -80,14 +81,14 @@ setBreadcrumbs(() => breadcrumbs);
 
         <div
             v-if="flashSuccess"
-            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            class="flex items-center gap-2 rounded-lg border border-state-ok/30 bg-state-ok-soft px-4 py-3 text-sm text-state-ok-strong"
         >
             <Check class="size-4 shrink-0" />
             <span>{{ flashSuccess }}</span>
         </div>
         <div
             v-if="flashError"
-            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            class="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
             {{ flashError }}
         </div>
@@ -135,18 +136,14 @@ setBreadcrumbs(() => breadcrumbs);
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-wrap items-center gap-1.5">
-                                <span
-                                    v-if="u.role"
-                                    class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                                    >{{ u.role.label }}</span
-                                >
+                                <Badge v-if="u.role" variant="outline">{{
+                                    u.role.label
+                                }}</Badge>
                                 <span v-else class="text-muted-foreground"
                                     >—</span
                                 >
-                                <span
-                                    v-if="!u.is_active"
-                                    class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
-                                    >Nonaktif</span
+                                <Badge v-if="!u.is_active" variant="idle"
+                                    >Nonaktif</Badge
                                 >
                             </div>
                         </TableCell>
@@ -174,7 +171,7 @@ setBreadcrumbs(() => breadcrumbs);
                                             :class="
                                                 u.is_active
                                                     ? 'text-muted-foreground'
-                                                    : 'text-emerald-700'
+                                                    : 'text-state-ok-strong'
                                             "
                                         >
                                             {{

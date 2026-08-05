@@ -39,8 +39,8 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
 const { label, labelLower } = useLabels();
 
 const typeStyles: Record<string, string> = {
-    cs: 'border-violet-200 bg-violet-50 text-violet-700',
-    maintenance: 'border-amber-200 bg-amber-50 text-amber-700',
+    cs: 'border-border bg-muted text-foreground',
+    maintenance: 'border-border bg-muted text-foreground',
 };
 const typeBadge = (value?: string) =>
     (value && typeStyles[value]) || 'border-border bg-muted text-foreground';
@@ -94,14 +94,14 @@ setBreadcrumbs(() => breadcrumbs);
 
         <div
             v-if="flashSuccess"
-            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            class="flex items-center gap-2 rounded-lg border border-state-ok/30 bg-state-ok-soft px-4 py-3 text-sm text-state-ok-strong"
         >
             <Check class="size-4 shrink-0" />
             <span>{{ flashSuccess }}</span>
         </div>
         <div
             v-if="flashError"
-            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            class="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
             {{ flashError }}
         </div>
@@ -245,7 +245,7 @@ setBreadcrumbs(() => breadcrumbs);
                 v-if="!props.hasTeam"
                 class="flex items-start gap-2.5 px-6 py-5 text-sm text-muted-foreground"
             >
-                <CircleAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <CircleAlert class="mt-0.5 size-4 shrink-0 text-state-warn" />
                 <span>
                     Anda belum tergabung dalam tim, jadi belum ada kandidat yang
                     bisa ditugaskan. Hubungi

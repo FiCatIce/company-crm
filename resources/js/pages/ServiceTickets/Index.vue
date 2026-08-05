@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import ServiceTicketController from '@/actions/App/Http/Controllers/ServiceTicketController';
 import IndexStatCard from '@/components/IndexStatCard.vue';
 import TicketStatusBadge from '@/components/TicketStatusBadge.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -174,14 +175,14 @@ setBreadcrumbs(() => breadcrumbs);
         <!-- Flash -->
         <div
             v-if="flashSuccess"
-            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            class="flex items-center gap-2 rounded-lg border border-state-ok/30 bg-state-ok-soft px-4 py-3 text-sm text-state-ok-strong"
         >
             <Check class="size-4 shrink-0" />
             <span>{{ flashSuccess }}</span>
         </div>
         <div
             v-if="flashError"
-            class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            class="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
             <CircleAlert class="size-4 shrink-0" />
             <span>{{ flashError }}</span>
@@ -296,11 +297,7 @@ setBreadcrumbs(() => breadcrumbs);
                             <span v-if="ticket.assignee">{{
                                 ticket.assignee.name
                             }}</span>
-                            <span
-                                v-else
-                                class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
-                                >Pool</span
-                            >
+                            <Badge v-else variant="idle">Pool</Badge>
                         </TableCell>
                         <TableCell kind="mono" class="text-muted-foreground">
                             {{ formatDate(ticket.received_at) }}

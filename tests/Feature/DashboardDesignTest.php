@@ -30,10 +30,10 @@ test('the recent transactions card reuses the warranty badge', function () {
         ->toContain("from '@/components/ui/table'"); // shared table primitive (R-C)
 });
 
-test('the expiring warranty card uses an amber watchlist pill', function () {
+test('the expiring warranty card uses a warn watchlist pill', function () {
     expect(dashSource('components/ExpiringWarrantyCard.vue'))
         ->toContain('Garansi Segera Berakhir')
-        ->toContain('bg-amber-100') // warning colour, distinct from the blue accent
+        ->toContain('variant="warn"') // state vocabulary, distinct from the accent (R-D)
         ->toContain('hari lagi');
 });
 
@@ -94,7 +94,7 @@ test('the recent calls card links to the 360, reuses call badges, flags leads, a
         ->toContain('formatDuration') // shared mm:ss formatter
         ->toContain('Otomatis') // cti source chip
         ->toContain('Prospek baru') // unmatched-lead highlight
-        ->toContain('bg-amber-50') // subtle lead row tint
+        ->toContain('bg-state-warn-soft') // subtle lead row tint (R-D tokens)
         ->toContain('WidgetEmptyState');
 });
 

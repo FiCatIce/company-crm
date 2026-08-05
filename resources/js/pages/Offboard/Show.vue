@@ -63,7 +63,7 @@ setBreadcrumbs(() => breadcrumbs);
     <div class="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <div class="flex items-start gap-4">
             <div
-                class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"
+                class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-state-warn-soft text-state-warn-strong"
             >
                 <UserMinus class="size-5" />
             </div>
@@ -148,7 +148,7 @@ setBreadcrumbs(() => breadcrumbs);
                 <!-- 3. Confirm: spell out the move before it happens -->
                 <div
                     v-if="chosen"
-                    class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                    class="rounded-lg border border-state-warn/30 bg-state-warn-soft px-4 py-3 text-sm text-state-warn-strong"
                 >
                     <div class="mb-2 flex items-center gap-2 font-medium">
                         <TriangleAlert class="size-4 shrink-0" />
@@ -178,7 +178,7 @@ setBreadcrumbs(() => breadcrumbs);
 
             <div v-else class="p-6">
                 <div
-                    class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                    class="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
                 >
                     Belum ada kandidat pengganti yang memenuhi syarat. Tambahkan
                     atau aktifkan anggota dengan peran yang sama di tim ini

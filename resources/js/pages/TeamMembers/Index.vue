@@ -12,6 +12,7 @@ import {
 import { computed } from 'vue';
 import TeamMemberController from '@/actions/App/Http/Controllers/TeamMemberController';
 import InputError from '@/components/InputError.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -62,15 +63,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const initial = (name: string) => name.trim().charAt(0).toUpperCase();
 
-// Restrained per-type tints — visual hierarchy without leaving the corporate palette.
-const typeStyles: Record<string, string> = {
-    sales: 'border-blue-200 bg-blue-50 text-blue-700',
-    cs: 'border-violet-200 bg-violet-50 text-violet-700',
-    maintenance: 'border-amber-200 bg-amber-50 text-amber-700',
-};
-const typeBadge = (value?: string) =>
-    (value && typeStyles[value]) || 'border-border bg-muted text-foreground';
-
 const formatDate = (iso: string | null) =>
     iso
         ? new Date(iso).toLocaleDateString('id-ID', {
@@ -116,14 +108,14 @@ setBreadcrumbs(() => breadcrumbs);
 
         <div
             v-if="flashSuccess"
-            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            class="flex items-center gap-2 rounded-lg border border-state-ok/30 bg-state-ok-soft px-4 py-3 text-sm text-state-ok-strong"
         >
             <Check class="size-4 shrink-0" />
             <span>{{ flashSuccess }}</span>
         </div>
         <div
             v-if="flashError"
-            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            class="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
             {{ flashError }}
         </div>
@@ -165,19 +157,17 @@ setBreadcrumbs(() => breadcrumbs);
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-wrap items-center gap-1.5">
-                                <span
-                                    v-if="m.type"
-                                    class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
-                                    :class="typeBadge(m.type.value)"
-                                    >{{ m.type.label }}</span
-                                >
+                                <!-- Kategori, bukan state: netral monokrom, teks
+                                    yang membedakan — role kustom tenant otomatis
+                                    tampil sama tanpa utang warna per-role. -->
+                                <Badge v-if="m.type" variant="outline">{{
+                                    m.type.label
+                                }}</Badge>
                                 <span v-else class="text-muted-foreground"
                                     >—</span
                                 >
-                                <span
-                                    v-if="!m.is_active"
-                                    class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
-                                    >Nonaktif</span
+                                <Badge v-if="!m.is_active" variant="idle"
+                                    >Nonaktif</Badge
                                 >
                             </div>
                         </TableCell>
@@ -277,7 +267,7 @@ setBreadcrumbs(() => breadcrumbs);
                                             :class="
                                                 m.is_active
                                                     ? 'text-muted-foreground'
-                                                    : 'text-emerald-700'
+                                                    : 'text-state-ok-strong'
                                             "
                                         >
                                             <component

@@ -2,6 +2,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Check, Lock, Plus, ShieldCheck } from '@lucide/vue';
 import { computed } from 'vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -67,14 +68,14 @@ setBreadcrumbs(() => breadcrumbs);
 
         <div
             v-if="flashSuccess"
-            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            class="flex items-center gap-2 rounded-lg border border-state-ok/30 bg-state-ok-soft px-4 py-3 text-sm text-state-ok-strong"
         >
             <Check class="size-4 shrink-0" />
             <span>{{ flashSuccess }}</span>
         </div>
         <div
             v-if="flashError"
-            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            class="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
             {{ flashError }}
         </div>
@@ -101,23 +102,16 @@ setBreadcrumbs(() => breadcrumbs);
                             >
                         </TableCell>
                         <TableCell>
-                            <span
-                                v-if="role.is_locked"
-                                class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700"
-                            >
+                            <!-- Kategori, bukan state: satu tampilan netral,
+                                teks (+ ikon kunci) yang membedakan. -->
+                            <Badge v-if="role.is_locked" variant="outline">
                                 <Lock class="size-3" />
                                 Terkunci
-                            </span>
-                            <span
-                                v-else-if="role.is_system"
-                                class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
-                                >Sistem</span
+                            </Badge>
+                            <Badge v-else-if="role.is_system" variant="outline"
+                                >Sistem</Badge
                             >
-                            <span
-                                v-else
-                                class="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                                >Kustom</span
-                            >
+                            <Badge v-else variant="outline">Kustom</Badge>
                         </TableCell>
                         <TableCell kind="money" class="text-muted-foreground">
                             {{ role.permissions_count }}
@@ -164,7 +158,7 @@ setBreadcrumbs(() => breadcrumbs);
                                                 </template>
                                                 <span
                                                     v-if="role.is_system"
-                                                    class="mt-2 block text-amber-700"
+                                                    class="mt-2 block text-state-warn-strong"
                                                 >
                                                     Ini role sistem — seeder
                                                     &amp; integrasi CTI mungkin

@@ -28,9 +28,9 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase();
 const { label, labelLower } = useLabels();
 
 const typeStyles: Record<string, string> = {
-    sales: 'border-blue-200 bg-blue-50 text-blue-700',
-    cs: 'border-violet-200 bg-violet-50 text-violet-700',
-    maintenance: 'border-amber-200 bg-amber-50 text-amber-700',
+    sales: 'border-border bg-muted text-foreground',
+    cs: 'border-border bg-muted text-foreground',
+    maintenance: 'border-border bg-muted text-foreground',
 };
 const typeBadge = (value?: string) =>
     (value && typeStyles[value]) || 'border-border bg-muted text-foreground';
@@ -92,7 +92,7 @@ setBreadcrumbs(() => breadcrumbs);
 
         <div
             v-if="!props.team"
-            class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+            class="rounded-lg border border-state-warn/30 bg-state-warn-soft px-4 py-3 text-sm text-state-warn-strong"
         >
             Anda belum tergabung dalam tim. Hubungi
             {{ labelLower('supervisor') }} Anda untuk didaftarkan.
@@ -135,7 +135,7 @@ setBreadcrumbs(() => breadcrumbs);
                         </div>
                         <span
                             v-if="!rep.is_active"
-                            class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                            class="inline-flex items-center rounded-full border border-state-idle/30 bg-state-idle-soft px-2.5 py-0.5 text-xs font-medium text-state-idle-strong"
                             title="Akun dinonaktifkan — customer di bawah ini tetap miliknya sampai dialihkan."
                             >Nonaktif</span
                         >
@@ -237,7 +237,7 @@ setBreadcrumbs(() => breadcrumbs);
                     </div>
                     <span
                         v-if="!a.is_active"
-                        class="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                        class="inline-flex items-center rounded-full border border-state-idle/30 bg-state-idle-soft px-2.5 py-0.5 text-xs font-medium text-state-idle-strong"
                         title="Akun dinonaktifkan — penugasannya tetap utuh."
                         >Nonaktif</span
                     >

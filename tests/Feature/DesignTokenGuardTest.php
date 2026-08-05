@@ -136,6 +136,46 @@ test('rewritten primitives carry no raw hex or tailwind palette colors', functio
     expect($offenders)->toBe([]);
 });
 
+test('the whole frontend is free of raw colors outside the allowlist', function () {
+    /*
+     * R-D endgame guard — the sweep is only done while it STAYS done. Every
+     * .vue/.ts under resources/js must read the token layer; raw Tailwind
+     * palette classes and hex literals are banned.
+     *
+     * Explicit allowlist (one entry, with reason):
+     * - pages/Welcome.vue — the Laravel starter guest landing: renders
+     *   outside the app shell with its own self-contained illustration art
+     *   direction (hex-tinted SVG art). It is not part of the themeable
+     *   product UI and will be replaced by a real landing page, not themed.
+     */
+    $allowlist = [
+        str_replace('\\', '/', resource_path('js/pages/Welcome.vue')),
+    ];
+
+    $rawPalette = '/(?:^|[\s\'"`:!])(?:bg|text|border|ring|outline|fill|stroke|decoration|divide|from|via|to|caret|accent|shadow)-'
+        .'(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|black|white)'
+        .'(?:-\d{2,3})?(?![\w-])/';
+    $rawHex = '/#[0-9a-fA-F]{3,8}\b/';
+
+    $offenders = [];
+
+    foreach (designGuardFiles(resource_path('js'), ['vue', 'ts']) as $file) {
+        $normalized = str_replace('\\', '/', $file);
+
+        if (in_array($normalized, $allowlist, true)) {
+            continue;
+        }
+
+        $source = file_get_contents($file);
+
+        if (preg_match($rawPalette, $source) || preg_match($rawHex, $source)) {
+            $offenders[] = $normalized;
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});
+
 test('the status primitives read only the locked state tokens', function () {
     expect(file_get_contents(resource_path('js/components/ui/status-dot/index.ts')))
         ->toContain('bg-state-ok')

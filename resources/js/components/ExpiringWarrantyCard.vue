@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { CircleCheck } from '@lucide/vue';
+import { Badge } from '@/components/ui/badge';
 import WidgetEmptyState from '@/components/WidgetEmptyState.vue';
 
 type ExpiringRow = {
@@ -51,11 +52,12 @@ const daysText = (days: number) =>
                         {{ item.product ?? '—' }}
                     </p>
                 </div>
-                <span
-                    class="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 tabular-nums"
+                <Badge
+                    variant="warn"
+                    class="shrink-0 font-semibold tabular-nums"
                 >
                     {{ daysText(item.days_left) }}
-                </span>
+                </Badge>
             </li>
         </ul>
     </div>

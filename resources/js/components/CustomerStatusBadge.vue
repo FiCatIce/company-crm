@@ -1,21 +1,21 @@
 <script setup lang="ts">
+import { Badge } from '@/components/ui/badge';
+import type { BadgeVariants } from '@/components/ui/badge';
+
 defineProps<{ status: string; label: string }>();
 
-// Semantic status tones (kept separate from the blue accent): lead=amber,
-// active=green, inactive=slate, churned=red.
-const tones: Record<string, string> = {
-    lead: 'bg-amber-100 text-amber-700',
-    active: 'bg-green-100 text-green-700',
-    inactive: 'bg-slate-100 text-slate-600',
-    churned: 'bg-red-100 text-red-700',
+// Customer lifecycle on the locked state vocabulary (kept separate from the
+// themeable accent): lead=warn, active=ok, inactive=idle, churned=busy.
+const variants: Record<string, BadgeVariants['variant']> = {
+    lead: 'warn',
+    active: 'ok',
+    inactive: 'idle',
+    churned: 'busy',
 };
 </script>
 
 <template>
-    <span
-        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-        :class="tones[status] ?? 'bg-muted text-muted-foreground'"
-    >
+    <Badge :variant="variants[status] ?? 'idle'">
         {{ label }}
-    </span>
+    </Badge>
 </template>
