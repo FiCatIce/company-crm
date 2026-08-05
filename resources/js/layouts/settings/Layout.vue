@@ -33,7 +33,8 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <div class="px-4 py-6">
+    <!-- R-B: outer padding comes from the persistent shell's content wrapper. -->
+    <div>
         <Heading
             title="Settings"
             description="Manage your profile and account settings"

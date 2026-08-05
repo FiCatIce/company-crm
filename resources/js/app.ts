@@ -17,10 +17,12 @@ createInertiaApp({
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
             default:
-                // Content pages provide their own <AppLayout> wrapper (with
-                // breadcrumbs), so no global persistent layout is applied here —
-                // returning AppLayout too would double-wrap the sidebar.
-                return null;
+                // R-B: every authenticated page shares ONE persistent shell so
+                // the sidebar (and the CallDock for CTI 4c) survives Inertia
+                // navigations. Pages must NOT wrap <AppLayout> themselves —
+                // that double-wraps the sidebar; ShellGuardTest enforces it.
+                // Breadcrumbs flow through useBreadcrumbs(), not props.
+                return AppLayout;
         }
     },
     progress: {

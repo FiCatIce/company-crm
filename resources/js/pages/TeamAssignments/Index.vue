@@ -14,8 +14,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { setBreadcrumbs } from '@/composables/useBreadcrumbs';
 import { useLabels } from '@/composables/useLabels';
-import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import type { SupportAssigneeRow, SupportCandidateRow } from '@/types/crm';
 
@@ -65,273 +65,258 @@ const submit = () =>
     });
 
 const selectedCount = computed(() => form.assignee_ids.length);
+
+setBreadcrumbs(() => breadcrumbs);
 </script>
 
 <template>
     <Head title="Support Saya" />
+    <div class="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        <div class="flex items-start gap-4">
+            <div
+                class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+            >
+                <UserCog class="size-5" />
+            </div>
+            <div class="space-y-1">
+                <h1
+                    class="text-2xl font-semibold tracking-tight text-foreground"
+                >
+                    Support Saya
+                </h1>
+                <p class="text-sm text-muted-foreground">
+                    {{ label('cs') }} &amp; {{ label('maintenance') }} yang Anda
+                    tugaskan untuk membantu menangani customer Anda. Begitu
+                    di-assign, mereka langsung bisa melihat customer Anda.
+                </p>
+            </div>
+        </div>
 
-    <AppLayout :breadcrumbs="breadcrumbs">
         <div
-            class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
+            v-if="flashSuccess"
+            class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
         >
-            <div class="flex items-start gap-4">
-                <div
-                    class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+            <Check class="size-4 shrink-0" />
+            <span>{{ flashSuccess }}</span>
+        </div>
+        <div
+            v-if="flashError"
+            class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+            {{ flashError }}
+        </div>
+
+        <!-- Current assignments -->
+        <section
+            class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+        >
+            <div class="border-b border-border px-6 py-4">
+                <h2 class="text-sm font-semibold text-foreground">
+                    Sedang menangani customer Anda
+                </h2>
+                <p class="text-xs text-muted-foreground">
+                    {{ props.assignees.length }} orang punya akses ke customer
+                    Anda lewat penugasan ini.
+                </p>
+            </div>
+
+            <ul v-if="props.assignees.length" class="divide-y divide-border">
+                <li
+                    v-for="a in props.assignees"
+                    :key="a.id"
+                    class="flex flex-wrap items-center gap-3 px-6 py-4 transition-colors hover:bg-accent/50"
                 >
-                    <UserCog class="size-5" />
-                </div>
-                <div class="space-y-1">
-                    <h1
-                        class="text-2xl font-semibold tracking-tight text-foreground"
+                    <div
+                        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
                     >
-                        Support Saya
-                    </h1>
-                    <p class="text-sm text-muted-foreground">
-                        {{ label('cs') }} &amp; {{ label('maintenance') }} yang
-                        Anda tugaskan untuk membantu menangani customer Anda.
-                        Begitu di-assign, mereka langsung bisa melihat customer
-                        Anda.
-                    </p>
-                </div>
-            </div>
-
-            <div
-                v-if="flashSuccess"
-                class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
-            >
-                <Check class="size-4 shrink-0" />
-                <span>{{ flashSuccess }}</span>
-            </div>
-            <div
-                v-if="flashError"
-                class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
-                {{ flashError }}
-            </div>
-
-            <!-- Current assignments -->
-            <section
-                class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
-            >
-                <div class="border-b border-border px-6 py-4">
-                    <h2 class="text-sm font-semibold text-foreground">
-                        Sedang menangani customer Anda
-                    </h2>
-                    <p class="text-xs text-muted-foreground">
-                        {{ props.assignees.length }} orang punya akses ke
-                        customer Anda lewat penugasan ini.
-                    </p>
-                </div>
-
-                <ul
-                    v-if="props.assignees.length"
-                    class="divide-y divide-border"
-                >
-                    <li
-                        v-for="a in props.assignees"
-                        :key="a.id"
-                        class="flex flex-wrap items-center gap-3 px-6 py-4 transition-colors hover:bg-accent/50"
+                        {{ initial(a.name) }}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="font-medium text-foreground">
+                            {{ a.name }}
+                        </div>
+                        <div class="truncate text-xs text-muted-foreground">
+                            {{ a.email }}
+                        </div>
+                    </div>
+                    <span
+                        v-if="a.type"
+                        class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
+                        :class="typeBadge(a.type.value)"
+                        >{{ a.type.label }}</span
                     >
-                        <div
-                            class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
-                        >
-                            {{ initial(a.name) }}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="font-medium text-foreground">
-                                {{ a.name }}
-                            </div>
-                            <div class="truncate text-xs text-muted-foreground">
-                                {{ a.email }}
-                            </div>
-                        </div>
-                        <span
-                            v-if="a.type"
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
-                            :class="typeBadge(a.type.value)"
-                            >{{ a.type.label }}</span
-                        >
-                        <span
-                            class="text-xs text-muted-foreground tabular-nums"
-                        >
-                            sejak {{ formatDate(a.assigned_at) }}
-                        </span>
+                    <span class="text-xs text-muted-foreground tabular-nums">
+                        sejak {{ formatDate(a.assigned_at) }}
+                    </span>
 
-                        <Dialog>
-                            <DialogTrigger as-child>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                >
-                                    Lepas
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <Form
-                                    v-bind="
-                                        SupportAssignmentController.destroy.form(
-                                            a.id,
-                                        )
-                                    "
-                                    :options="{ preserveScroll: true }"
-                                    class="space-y-6"
-                                    v-slot="{ processing }"
-                                >
-                                    <DialogHeader class="space-y-3">
-                                        <DialogTitle>
-                                            Lepas penugasan?
-                                        </DialogTitle>
-                                        <DialogDescription>
-                                            <strong>{{ a.name }}</strong> tidak
-                                            akan bisa melihat customer Anda lagi
-                                            setelah dilepas. Akun mereka tetap
-                                            aktif dan penugasan dari
-                                            {{ labelLower('sales') }} lain tidak
-                                            terpengaruh.
-                                        </DialogDescription>
-                                    </DialogHeader>
+                    <Dialog>
+                        <DialogTrigger as-child>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                                Lepas
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <Form
+                                v-bind="
+                                    SupportAssignmentController.destroy.form(
+                                        a.id,
+                                    )
+                                "
+                                :options="{ preserveScroll: true }"
+                                class="space-y-6"
+                                v-slot="{ processing }"
+                            >
+                                <DialogHeader class="space-y-3">
+                                    <DialogTitle>
+                                        Lepas penugasan?
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        <strong>{{ a.name }}</strong> tidak akan
+                                        bisa melihat customer Anda lagi setelah
+                                        dilepas. Akun mereka tetap aktif dan
+                                        penugasan dari
+                                        {{ labelLower('sales') }} lain tidak
+                                        terpengaruh.
+                                    </DialogDescription>
+                                </DialogHeader>
 
-                                    <DialogFooter class="gap-2">
-                                        <DialogClose as-child>
-                                            <Button
-                                                variant="secondary"
-                                                type="button"
-                                            >
-                                                Batal
-                                            </Button>
-                                        </DialogClose>
+                                <DialogFooter class="gap-2">
+                                    <DialogClose as-child>
                                         <Button
-                                            type="submit"
-                                            variant="destructive"
-                                            :disabled="processing"
+                                            variant="secondary"
+                                            type="button"
                                         >
-                                            Lepas penugasan
+                                            Batal
                                         </Button>
-                                    </DialogFooter>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
+                                    </DialogClose>
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        :disabled="processing"
+                                    >
+                                        Lepas penugasan
+                                    </Button>
+                                </DialogFooter>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </li>
+            </ul>
+
+            <div v-else class="px-6 py-12 text-center">
+                <div class="mx-auto flex max-w-sm flex-col items-center gap-2">
+                    <div
+                        class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                    >
+                        <UserCog class="size-5" />
+                    </div>
+                    <p class="text-sm font-medium text-foreground">
+                        Belum ada {{ label('cs') }}/{{ label('maintenance') }}
+                        yang Anda assign
+                    </p>
+                    <p class="text-sm text-muted-foreground">
+                        Pilih dari tim Anda di bawah untuk mulai berbagi
+                        penanganan customer.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Candidate pool -->
+        <section
+            class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+        >
+            <div class="border-b border-border px-6 py-4">
+                <h2 class="text-sm font-semibold text-foreground">
+                    Tambah dari tim Anda
+                </h2>
+                <p class="text-xs text-muted-foreground">
+                    Hanya {{ label('cs') }} &amp;
+                    {{ label('maintenance') }} dari tim Anda yang bisa
+                    ditugaskan.
+                </p>
+            </div>
+
+            <div
+                v-if="!props.hasTeam"
+                class="flex items-start gap-2.5 px-6 py-5 text-sm text-muted-foreground"
+            >
+                <CircleAlert class="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <span>
+                    Anda belum tergabung dalam tim, jadi belum ada kandidat yang
+                    bisa ditugaskan. Hubungi
+                    {{ labelLower('supervisor') }} Anda.
+                </span>
+            </div>
+
+            <div
+                v-else-if="!props.candidates.length"
+                class="px-6 py-8 text-center text-sm text-muted-foreground"
+            >
+                Semua {{ label('cs') }} &amp; {{ label('maintenance') }} di tim
+                Anda sudah ditugaskan.
+            </div>
+
+            <form v-else @submit.prevent="submit">
+                <ul class="divide-y divide-border">
+                    <li
+                        v-for="c in props.candidates"
+                        :key="c.id"
+                        class="transition-colors hover:bg-accent/50"
+                    >
+                        <label
+                            class="flex cursor-pointer items-center gap-3 px-6 py-4"
+                        >
+                            <input
+                                v-model="form.assignee_ids"
+                                type="checkbox"
+                                :value="c.id"
+                                class="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring"
+                            />
+                            <div
+                                class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground"
+                            >
+                                {{ initial(c.name) }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-medium text-foreground">
+                                    {{ c.name }}
+                                </div>
+                                <div
+                                    class="truncate text-xs text-muted-foreground"
+                                >
+                                    {{ c.email }}
+                                </div>
+                            </div>
+                            <span
+                                v-if="c.type"
+                                class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
+                                :class="typeBadge(c.type.value)"
+                                >{{ c.type.label }}</span
+                            >
+                        </label>
                     </li>
                 </ul>
 
-                <div v-else class="px-6 py-12 text-center">
-                    <div
-                        class="mx-auto flex max-w-sm flex-col items-center gap-2"
-                    >
-                        <div
-                            class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                        >
-                            <UserCog class="size-5" />
-                        </div>
-                        <p class="text-sm font-medium text-foreground">
-                            Belum ada {{ label('cs') }}/{{
-                                label('maintenance')
-                            }}
-                            yang Anda assign
-                        </p>
-                        <p class="text-sm text-muted-foreground">
-                            Pilih dari tim Anda di bawah untuk mulai berbagi
-                            penanganan customer.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Candidate pool -->
-            <section
-                class="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
-            >
-                <div class="border-b border-border px-6 py-4">
-                    <h2 class="text-sm font-semibold text-foreground">
-                        Tambah dari tim Anda
-                    </h2>
-                    <p class="text-xs text-muted-foreground">
-                        Hanya {{ label('cs') }} &amp;
-                        {{ label('maintenance') }} dari tim Anda yang bisa
-                        ditugaskan.
+                <div
+                    class="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/30 px-6 py-4"
+                >
+                    <p class="text-sm text-muted-foreground">
+                        {{ selectedCount }} dipilih
                     </p>
-                </div>
-
-                <div
-                    v-if="!props.hasTeam"
-                    class="flex items-start gap-2.5 px-6 py-5 text-sm text-muted-foreground"
-                >
-                    <CircleAlert
-                        class="mt-0.5 size-4 shrink-0 text-amber-600"
-                    />
-                    <span>
-                        Anda belum tergabung dalam tim, jadi belum ada kandidat
-                        yang bisa ditugaskan. Hubungi
-                        {{ labelLower('supervisor') }} Anda.
-                    </span>
-                </div>
-
-                <div
-                    v-else-if="!props.candidates.length"
-                    class="px-6 py-8 text-center text-sm text-muted-foreground"
-                >
-                    Semua {{ label('cs') }} &amp; {{ label('maintenance') }} di
-                    tim Anda sudah ditugaskan.
-                </div>
-
-                <form v-else @submit.prevent="submit">
-                    <ul class="divide-y divide-border">
-                        <li
-                            v-for="c in props.candidates"
-                            :key="c.id"
-                            class="transition-colors hover:bg-accent/50"
-                        >
-                            <label
-                                class="flex cursor-pointer items-center gap-3 px-6 py-4"
-                            >
-                                <input
-                                    v-model="form.assignee_ids"
-                                    type="checkbox"
-                                    :value="c.id"
-                                    class="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring"
-                                />
-                                <div
-                                    class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground"
-                                >
-                                    {{ initial(c.name) }}
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="font-medium text-foreground">
-                                        {{ c.name }}
-                                    </div>
-                                    <div
-                                        class="truncate text-xs text-muted-foreground"
-                                    >
-                                        {{ c.email }}
-                                    </div>
-                                </div>
-                                <span
-                                    v-if="c.type"
-                                    class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
-                                    :class="typeBadge(c.type.value)"
-                                    >{{ c.type.label }}</span
-                                >
-                            </label>
-                        </li>
-                    </ul>
-
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/30 px-6 py-4"
+                    <Button
+                        type="submit"
+                        :disabled="!selectedCount || form.processing"
                     >
-                        <p class="text-sm text-muted-foreground">
-                            {{ selectedCount }} dipilih
-                        </p>
-                        <Button
-                            type="submit"
-                            :disabled="!selectedCount || form.processing"
-                        >
-                            <Plus />
-                            Assign terpilih
-                        </Button>
-                    </div>
-                </form>
-            </section>
-        </div>
-    </AppLayout>
+                        <Plus />
+                        Assign terpilih
+                    </Button>
+                </div>
+            </form>
+        </section>
+    </div>
 </template>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import { useBreadcrumbs } from '@/composables/useBreadcrumbs';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
-import type { BreadcrumbItem } from '@/types';
 
-const { breadcrumbs = [] } = defineProps<{
-    breadcrumbs?: BreadcrumbItem[];
-}>();
+// R-B: mounted once as a persistent layout (app.ts callback), so breadcrumbs
+// arrive through the shared store — pages register via setBreadcrumbs().
+const breadcrumbs = useBreadcrumbs();
 </script>
 
 <template>
